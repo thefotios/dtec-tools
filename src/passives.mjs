@@ -75,14 +75,18 @@ export function createPassiveStore(storage, classes) {
       return last;
     },
     setLast(slug) {
-      last = classes.some((c) => c.slug === slug) ? slug : null;
+      const next = classes.some((c) => c.slug === slug) ? slug : null;
+      if (next === last) return;
+      last = next;
       save();
     },
     get unlockedOnly() {
       return unlockedOnly;
     },
     setUnlockedOnly(value) {
-      unlockedOnly = Boolean(value);
+      const next = Boolean(value);
+      if (next === unlockedOnly) return;
+      unlockedOnly = next;
       save();
     },
   };

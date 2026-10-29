@@ -1,6 +1,6 @@
 // Build code and share codecs (pure): `c5-sal2sal3sc1[-roster]`, the `s` saved-sets query, and share inputs.
 // Passives are plain entries { code, level }; a player is { name, base, levels, sets } with base a class code.
-import { encodeRoster, decodeRoster } from './owned.mjs';
+import { encodeRoster, decodeRoster, cleanMax } from './owned.mjs';
 import { normalizeSet, MAX_PASSIVES } from './passives.mjs';
 import { relativePath } from './router.mjs';
 
@@ -74,7 +74,7 @@ export function parseBuildCode(classes, text) {
   const m = /^([a-z]+)(\d+)$/.exec(first);
   if (!m || !classByCode(classes, m[1])) return failed(notice(first, 'unknown'));
   const level = Number(m[2]);
-  if (!Number.isInteger(level) || level < 1 || level > 5) return failed(notice(first, 'level', 'level must be 1 to 5'));
+  if (!cleanMax(level)) return failed(notice(first, 'level', 'level must be 1 to 5'));
   const out = { base: m[1], level, slots: [], roster: null, notices: [] };
   let sawRun = false;
   let sawRoster = false;
@@ -107,7 +107,7 @@ export function parseBuildCode(classes, text) {
 export function serializeBuildCode(classes, player, { roster = false } = {}) {
   const base = classByCode(classes, player.base);
   const level = player.levels?.[player.base];
-  if (!base || !Number.isInteger(level) || level < 1 || level > 5) return '';
+  if (!base || !cleanMax(level)) return '';
   const run = runText(normalizeSet(classes, base.slug, player.sets?.[player.base]));
   const owned = roster ? encodeRoster(classes, player.levels) : 'X';
   return [`${base.code}${level}`, run, owned === 'X' ? '' : owned].filter(Boolean).join('-');

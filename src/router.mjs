@@ -1,4 +1,4 @@
-export const MAX_SLOTS = 3;
+import { MAX_PASSIVES } from './passives.mjs';
 
 export const sameSlot = (a, b) => a.cls.slug === b.cls.slug && a.level === b.level;
 
@@ -11,7 +11,7 @@ export function sortSlots(classes, slots) {
 // Adds a passive in canonical order. No-op when it is already present or the build is full.
 export function addSlot(classes, slots, cls, level) {
   const slot = { cls, level };
-  if (slots.some((s) => sameSlot(s, slot)) || slots.length >= MAX_SLOTS) return sortSlots(classes, slots);
+  if (slots.some((s) => sameSlot(s, slot)) || slots.length >= MAX_PASSIVES) return sortSlots(classes, slots);
   return sortSlots(classes, [...slots, slot]);
 }
 

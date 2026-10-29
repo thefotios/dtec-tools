@@ -3,6 +3,7 @@
 // sets maps class code to a passive set of { code, level } entries.
 
 import { normalizeSet } from './passives.mjs';
+import { cleanMax } from './owned.mjs';
 
 const STORAGE_KEY = 'class-combo-viewer:players';
 const STORE_VERSION = 1;
@@ -11,7 +12,9 @@ export const MAX_TEAM_NAME = 40;
 
 const NAME_RE = /^[A-Za-z0-9]+(?:_[A-Za-z0-9]+)?$/;
 const lower = (name) => String(name ?? '').toLowerCase();
-const sameName = (a, b) => lower(a) === lower(b);
+export const sameName = (a, b) => lower(a) === lower(b);
+
+export const NAME_RULE = 'Use 3 to 20 letters or digits, with at most one underscore that is not at either end';
 
 // 3-20 letters, digits, or one underscore that is not at either end.
 export const isValidName = (name) => typeof name === 'string' && name.length >= 3 && name.length <= 20 && NAME_RE.test(name);
@@ -26,7 +29,7 @@ function normalizeRecord(classes, record) {
   if (!known.has(base)) return null;
   const levels = {};
   for (const [code, value] of Object.entries(record.levels ?? {})) {
-    if (known.has(code) && Number.isInteger(value) && value >= 1 && value <= 5) levels[code] = value;
+    if (known.has(code) && cleanMax(value) > 0) levels[code] = value;
   }
   if (!levels[base]) return null;
   const sets = {};
@@ -59,6 +62,14 @@ export function mePlayer(classes, name, ownedStore, passiveStore) {
   return { name, base, levels, sets: passiveStore.all() };
 }
 
+// The class code a player's card shows: the stored one while owned, else the player's own base, else the first owned class.
+export function ownedBase(classes, player, stored) {
+  const owns = (code) => (player.levels[code] ?? 0) > 0;
+  if (owns(stored)) return stored;
+  if (owns(player.base)) return player.base;
+  return classes.find((c) => owns(c.code))?.code ?? null;
+}
+
 // Me wins over a saved player of the same name.
 export function playerByName(store, me, name) {
   if (store.me && sameName(store.me, name)) return me;
@@ -69,7 +80,7 @@ function load(storage, classes) {
   const empty = { me: '', players: [], teams: [], active: null };
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
-    if (parsed?.v !== STORE_VERSION || typeof parsed !== 'object') return empty;
+    if (parsed?.v !== STORE_VERSION) return empty;
     const me = isValidName(parsed.me) ? parsed.me : '';
     const players = [];
     for (const raw of Array.isArray(parsed.players) ? parsed.players : []) {
@@ -190,7 +201,9 @@ export function createPlayersStore(storage, classes, { newId = defaultNewId } = 
       return active;
     },
     setActive(id) {
-      active = findTeam(id) ? id : null;
+      const next = findTeam(id) ? id : null;
+      if (next === active) return;
+      active = next;
       save();
     },
     // The new team always becomes active, so the first team and every freshly created team open in the UI.

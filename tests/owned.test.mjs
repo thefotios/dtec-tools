@@ -162,23 +162,12 @@ test('store: setLevel sets the max, and clicking the current max steps back one'
   assert.deepEqual(store.owned, {});
 });
 
-test('store: has is cumulative; hasClass and hasAny follow the map', () => {
+test('store: has is cumulative; hasAny follows the map', () => {
   const store = createStore(memory());
   assert.equal(store.hasAny(), false);
   store.setLevel('mi', 3);
   assert.deepEqual([1, 2, 3, 4, 5].map((n) => store.has('mi', n)), [true, true, true, false, false]);
-  assert.equal(store.hasClass('mi'), true);
-  assert.equal(store.hasClass('sc'), false);
   assert.equal(store.hasAny(), true);
-});
-
-test('store: name toggle marks level 1 or clears the row', () => {
-  const store = createStore(memory());
-  store.toggleClass('mi');
-  assert.deepEqual(store.owned, { mi: 1 });
-  store.setLevel('mi', 4);
-  store.toggleClass('mi');
-  assert.deepEqual(store.owned, {});
 });
 
 test('store: corrupt or unknown-version storage yields an empty map', () => {

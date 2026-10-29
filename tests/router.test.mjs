@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { relativePath, absoluteUrl, sortSlots, addSlot, removeSlot, teamSegment, pushPath, replacePath, MAX_SLOTS } from '../src/router.mjs';
+import { relativePath, absoluteUrl, sortSlots, addSlot, removeSlot, teamSegment, pushPath, replacePath } from '../src/router.mjs';
+import { MAX_PASSIVES } from '../src/passives.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const by = (slug) => classes.find((c) => c.slug === slug);
@@ -57,7 +58,7 @@ test('addSlot inserts in canonical order and refuses duplicates and a fourth pas
   slots = addSlot(classes, slots, by('salvager'), 3);
   slots = addSlot(classes, slots, by('salvager'), 2);
   assert.deepEqual(str(slots), ['salvager2', 'salvager3', 'priest3']);
-  assert.equal(slots.length, MAX_SLOTS);
+  assert.equal(slots.length, MAX_PASSIVES);
   assert.deepEqual(str(addSlot(classes, slots, by('scout'), 1)), str(slots));
   assert.deepEqual(str(addSlot(classes, slots.slice(0, 2), by('salvager'), 2)), ['salvager2', 'salvager3']);
 });

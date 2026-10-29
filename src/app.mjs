@@ -3,10 +3,11 @@ import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
 import { createPassiveStore, toSlots } from './passives.mjs';
 import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
-import { createPlayersStore, isValidName, mePlayer, playerByName } from './players.mjs';
+import { createPlayersStore, isValidName, mePlayer, playerByName, sameName, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
 import { parseTeamLink, serializeTeamLink } from './team.mjs';
 
 const root = document.getElementById('app');
+const storage = { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) };
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
 
 const state = {
@@ -29,7 +30,7 @@ const state = {
   players: null,
   // Local view state; never part of the share URL.
   view: 'classes',
-  store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
+  store: createStore(storage),
   // Rows expanded by hand in edit mode.
   expanded: new Set(),
   // link: an opened team link, null or { name, members, saved }; paste: the library paste form's drafts and feedback.
@@ -40,18 +41,12 @@ const state = {
 const paint = () => render(root, state, actions);
 
 const classBySlug = (slug) => state.data.classes.find((c) => c.slug === slug) ?? null;
-const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 // My record for the selected base, computed fresh from the owned and passives stores and my username.
 const myPlayer = () => ({ ...mePlayer(state.data.classes, state.players.me, state.store, state.passives), base: state.build.base?.code ?? null });
 
 // The base a player's card shows: the stored one while owned, else the player's own base, else any owned class.
-function ownedBase(player, stored) {
-  const owns = (code) => (player.levels[code] ?? 0) > 0;
-  if (owns(stored)) return stored;
-  if (owns(player.base)) return player.base;
-  return state.data.classes.find((c) => owns(c.code))?.code ?? null;
-}
+const ownedBase = (player, stored) => ownedBaseCode(state.data.classes, player, stored);
 
 const meRecord = () => mePlayer(state.data.classes, state.players.me, state.store, state.passives);
 const resolvePlayer = (name) => playerByName(state.players, meRecord(), name);
@@ -172,7 +167,7 @@ const actions = {
     if (r.error) return fail(r.error);
     const name = (r.player.name || nameText).trim();
     if (!name) return fail('Enter a name for this player');
-    if (!isValidName(name)) return fail('Use 3 to 20 letters or digits, with at most one underscore that is not at either end');
+    if (!isValidName(name)) return fail(NAME_RULE);
     if (state.players.me && sameName(name, state.players.me)) return fail("That's you \u2014 edit your build on the Classes page");
     const saved = state.players.upsert({ ...r.player, name }, { merge: isBare(r.player) });
     if (saved.error) return fail(saved.error);
@@ -359,7 +354,7 @@ const actions = {
     state.list.nameConflict = null;
     state.list.nameError = null;
     if (name && !isValidName(name)) {
-      state.list.nameError = 'Use 3 to 20 letters or digits, with at most one underscore that is not at either end';
+      state.list.nameError = NAME_RULE;
     } else {
       const r = state.players.setMe(name);
       if (r.error) state.list.nameError = r.error;
@@ -433,8 +428,8 @@ async function load() {
     const data = await res.json();
     if (!Array.isArray(data.classes) || !data.tiers) throw new Error('unexpected data shape');
     state.data = data;
-    state.players = createPlayersStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }, data.classes);
-    state.passives = createPassiveStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }, data.classes);
+    state.players = createPlayersStore(storage, data.classes);
+    state.passives = createPassiveStore(storage, data.classes);
     state.status = 'ready';
     syncFromLocation();
   } catch (e) {

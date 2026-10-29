@@ -1,11 +1,10 @@
 import { ownedClasses } from './owned.mjs';
-import { isValidName, playerByName, MAX_MEMBERS } from './players.mjs';
-import { toSlots } from './passives.mjs';
+import { isValidName, playerByName, sameName, ownedBase, NAME_RULE, MAX_MEMBERS } from './players.mjs';
+import { toSlots, MAX_PASSIVES } from './passives.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
 
-const MAX_SLOTS = 3;
 const TAG_LABEL = { team: 'TEAM', master: 'MASTER' };
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -94,7 +93,6 @@ function navButton(state, actions, view, text) {
 
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
 
-const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 function shareButtons(state, actions) {
   const block = actions.shareBlock();
@@ -200,7 +198,7 @@ function ownRow(state, actions, cls) {
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
-  const full = slots.length >= MAX_SLOTS;
+  const full = slots.length >= MAX_PASSIVES;
   const picked = (c, n) => slots.some((s) => s.cls.slug === c.slug && s.level === n);
   const f = opts.filter.trim().toLowerCase();
   const ordered = Object.keys(tiers).flatMap((tier) => classes.filter((c) => String(c.tier) === tier));
@@ -285,7 +283,7 @@ function passivePicker(state, actions, opts) {
     h(
       'div',
       { class: 'passive-head' },
-      opts.noTitle ? null : h('h2', { class: 'panel-title', text: `Passives (${slots.length}/${MAX_SLOTS})` }),
+      opts.noTitle ? null : h('h2', { class: 'panel-title', text: `Passives (${slots.length}/${MAX_PASSIVES})` }),
       opts.levelRows
         ? h(
             'label',
@@ -411,7 +409,7 @@ function visitorNameError(state) {
   const v = state.visitor;
   const name = v.nameDraft.trim();
   if (!name) return 'Enter a name to save this build';
-  if (!isValidName(name)) return 'Use 3 to 20 letters or digits, with at most one underscore that is not at either end';
+  if (!isValidName(name)) return NAME_RULE;
   if (state.players.me && sameName(name, state.players.me)) return "That's you";
   return null;
 }
@@ -462,7 +460,7 @@ function visitorLoadout(state, actions) {
     h(
       'section',
       { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
-      h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_SLOTS})` })),
+      h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` })),
       h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, passiveOwned(player)))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
     ),
   );
@@ -486,7 +484,7 @@ function loadout(state, actions) {
       h(
         'div',
         { class: 'panel-head' },
-        h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_SLOTS})` }),
+        h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` }),
         h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
       ),
       editing
@@ -616,8 +614,7 @@ function classesView(state, actions) {
 
 // Pieces shared by library rows and team cards.
 function memberBase(state, player, stored) {
-  const owns = (code) => (player.levels[code] ?? 0) > 0;
-  const code = owns(stored) ? stored : owns(player.base) ? player.base : state.data.classes.find((c) => owns(c.code))?.code;
+  const code = ownedBase(state.data.classes, player, stored);
   return state.data.classes.find((c) => c.code === code) ?? null;
 }
 
@@ -702,8 +699,8 @@ function playerCard(state, actions, { name, player, base, controls }) {
   );
 }
 
-function teamCard(state, actions, member) {
-  const player = playerByName(state.players, actions.mePlayer(), member.name);
+function teamCard(state, actions, member, me) {
+  const player = playerByName(state.players, me, member.name);
   if (!player) return null;
   const base = memberBase(state, player, member.base);
   const owned = state.data.classes.filter((c) => (player.levels[c.code] ?? 0) > 0);
@@ -723,8 +720,7 @@ function teamCard(state, actions, member) {
   });
 }
 
-function addPlayerSelect(state, actions, team) {
-  const mePlayer = actions.mePlayer();
+function addPlayerSelect(state, actions, team, mePlayer) {
   const onTeam = new Set(team.members.map((m) => m.name.toLowerCase()));
   const candidates = [
     ...(state.players.me && Object.keys(mePlayer.levels).length ? [mePlayer] : []),
@@ -748,6 +744,7 @@ function addPlayerSelect(state, actions, team) {
 function teamPanel(state, actions) {
   const teams = state.players.teams;
   const team = teams.find((t) => t.id === state.players.active) ?? null;
+  const me = actions.mePlayer();
   return h(
     'section',
     { class: 'panel team-panel', 'aria-label': 'Team' },
@@ -771,10 +768,10 @@ function teamPanel(state, actions) {
               h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, onchange: (e) => actions.renameTeam(e.target.value) }),
               h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'team-delete', onclick: actions.deleteTeam }, 'Delete', hidden(' team')),
             ),
-            addPlayerSelect(state, actions, team),
+            addPlayerSelect(state, actions, team, me),
           ),
           team.members.length
-            ? h('ul', { class: 'team-grid' }, team.members.map((m) => teamCard(state, actions, m)))
+            ? h('ul', { class: 'team-grid' }, team.members.map((m) => teamCard(state, actions, m, me)))
             : h('p', { class: 'empty', text: 'Add players from your library' }),
         ]
       : h('p', { class: 'empty', text: 'Create a team to start' }),

@@ -6,7 +6,7 @@ const STORAGE_KEY = 'class-combo-viewer:owned';
 const STORE_VERSION = 2;
 const ALIASES = { O: '0', I: '1', L: '1' };
 
-const cleanMax = (n) => (Number.isInteger(n) && n >= 1 && n <= 5 ? n : 0);
+export const cleanMax = (n) => (Number.isInteger(n) && n >= 1 && n <= 5 ? n : 0);
 
 // owned: { [classCode]: maxLevel }. Classes in registry order; runs of 3+ are written as count + symbol, trailing unowned classes trimmed.
 export function encodeRoster(classes, owned) {
@@ -102,13 +102,9 @@ export function createStore(storage) {
     },
     has: (code, level) => (owned[code] ?? 0) >= level,
     hasAny: () => Object.keys(owned).length > 0,
-    hasClass: (code) => (owned[code] ?? 0) > 0,
     // Clicking the current max steps back one level, so a class can return to unowned; 0 removes the class.
     setLevel(code, n) {
       set(code, n <= 0 ? 0 : (owned[code] ?? 0) === n ? n - 1 : n);
-    },
-    toggleClass(code) {
-      set(code, owned[code] ? 0 : 1);
     },
     replace(map) {
       owned = map;
