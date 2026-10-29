@@ -1,4 +1,4 @@
-import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, pushPath, replacePath, currentPath, teamSegment, MAX_SLOTS } from './router.mjs';
+import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot, withoutBase } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
 import { parseTeam, serializeTeam, createTeamStore, MAX_PLAYERS } from './team.mjs';
@@ -13,11 +13,12 @@ const state = {
   build: { base: null, slots: [] },
   notices: [],
   filter: '',
+  passiveFilter: '',
   copy: null,
   // Local view state; never part of the share URL.
   view: new URLSearchParams(window.location.search).get('view') === 'mine' ? 'mine' : 'build',
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
-  team: { builds: [], store: null, owned: [], errors: {}, editing: null },
+  team: { builds: [], store: null, owned: [], errors: {}, editing: null, passiveFilter: '' },
   mine: { filter: '', ownedOnly: false, draft: '', error: null, notices: [], copy: null },
 };
 
@@ -70,6 +71,14 @@ function setTeamBuild(i, build) {
   paint();
 }
 
+function setSlots(slots) {
+  state.build = { ...state.build, slots };
+  state.notices = [];
+  state.copy = null;
+  replaceBuild(window, state.build);
+  paint();
+}
+
 const actions = {
   retry: () => load(),
   setFilter(value) {
@@ -111,15 +120,21 @@ const actions = {
   setTeamBase(i, slug) {
     const base = slug ? classBySlug(slug) : null;
     const cur = state.team.builds[i];
-    setTeamBuild(i, { base, slots: base ? cur.slots : [] });
+    setTeamBuild(i, { base, slots: withoutBase(cur.slots, base) });
   },
-  setTeamSlot(i, index, slug, level) {
-    const slots = [...state.team.builds[i].slots];
-    const cls = slug ? classBySlug(slug) : null;
-    if (!cls) slots.splice(index, 1);
-    else if (index < slots.length) slots[index] = { cls, level };
-    else if (slots.length < MAX_SLOTS) slots.push({ cls, level });
-    setTeamBuild(i, { ...state.team.builds[i], slots });
+  // Toggles one passive on a card: removes it when present, otherwise adds it in canonical order.
+  toggleTeamSlot(i, slug, level) {
+    const cls = classBySlug(slug);
+    const cur = state.team.builds[i];
+    if (!cls) return;
+    const has = cur.slots.some((s) => s.cls.slug === slug && s.level === level);
+    const slots = has ? removeSlot(cur.slots, cls, level) : addSlot(state.data.classes, cur.slots, cls, level);
+    setTeamBuild(i, { ...cur, slots });
+  },
+  clearTeamSlots: (i) => setTeamBuild(i, { ...state.team.builds[i], slots: [] }),
+  setTeamPassiveFilter(value) {
+    state.team.passiveFilter = value;
+    paint();
   },
   // Typing never repaints: the field keeps focus and caret.
   setTeamLabel(i, text) {
@@ -189,29 +204,28 @@ const actions = {
     state.notices = state.notices.filter((_, j) => j !== i);
     paint();
   },
-  // Base change pushes a history entry; clearing the base also drops the passives.
+  // Base change pushes a history entry and drops passives of the new base class; clearing the base drops them all.
   setBase(slug) {
     const base = slug ? classBySlug(slug) : null;
-    state.build = { base, slots: base ? state.build.slots : [] };
+    state.build = { base, slots: withoutBase(state.build.slots, base) };
     state.notices = [];
     state.copy = null;
     pushBuild(window, state.build);
     paint();
   },
-  // Slot change replaces the current entry. Picking a class selects level 1; null removes the slot.
-  setSlot(index, slug, level) {
-    const slots = [...state.build.slots];
-    const cls = slug ? classBySlug(slug) : null;
-    if (!cls) slots.splice(index, 1);
-    else if (index < slots.length) slots[index] = { cls, level };
-    else if (slots.length < MAX_SLOTS) slots.push({ cls, level });
-    state.build = { ...state.build, slots };
-    state.notices = [];
-    state.copy = null;
-    replaceBuild(window, state.build);
+  setPassiveFilter(value) {
+    state.passiveFilter = value;
     paint();
   },
-  clearSlot: (index) => actions.setSlot(index, null, 1),
+  // Passive changes replace the current history entry. Toggling removes a present passive, otherwise adds it in canonical order.
+  toggleSlot(slug, level) {
+    const cls = classBySlug(slug);
+    if (!cls) return;
+    const has = state.build.slots.some((s) => s.cls.slug === slug && s.level === level);
+    const slots = has ? removeSlot(state.build.slots, cls, level) : addSlot(state.data.classes, state.build.slots, cls, level);
+    setSlots(slots);
+  },
+  clearSlots: () => setSlots([]),
   currentUrl: () => absoluteUrl(document.baseURI, state.view === 'team' ? teamPath() : serializePath(state.build)),
   async copyLink() {
     try {

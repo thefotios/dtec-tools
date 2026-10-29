@@ -8,6 +8,8 @@ const REASON_TEXT = {
   level: 'level must be 1 to 3',
   malformed: 'not a class and level',
   extra: 'extra path ignored',
+  duplicate: 'duplicate passive ignored',
+  self: 'a class cannot be its own passive',
 };
 
 function notice(token, reason) {
@@ -20,8 +22,33 @@ function failReason(classes, token) {
   return classes.filter((c) => c.slug.startsWith(t)).length > 1 ? 'ambiguous' : 'unknown';
 }
 
+export const sameSlot = (a, b) => a.cls.slug === b.cls.slug && a.level === b.level;
+
+// Canonical passive order: class registry order, then level. Returns a new array.
+export function sortSlots(classes, slots) {
+  const idx = (s) => classes.findIndex((c) => c.slug === s.cls.slug);
+  return [...slots].sort((a, b) => idx(a) - idx(b) || a.level - b.level);
+}
+
+// Adds a passive in canonical order. No-op when it is already present or the build is full.
+export function addSlot(classes, slots, cls, level) {
+  const slot = { cls, level };
+  if (slots.some((s) => sameSlot(s, slot)) || slots.length >= MAX_SLOTS) return sortSlots(classes, slots);
+  return sortSlots(classes, [...slots, slot]);
+}
+
+// Drops passives of the base class itself.
+export const withoutBase = (slots, base) => (base ? slots.filter((s) => s.cls.slug !== base.slug) : []);
+
+// Removes one passive; the rest stay in canonical order.
+export function removeSlot(slots, cls, level) {
+  return slots.filter((s) => !sameSlot(s, { cls, level }));
+}
+
 // Parses one build: a base token plus a passive run. Pure; returns { base, slots, notices }.
-// An invalid base drops the whole passive run. Groups are validated first, then the first three are kept.
+// An invalid base drops the whole passive run. Groups are validated first, duplicates and passives of the base
+// class are dropped with a notice,
+// the first three are kept, and the result is in canonical order.
 export function parseBuild(classes, baseToken, run = '', extras = []) {
   const notices = [];
   let base = null;
@@ -38,11 +65,14 @@ export function parseBuild(classes, baseToken, run = '', extras = []) {
         notices.push(notice(g.raw, 'level'));
       } else {
         const cls = resolve(classes, g.token);
-        if (cls) slots.push({ cls, level: g.level });
-        else notices.push(notice(g.token, failReason(classes, g.token)));
+        if (!cls) notices.push(notice(g.token, failReason(classes, g.token)));
+        else if (cls.slug === base.slug) notices.push(notice(g.raw, 'self'));
+        else if (slots.some((s) => sameSlot(s, { cls, level: g.level }))) notices.push(notice(g.raw, 'duplicate'));
+        else slots.push({ cls, level: g.level });
       }
     }
     slots.length = Math.min(slots.length, MAX_SLOTS);
+    slots.splice(0, slots.length, ...sortSlots(classes, slots));
     for (const e of extras) notices.push(notice(e, 'extra'));
   }
   return { base, slots, notices };

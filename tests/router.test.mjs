@@ -10,6 +10,9 @@ import {
   absoluteUrl,
   pushBuild,
   replaceBuild,
+  sortSlots,
+  addSlot,
+  removeSlot,
 } from '../src/router.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
@@ -112,15 +115,9 @@ test('invalid groups are dropped before the three-group cap applies', () => {
   assert.deepEqual(v.notices, [['pri', 'ambiguous']]);
 });
 
-test('passive of the base class is allowed', () => {
-  const v = view('/scout/sc1');
-  assert.deepEqual(v.slots, ['scout1']);
-  assert.deepEqual(v.notices, []);
-});
-
 test('event class resolves by slug and by code', () => {
-  assert.equal(view('/jackolantern/j1').base, 'jackolantern');
-  assert.deepEqual(view('/jackolantern/j1').slots, ['jackolantern1']);
+  assert.equal(view('/jackolantern/sc1').base, 'jackolantern');
+  assert.deepEqual(view('/scout/j1').slots, ['jackolantern1']);
   assert.equal(view('/j').base, 'jackolantern');
 });
 
@@ -199,4 +196,55 @@ test('history helpers push or replace an arbitrary canonical path (team URLs)', 
     ['push', '/dttec-tools/team/scout.sal2~miner'],
     ['replace', '/dttec-tools/team'],
   ]);
+});
+
+test('duplicate passive is dropped with a notice; same class at another level is kept', () => {
+  const v = view('/scout/sal2sal2sal3');
+  assert.deepEqual(v.slots, ['salvager2', 'salvager3']);
+  assert.deepEqual(v.notices, [['sal2', 'duplicate']]);
+  assert.equal(v.canonical, '/scout/sal2sal3');
+});
+
+test('duplicates do not consume slots before the cap of three', () => {
+  const v = view('/scout/sal1sal1sal2prie3');
+  assert.deepEqual(v.slots, ['salvager1', 'salvager2', 'priest3']);
+});
+
+test('a passive of the base class is dropped with a notice', () => {
+  const v = view('/salvager/sal2prie3');
+  assert.deepEqual(v.slots, ['priest3']);
+  assert.deepEqual(v.notices, [['sal2', 'self']]);
+  assert.equal(v.canonical, '/salvager/prie3');
+});
+
+test('withoutBase drops passives of the base and all passives without a base', async () => {
+  const { withoutBase } = await import('../src/router.mjs');
+  const s = parsePath(classes, '/scout/sal2prie3');
+  const sal = classes.find((c) => c.slug === 'salvager');
+  assert.deepEqual(withoutBase(s.slots, sal).map((x) => x.cls.slug), ['priest']);
+  assert.deepEqual(withoutBase(s.slots, null), []);
+});
+
+test('passives canonicalize to registry order, then level', () => {
+  const v = view('/scout/prie3sal3sal2');
+  assert.deepEqual(v.slots, ['salvager2', 'salvager3', 'priest3']);
+  assert.equal(v.canonical, '/scout/sal2sal3prie3');
+});
+
+test('addSlot inserts in canonical order and refuses duplicates and a fourth passive', () => {
+  const by = (slug) => classes.find((c) => c.slug === slug);
+  const str = (slots) => slots.map((x) => `${x.cls.slug}${x.level}`);
+  let slots = addSlot(classes, [], by('priest'), 3);
+  slots = addSlot(classes, slots, by('salvager'), 3);
+  slots = addSlot(classes, slots, by('salvager'), 2);
+  assert.deepEqual(str(slots), ['salvager2', 'salvager3', 'priest3']);
+  assert.deepEqual(str(addSlot(classes, slots, by('scout'), 1)), str(slots));
+  assert.deepEqual(str(addSlot(classes, slots.slice(0, 2), by('salvager'), 2)), ['salvager2', 'salvager3']);
+});
+
+test('removeSlot drops only the exact passive and keeps order', () => {
+  const s = parsePath(classes, '/scout/sal2sal3prie3');
+  const sal = classes.find((c) => c.slug === 'salvager');
+  assert.deepEqual(removeSlot(s.slots, sal, 2).map((x) => `${x.cls.slug}${x.level}`), ['salvager3', 'priest3']);
+  assert.equal(sortSlots(classes, removeSlot(s.slots, sal, 1)).length, 3);
 });

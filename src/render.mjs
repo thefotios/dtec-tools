@@ -235,63 +235,108 @@ function baseLevels(state, actions) {
   );
 }
 
-function slotView(state, actions, index) {
-  const slot = state.build.slots[index];
-  const { classes } = state.data;
-  const { store } = state;
-  const ownedLevels = (c) => [1, 2, 3].filter((n) => store.has(c.code, n));
-  const choices = store.ownedOnly ? classes.filter((c) => ownedLevels(c).length || slot?.cls.slug === c.slug) : classes;
-  const select = h(
-    'select',
-    {
-      class: 'slot-select',
-      'data-fk': `slot-${index}-select`,
-      'aria-label': `Slot ${index + 1} class`,
-      onchange: (e) => {
-        const c = classes.find((x) => x.slug === e.target.value);
-        actions.setSlot(index, c?.slug ?? null, (store.ownedOnly && c && ownedLevels(c)[0]) || 1);
+// Every passive at once: one row per class (tier order), one toggle cell per level.
+// The base class is never listed: a class cannot be its own passive.
+// opts: { base, slots, has(code, level), ownedOnly, flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+function passivePicker(state, actions, opts) {
+  const { classes, tiers } = state.data;
+  const { slots } = opts;
+  const full = slots.length >= MAX_SLOTS;
+  const picked = (c, n) => slots.some((s) => s.cls.slug === c.slug && s.level === n);
+  const f = opts.filter.trim().toLowerCase();
+  const ordered = Object.keys(tiers).flatMap((tier) => classes.filter((c) => String(c.tier) === tier));
+  const visibleLevels = (c) => [1, 2, 3].filter((n) => picked(c, n) || !opts.ownedOnly || opts.has(c.code, n));
+  const rows = ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
+  const k = opts.keyPrefix;
+  const cell = (c, n) => {
+    const on = picked(c, n);
+    const blocked = full && !on;
+    return h(
+      'button',
+      {
+        type: 'button',
+        class: `passive-cell${on ? ' is-selected' : ''}${blocked ? ' is-disabled' : ''}`,
+        'data-fk': `${k}-${c.slug}-${n}`,
+        'data-level': n,
+        'aria-pressed': String(on),
+        'aria-disabled': blocked ? 'true' : null,
+        'aria-label': `${c.name} level ${n}`,
+        onclick: () => (blocked ? null : opts.onToggle(c, n)),
       },
-    },
-    h('option', { value: '', text: 'Choose class' }),
-    choices.map((c) => h('option', { value: c.slug, selected: slot?.cls.slug === c.slug, text: c.name })),
-  );
-  const label = h('span', { class: 'slot-label', text: `Slot ${index + 1}` });
-  if (!slot) return h('li', { class: 'slot empty', 'data-slot': index + 1 }, h('div', { class: 'slot-head' }, label), select);
+      h('span', { class: 'cell-badge' }, on ? h('span', { class: 'cell-check', 'aria-hidden': 'true', text: '\u2713' }) : null, h('span', { class: 'level-num', text: String(n) })),
+      h('span', { class: 'level-text', text: c.levels[n - 1].text }),
+      opts.flag(c.code, n) ? notOwned() : null,
+    );
+  };
   return h(
-    'li',
-    { class: 'slot filled', 'data-slot': index + 1, 'data-level': slot.level },
-    h('div', { class: 'slot-head' }, label, !store.hasAny() || store.has(slot.cls.code, slot.level) ? null : notOwned(), h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `clear-slot-${index}`, onclick: () => actions.clearSlot(index) }, 'Clear', hidden(` slot ${index + 1}`))),
-    select,
+    'div',
+    { class: 'passive-picker' },
     h(
       'div',
-      { class: 'slot-levels', role: 'group', 'aria-label': `Slot ${index + 1} level` },
-      [1, 2, 3]
-        .filter((n) => !store.ownedOnly || store.has(slot.cls.code, n) || slot.level === n)
-        .map((n) =>
-        h('button', {
-          type: 'button',
-          class: 'level-button',
-          'data-fk': `slot-${index}-lv-${n}`,
-          'data-level': n,
-          'aria-pressed': slot.level === n ? 'true' : 'false',
-          'aria-label': `Level ${n}`,
-          onclick: () => actions.setSlot(index, slot.cls.slug, n),
-          text: String(n),
-        }),
-      ),
+      { class: 'passive-head' },
+      h('h2', { class: 'panel-title', text: `Passives (${slots.length}/${MAX_SLOTS})` }),
+      h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-clear`, disabled: !slots.length, onclick: opts.onClear }, 'Clear', hidden(' passives')),
     ),
-    h('p', { class: 'slot-text', text: slot.cls.levels[slot.level - 1].text }),
+    h(
+      'div',
+      { class: 'passive-selected', 'aria-label': 'Selected passives' },
+      h('span', { class: 'passive-selected-label', text: 'Selected' }),
+      slots.length
+        ? h(
+            'ul',
+            { class: 'sel-chips' },
+            slots.map((sl) =>
+              h(
+                'li',
+                { class: 'sel-chip', 'data-level': sl.level },
+                h('span', { class: 'sel-chip-name', text: `${sl.cls.name} ${sl.level}` }),
+                opts.flag(sl.cls.code, sl.level) ? notOwned() : null,
+                h('button', { type: 'button', class: 'sel-chip-x', 'data-fk': `${k}-remove-${sl.cls.slug}-${sl.level}`, 'aria-label': `Remove ${sl.cls.name} ${sl.level}`, onclick: () => opts.onToggle(sl.cls, sl.level), text: '\u00d7' }),
+              ),
+            ),
+          )
+        : h('span', { class: 'passive-none', text: 'None' }),
+    ),
+    full ? h('p', { class: 'passive-hint', role: 'status', text: 'Passives full. Deselect one first.' }) : null,
+    h('input', { type: 'search', class: 'picker-filter', 'data-fk': opts.filterKey, 'aria-label': 'Filter passives by class', placeholder: 'Filter passives', value: opts.filter, oninput: (e) => opts.onFilter(e.target.value) }),
+    rows.length
+      ? h(
+          'ul',
+          { class: 'passive-rows' },
+          rows.map((c) =>
+            h(
+              'li',
+              { class: 'passive-row', 'data-class': c.slug },
+              h('div', { class: 'passive-name' }, h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
+              h('div', { class: 'passive-cells' }, visibleLevels(c).map((n) => cell(c, n))),
+            ),
+          ),
+        )
+      : h('p', { class: 'empty', text: opts.ownedOnly && !opts.hasAny ? 'No owned classes yet. Mark the classes you own in My classes.' : 'No passives match' }),
   );
 }
 
 function slotsPanel(state, actions) {
   if (!state.build.base) return null;
-  return h(
-    'section',
-    { class: 'panel slots', 'aria-label': 'Passive slots' },
-    h('h2', { class: 'panel-title', text: 'Passive Slots' }),
-    h('ol', { class: 'slot-list' }, Array.from({ length: MAX_SLOTS }, (_, i) => slotView(state, actions, i))),
+  const { store } = state;
+  const section = h('section', { class: 'panel slots', 'aria-label': 'Passives' });
+  section.append(
+    passivePicker(state, actions, {
+      base: state.build.base,
+      slots: state.build.slots,
+      has: (code, n) => store.has(code, n),
+      ownedOnly: store.ownedOnly,
+      hasAny: store.hasAny(),
+      flag: (code, n) => store.hasAny() && !store.has(code, n),
+      filter: state.passiveFilter,
+      filterKey: 'passive-filter',
+      keyPrefix: 'passive',
+      onFilter: actions.setPassiveFilter,
+      onToggle: (c, n) => actions.toggleSlot(c.slug, n),
+      onClear: actions.clearSlots,
+    }),
   );
+  return section;
 }
 
 function combined(state) {
@@ -300,7 +345,7 @@ function combined(state) {
   if (!base) return null;
   const rows = [
     ...base.levels.map((l, i) => ({ label: `Base ${i + 1}`, level: i + 1, text: l.text })),
-    ...slots.map((s, i) => ({ label: `Slot ${i + 1}`, level: s.level, text: s.cls.levels[s.level - 1].text, from: `${s.cls.name} ${s.level}`, unowned: store.hasAny() && !store.has(s.cls.code, s.level) })),
+    ...slots.map((s, i) => ({ label: `Passive ${i + 1}`, level: s.level, text: s.cls.levels[s.level - 1].text, from: `${s.cls.name} ${s.level}`, unowned: store.hasAny() && !store.has(s.cls.code, s.level) })),
   ];
   return h(
     'section',
@@ -401,33 +446,7 @@ function chip(cls, level, unowned) {
 function cardEditor(state, actions, i) {
   const { classes } = state.data;
   const build = state.team.builds[i];
-  const slotEditor = (index) => {
-    const slot = build.slots[index];
-    return h(
-      'li',
-      { class: `slot ${slot ? 'filled' : 'empty'}`, 'data-level': slot?.level },
-      h(
-        'select',
-        {
-          class: 'slot-select',
-          'data-fk': `team-${i}-slot-${index}`,
-          'aria-label': `Player ${i + 1} passive ${index + 1} class`,
-          onchange: (e) => actions.setTeamSlot(i, index, e.target.value || null, slot?.level ?? 1),
-        },
-        h('option', { value: '', text: slot ? 'Remove passive' : 'Add passive' }),
-        classes.map((c) => h('option', { value: c.slug, selected: slot?.cls.slug === c.slug, text: c.name })),
-      ),
-      slot
-        ? h(
-            'div',
-            { class: 'slot-levels', role: 'group', 'aria-label': `Player ${i + 1} passive ${index + 1} level` },
-            [1, 2, 3].map((n) =>
-              h('button', { type: 'button', class: 'level-button', 'data-fk': `team-${i}-slot-${index}-lv-${n}`, 'data-level': n, 'aria-pressed': String(slot.level === n), 'aria-label': `Level ${n}`, onclick: () => actions.setTeamSlot(i, index, slot.cls.slug, n), text: String(n) }),
-            ),
-          )
-        : null,
-    );
-  };
+  const owned = state.team.owned[i];
   return h(
     'div',
     { class: 'card-editor' },
@@ -437,7 +456,22 @@ function cardEditor(state, actions, i) {
       h('option', { value: '', text: 'Choose base class' }),
       classes.map((c) => h('option', { value: c.slug, selected: build.base?.slug === c.slug, text: c.name })),
     ),
-    build.base ? h('ol', { class: 'slot-list' }, Array.from({ length: MAX_SLOTS }, (_, k) => slotEditor(k))) : null,
+    build.base
+      ? passivePicker(state, actions, {
+          base: build.base,
+          slots: build.slots,
+          has: () => true,
+          ownedOnly: false,
+          hasAny: false,
+          flag: (code, n) => Boolean(owned) && (owned[code] ?? 0) < n,
+          filter: state.team.passiveFilter,
+          filterKey: `team-${i}-passive-filter`,
+          keyPrefix: `team-${i}-passive`,
+          onFilter: actions.setTeamPassiveFilter,
+          onToggle: (c, n) => actions.toggleTeamSlot(i, c.slug, n),
+          onClear: () => actions.clearTeamSlots(i),
+        })
+      : null,
   );
 }
 

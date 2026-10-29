@@ -88,3 +88,12 @@ test('team store persists labels and rosters by position and survives blocked st
   assert.equal(blocked.label(0), 'Z');
   assert.equal(createTeamStore({ getItem: () => 'not json', setItem() {} }).label(0), '');
 });
+
+test('team builds drop duplicate passives with a player notice and sort canonically', () => {
+  const t = parseTeam(classes, '/scout.prie3sal3sal3sal2');
+  assert.deepEqual(t.builds[0].slots.map((s) => `${s.cls.slug}${s.level}`), ['salvager2', 'salvager3', 'priest3']);
+  assert.equal(t.notices.length, 1);
+  assert.equal(t.notices[0].reason, 'duplicate');
+  assert.match(t.notices[0].message, /^Player 1: /);
+  assert.equal(serializeTeam(t.builds), '/team/scout.sal2sal3prie3');
+});
