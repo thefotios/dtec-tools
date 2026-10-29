@@ -171,3 +171,32 @@ test('history helpers push or replace the base-prefixed canonical path', () => {
     ['replace', '/drill-dashboard/scout/sal2'],
   ]);
 });
+
+test('teamSegment recognizes the /team prefix only', async () => {
+  const { teamSegment } = await import('../src/router.mjs');
+  assert.equal(teamSegment('/team'), '');
+  assert.equal(teamSegment('/team/'), '/');
+  assert.equal(teamSegment('/team/scout.sal2~miner'), '/scout.sal2~miner');
+  assert.equal(teamSegment('/'), null);
+  assert.equal(teamSegment('/scout/sal2'), null);
+  assert.equal(teamSegment('/teamster'), null);
+  assert.equal(teamSegment('/tea'), null);
+});
+
+test('history helpers push or replace an arbitrary canonical path (team URLs)', async () => {
+  const { pushPath, replacePath } = await import('../src/router.mjs');
+  const calls = [];
+  const win = {
+    document: { baseURI: 'https://x.io/drill-dashboard/' },
+    history: {
+      pushState: (...a) => calls.push(['push', a[2]]),
+      replaceState: (...a) => calls.push(['replace', a[2]]),
+    },
+  };
+  pushPath(win, '/team/scout.sal2~miner');
+  replacePath(win, '/team');
+  assert.deepEqual(calls, [
+    ['push', '/drill-dashboard/team/scout.sal2~miner'],
+    ['replace', '/drill-dashboard/team'],
+  ]);
+});

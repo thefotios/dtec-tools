@@ -1,4 +1,5 @@
 import { groupCode } from './owned.mjs';
+import { MAX_PLAYERS } from './team.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -119,6 +120,7 @@ function header(state, actions) {
       { class: 'app-nav', 'aria-label': 'Sections' },
       navButton(state, actions, 'build', 'Build'),
       navButton(state, actions, 'mine', 'My classes'),
+      navButton(state, actions, 'team', 'Team'),
       h('button', {
         type: 'button',
         class: 'btn btn-grey',
@@ -393,6 +395,112 @@ function mineView(state, actions) {
   );
 }
 
+function chip(cls, level, unowned) {
+  return h('li', { class: 'chip', 'data-level': level }, h('span', { class: 'chip-level', text: String(level) }), h('span', { class: 'chip-name', text: cls.name }), unowned ? notOwned() : null);
+}
+
+function cardEditor(state, actions, i) {
+  const { classes } = state.data;
+  const build = state.team.builds[i];
+  const slotEditor = (index) => {
+    const slot = build.slots[index];
+    return h(
+      'li',
+      { class: `slot ${slot ? 'filled' : 'empty'}`, 'data-level': slot?.level },
+      h(
+        'select',
+        {
+          class: 'slot-select',
+          'data-fk': `team-${i}-slot-${index}`,
+          'aria-label': `Player ${i + 1} passive ${index + 1} class`,
+          onchange: (e) => actions.setTeamSlot(i, index, e.target.value || null, slot?.level ?? 1),
+        },
+        h('option', { value: '', text: slot ? 'Remove passive' : 'Add passive' }),
+        classes.map((c) => h('option', { value: c.slug, selected: slot?.cls.slug === c.slug, text: c.name })),
+      ),
+      slot
+        ? h(
+            'div',
+            { class: 'slot-levels', role: 'group', 'aria-label': `Player ${i + 1} passive ${index + 1} level` },
+            [1, 2, 3].map((n) =>
+              h('button', { type: 'button', class: 'level-button', 'data-fk': `team-${i}-slot-${index}-lv-${n}`, 'data-level': n, 'aria-pressed': String(slot.level === n), 'aria-label': `Level ${n}`, onclick: () => actions.setTeamSlot(i, index, slot.cls.slug, n), text: String(n) }),
+            ),
+          )
+        : null,
+    );
+  };
+  return h(
+    'div',
+    { class: 'card-editor' },
+    h(
+      'select',
+      { class: 'slot-select', 'data-fk': `team-${i}-base`, 'aria-label': `Player ${i + 1} base class`, onchange: (e) => actions.setTeamBase(i, e.target.value || null) },
+      h('option', { value: '', text: 'Choose base class' }),
+      classes.map((c) => h('option', { value: c.slug, selected: build.base?.slug === c.slug, text: c.name })),
+    ),
+    build.base ? h('ol', { class: 'slot-list' }, Array.from({ length: MAX_SLOTS }, (_, k) => slotEditor(k))) : null,
+  );
+}
+
+function teamCard(state, actions, i) {
+  const { store } = state.team;
+  const owned = state.team.owned[i];
+  const build = state.team.builds[i];
+  const flag = (code, level) => owned && !(owned[code] ?? []).includes(level);
+  const editing = state.team.editing === i;
+  const err = state.team.errors[i];
+  const hasRoster = Boolean(store.roster(i));
+  return h(
+    'li',
+    { class: 'team-card', 'data-card': i + 1 },
+    h('input', { type: 'text', class: 'card-label', 'data-fk': `team-${i}-label`, 'aria-label': `Player ${i + 1} label`, placeholder: `Player ${i + 1}`, maxlength: '24', autocomplete: 'off', value: store.label(i), oninput: (e) => actions.setTeamLabel(i, e.target.value) }),
+    build.base
+      ? h(
+          'div',
+          { class: 'card-build' },
+          h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: build.base.name }), diamonds(build.base, state.data.tiers), owned && !(owned[build.base.code] ?? []).length ? notOwned() : null),
+          build.slots.length ? h('ul', { class: 'chips' }, build.slots.map((sl) => chip(sl.cls, sl.level, flag(sl.cls.code, sl.level)))) : h('p', { class: 'card-empty', text: 'No passives' }),
+        )
+      : h('p', { class: 'card-empty', text: 'No class chosen' }),
+    editing ? cardEditor(state, actions, i) : null,
+    h(
+      'div',
+      { class: 'card-actions' },
+      h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': `team-${i}-edit`, 'aria-expanded': String(editing), onclick: () => actions.editPlayer(i) }, editing ? 'Done' : 'Edit', hidden(` player ${i + 1}`)),
+      h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `team-${i}-remove`, onclick: () => actions.removePlayer(i) }, 'Remove', hidden(` player ${i + 1}`)),
+    ),
+    h(
+      'form',
+      { class: 'card-roster', onsubmit: (e) => (e.preventDefault(), actions.importTeamRoster(i, e.target.elements.roster.value)) },
+      h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': `team-${i}-roster`, 'aria-label': `Player ${i + 1} roster code`, placeholder: 'Paste roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': err ? 'true' : null, 'aria-describedby': err ? `team-${i}-error` : null, value: err ? err.draft : store.roster(i) }),
+      h('button', { type: 'submit', class: 'btn btn-grey btn-small', 'data-fk': `team-${i}-roster-btn`, text: hasRoster && !err ? 'Update' : 'Set' }),
+    ),
+    err ? h('p', { class: 'roster-error', id: `team-${i}-error`, role: 'alert', text: err.message }) : null,
+  );
+}
+
+function teamView(state, actions) {
+  const count = state.team.builds.length;
+  return h(
+    'main',
+    { class: 'team' },
+    h(
+      'section',
+      { class: 'panel team-panel', 'aria-label': 'Team' },
+      h(
+        'div',
+        { class: 'panel-head' },
+        h('h2', { class: 'panel-title', text: `Team (${count}/${MAX_PLAYERS})` }),
+        h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'team-add', disabled: count >= MAX_PLAYERS, onclick: actions.addPlayer, text: 'Add player' }),
+      ),
+      count
+        ? h('ul', { class: 'team-grid' }, state.team.builds.map((_, i) => teamCard(state, actions, i)))
+        : h('p', { class: 'empty', text: 'No players yet. Add a player to plan a build.' }),
+      h('p', { class: 'team-hint', text: 'Roster codes and labels stay in this browser; the link carries builds only.' }),
+    ),
+  );
+}
+
 function focusKey(root) {
   const active = document.activeElement;
   return active && root.contains(active) ? active.getAttribute('data-fk') : null;
@@ -415,7 +523,9 @@ export function render(root, state, actions) {
   root.append(
     header(state, actions),
     ...[noticesBar(state.notices, actions)].filter(Boolean),
-    state.view === 'mine'
+    state.view === 'team'
+      ? teamView(state, actions)
+      : state.view === 'mine'
       ? mineView(state, actions)
       : h(
           'main',

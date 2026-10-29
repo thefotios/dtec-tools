@@ -1,6 +1,7 @@
-import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, currentPath, MAX_SLOTS } from './router.mjs';
+import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, pushPath, replacePath, currentPath, teamSegment, MAX_SLOTS } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
+import { parseTeam, serializeTeam, createTeamStore, MAX_PLAYERS } from './team.mjs';
 
 const root = document.getElementById('app');
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
@@ -16,14 +17,31 @@ const state = {
   // Local view state; never part of the share URL.
   view: new URLSearchParams(window.location.search).get('view') === 'mine' ? 'mine' : 'build',
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
+  team: { builds: [], store: null, owned: [], errors: {}, editing: null },
   mine: { filter: '', ownedOnly: false, draft: '', error: null, notices: [], copy: null },
 };
+
+state.team.store = createTeamStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
 
 const paint = () => render(root, state, actions);
 
 // Loads state.build from the location; rewrites a non-canonical URL without adding history.
 function syncFromLocation() {
   const path = currentPath(window);
+  const segment = teamSegment(path);
+  if (segment !== null) {
+    const parsed = parseTeam(state.data.classes, segment);
+    state.view = 'team';
+    state.team.builds = parsed.builds;
+    state.team.errors = {};
+    state.team.editing = null;
+    refreshTeamOwned();
+    state.notices = parsed.notices;
+    state.copy = null;
+    if (serializeTeam(parsed.builds) !== path) replacePath(window, serializeTeam(parsed.builds));
+    return;
+  }
+  if (state.view === 'team') state.view = 'build';
   const parsed = parsePath(state.data.classes, path);
   state.build = { base: parsed.base, slots: parsed.slots };
   state.notices = parsed.notices;
@@ -31,7 +49,26 @@ function syncFromLocation() {
   if (serializePath(parsed) !== path) replaceBuild(window, parsed);
 }
 
+// Decoded roster per card position: an owned map, or null when the card has no usable roster.
+function refreshTeamOwned() {
+  state.team.owned = state.team.builds.map((_, i) => {
+    const text = state.team.store.roster(i);
+    const r = text ? decodeRoster(state.data.classes, text) : null;
+    return r && !r.error && Object.keys(r.owned).length ? r.owned : null;
+  });
+}
+
+const teamPath = () => serializeTeam(state.team.builds);
+
 const classBySlug = (slug) => state.data.classes.find((c) => c.slug === slug) ?? null;
+
+function setTeamBuild(i, build) {
+  state.team.builds = state.team.builds.map((b, j) => (j === i ? build : b));
+  state.notices = [];
+  state.copy = null;
+  replacePath(window, teamPath());
+  paint();
+}
 
 const actions = {
   retry: () => load(),
@@ -39,8 +76,68 @@ const actions = {
     state.filter = value;
     paint();
   },
+  // Team has its own URL; leaving it returns to the single-build URL.
   setView(view) {
+    const was = state.view;
     state.view = view;
+    state.copy = null;
+    if (view === 'team' && was !== 'team') pushPath(window, teamPath());
+    else if (view !== 'team' && was === 'team') pushBuild(window, state.build);
+    paint();
+  },
+  addPlayer() {
+    if (state.team.builds.length >= MAX_PLAYERS) return;
+    state.team.builds = [...state.team.builds, { base: null, slots: [] }];
+    state.team.editing = state.team.builds.length - 1;
+    refreshTeamOwned();
+    state.copy = null;
+    pushPath(window, teamPath());
+    paint();
+  },
+  removePlayer(i) {
+    state.team.builds = state.team.builds.filter((_, j) => j !== i);
+    state.team.store.remove(i);
+    state.team.errors = {};
+    state.team.editing = null;
+    refreshTeamOwned();
+    state.copy = null;
+    pushPath(window, teamPath());
+    paint();
+  },
+  editPlayer(i) {
+    state.team.editing = state.team.editing === i ? null : i;
+    paint();
+  },
+  setTeamBase(i, slug) {
+    const base = slug ? classBySlug(slug) : null;
+    const cur = state.team.builds[i];
+    setTeamBuild(i, { base, slots: base ? cur.slots : [] });
+  },
+  setTeamSlot(i, index, slug, level) {
+    const slots = [...state.team.builds[i].slots];
+    const cls = slug ? classBySlug(slug) : null;
+    if (!cls) slots.splice(index, 1);
+    else if (index < slots.length) slots[index] = { cls, level };
+    else if (slots.length < MAX_SLOTS) slots.push({ cls, level });
+    setTeamBuild(i, { ...state.team.builds[i], slots });
+  },
+  // Typing never repaints: the field keeps focus and caret.
+  setTeamLabel(i, text) {
+    state.team.store.setLabel(i, text);
+  },
+  importTeamRoster(i, text) {
+    if (!text.trim()) {
+      state.team.store.setRoster(i, '');
+      delete state.team.errors[i];
+    } else {
+      const r = decodeRoster(state.data.classes, text);
+      if (r.error) state.team.errors[i] = { message: r.error, draft: text };
+      else {
+        state.team.store.setRoster(i, text);
+        delete state.team.errors[i];
+      }
+    }
+    refreshTeamOwned();
     paint();
   },
   setOwnedOnly(value) {
@@ -115,7 +212,7 @@ const actions = {
     paint();
   },
   clearSlot: (index) => actions.setSlot(index, null, 1),
-  currentUrl: () => absoluteUrl(document.baseURI, serializePath(state.build)),
+  currentUrl: () => absoluteUrl(document.baseURI, state.view === 'team' ? teamPath() : serializePath(state.build)),
   async copyLink() {
     try {
       await navigator.clipboard.writeText(actions.currentUrl());

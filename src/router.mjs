@@ -92,6 +92,23 @@ export function replaceBuild(win, state) {
   win.history.replaceState(null, '', historyUrl(win, state));
 }
 
+const pathUrl = (win, canonicalPath) => basePathOf(win).replace(/\/+$/, '') + canonicalPath;
+
+// Same as the build helpers, for an already-canonical path such as a team URL.
+export function pushPath(win, canonicalPath) {
+  win.history.pushState(null, '', pathUrl(win, canonicalPath));
+}
+
+export function replacePath(win, canonicalPath) {
+  win.history.replaceState(null, '', pathUrl(win, canonicalPath));
+}
+
+// The part of a base-relative path after "/team" ("" for "/team"), or null when it is not a team path.
+export function teamSegment(path) {
+  const m = /^\/team(\/.*)?$/.exec(String(path));
+  return m ? (m[1] ?? '') : null;
+}
+
 // Current base-relative path of a window-like object.
 export function currentPath(win) {
   return relativePath(win.location.pathname, basePathOf(win));
