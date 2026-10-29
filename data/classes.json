@@ -1,0 +1,994 @@
+{
+  "version": 1,
+  "tiers": {
+    "1": {
+      "cost": 100,
+      "color": "white"
+    },
+    "2": {
+      "cost": 3000,
+      "color": "blue"
+    },
+    "3": {
+      "cost": 5000,
+      "color": "purple"
+    },
+    "4": {
+      "cost": 10000,
+      "color": "gold"
+    },
+    "5": {
+      "cost": 30000,
+      "color": "red"
+    }
+  },
+  "classes": [
+    {
+      "code": "mi",
+      "slug": "miner",
+      "name": "Miner",
+      "tier": 1,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Rusty Pickaxe"
+      ],
+      "levels": [
+        {
+          "text": "+50% Pickaxe Damage"
+        },
+        {
+          "text": "+50% Pickaxe Attack Speed"
+        },
+        {
+          "text": "Ores and Gems sell for +25% Coins"
+        },
+        {
+          "text": "+25% Pickaxe Damage",
+          "tag": "team"
+        },
+        {
+          "text": "Pickaxe hits have a 10% chance to instantly break a vein",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 04.png"
+    },
+    {
+      "code": "rec",
+      "slug": "recruit",
+      "name": "Recruit",
+      "tier": 1,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Rusty Sword"
+      ],
+      "levels": [
+        {
+          "text": "+20% Gun & Melee Damage"
+        },
+        {
+          "text": "+50% Health"
+        },
+        {
+          "text": "Scrap sells for +25% Coins"
+        },
+        {
+          "text": "+10% Gun & Melee Damage",
+          "tag": "team"
+        },
+        {
+          "text": "Passives rolled from other classes are +25% stronger",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 05.png"
+    },
+    {
+      "code": "h",
+      "slug": "healer",
+      "name": "Healer",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Basic Medkit",
+        "Revive Kit"
+      ],
+      "levels": [
+        {
+          "text": "+100% Healing from all sources"
+        },
+        {
+          "text": "Medkits can be crafted in the Crafting Shack"
+        },
+        {
+          "text": "Bandages & Medkits you use also heal nearby teammates"
+        },
+        {
+          "text": "+50% Healing from all sources",
+          "tag": "team"
+        },
+        {
+          "text": "Bandages & Medkits can stack in your toolbar",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 11.png"
+    },
+    {
+      "code": "mec",
+      "slug": "mechanic",
+      "name": "Mechanic",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Gas Can",
+        "Magnet"
+      ],
+      "levels": [
+        {
+          "text": "+50% Fuel Contribution"
+        },
+        {
+          "text": "Fuel Storage is -50% off"
+        },
+        {
+          "text": "Gas Cans can be crafted in the Crafting Shack"
+        },
+        {
+          "text": "+25% Fuel Contribution",
+          "tag": "team"
+        },
+        {
+          "text": "Defeating enemies automatically deposits Fuel into the Drill",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 08.png"
+    },
+    {
+      "code": "mer",
+      "slug": "mercenary",
+      "name": "Mercenary",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit"
+      ],
+      "levels": [
+        {
+          "text": "+30% Melee Attack Speed & Gun Fire Rate"
+        },
+        {
+          "text": "Corpses sell for +50% Coins"
+        },
+        {
+          "text": "Consecutive hits grant +1% Melee Attack Speed & Gun Fire Rate"
+        },
+        {
+          "text": "+15% Melee Attack Speed & Gun Fire Rate",
+          "tag": "team"
+        },
+        {
+          "text": "Defeating enemies automatically sells them into Money Bags",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 06.png"
+    },
+    {
+      "code": "ra",
+      "slug": "racer",
+      "name": "Racer",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit"
+      ],
+      "levels": [
+        {
+          "text": "+50% Drive Speed & Acceleration as the Driver"
+        },
+        {
+          "text": "Drive Speed, Power Drive & Engine Overdrive are -50% off"
+        },
+        {
+          "text": "When Fuel is less than 10%, gain +100% Drive Speed & Acceleration as the Driver"
+        },
+        {
+          "text": "Drill starts with Engine Overdrive III",
+          "tag": "team"
+        },
+        {
+          "text": "Power Burst grants +100% Wall Damage, Speed & Acceleration",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 07.png"
+    },
+    {
+      "code": "sc",
+      "slug": "scout",
+      "name": "Scout",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Speed Potion",
+        "Large Sack"
+      ],
+      "levels": [
+        {
+          "text": "+20% Movement Speed"
+        },
+        {
+          "text": "Scrap and Chests are highlighted while inside Dungeons"
+        },
+        {
+          "text": "Speed Boots can be crafted in the Crafting Shack"
+        },
+        {
+          "text": "+10% Movement Speed",
+          "tag": "team"
+        },
+        {
+          "text": "Gradually gain up to +100% Movement Speed over 30 seconds, resetting on enemy hit",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 10.png"
+    },
+    {
+      "code": "w",
+      "slug": "witch",
+      "name": "Witch",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Strength Potion",
+        "Invisibility Potion"
+      ],
+      "levels": [
+        {
+          "text": "+100% Potion Duration"
+        },
+        {
+          "text": "Potions can be crafted in the Crafting Shack"
+        },
+        {
+          "text": "Potions you use also affect nearby teammates"
+        },
+        {
+          "text": "+50% Potion Duration",
+          "tag": "team"
+        },
+        {
+          "text": "+100% Potion Effectiveness",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 09.png"
+    },
+    {
+      "code": "br",
+      "slug": "bruiser",
+      "name": "Bruiser",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Steel Sword"
+      ],
+      "levels": [
+        {
+          "text": "+100% Melee Damage"
+        },
+        {
+          "text": "Enemies Stagger from 50% less Melee Damage"
+        },
+        {
+          "text": "Consecutive hits grant +5% Melee Damage"
+        },
+        {
+          "text": "+50% Melee Damage",
+          "tag": "team"
+        },
+        {
+          "text": "Stagger lasts twice as long",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 15.png"
+    },
+    {
+      "code": "dr",
+      "slug": "driller",
+      "name": "Driller",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Rusty Pickaxe"
+      ],
+      "levels": [
+        {
+          "text": "+50% Wall Damage as the Driver"
+        },
+        {
+          "text": "Drill Power, Mega Drill & Power Slam are -50% off"
+        },
+        {
+          "text": "When Fuel is less than 10%, gain +100% Wall Damage as the Driver"
+        },
+        {
+          "text": "Drill deals +25% Wall Damage",
+          "tag": "team"
+        },
+        {
+          "text": "RPM Overclock & Ultra Drill are -50% off",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 29.png"
+    },
+    {
+      "code": "gunsl",
+      "slug": "gunslinger",
+      "name": "Gunslinger",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Revolver"
+      ],
+      "levels": [
+        {
+          "text": "+100% Gun Damage"
+        },
+        {
+          "text": "Enemies have a 10% chance to drop Pistol/Shotgun/Rifle Ammo"
+        },
+        {
+          "text": "+100% Gun Fire Rate"
+        },
+        {
+          "text": "+50% Gun Damage",
+          "tag": "team"
+        },
+        {
+          "text": "Gun Crit Chance is 10%",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 14.png"
+    },
+    {
+      "code": "j",
+      "slug": "jackolantern",
+      "name": "Jack-o'-Lantern",
+      "tier": 3,
+      "event": true,
+      "gear": [
+        "Outfit"
+      ],
+      "levels": [
+        {
+          "text": "Enemies have a 20% chance to drop a Trick-or-Treat Pumpkin"
+        },
+        {
+          "text": "Enemies inside your glow ring take +30% Damage"
+        },
+        {
+          "text": "Every 10th enemy you defeat drops a Golden Pumpkin with every Trick & Treat"
+        },
+        {
+          "text": "Enemies have an additional 10% chance to drop a Trick-or-Treat Pumpkin",
+          "tag": "team"
+        },
+        {
+          "text": "All of your Pumpkin drops are Golden",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 13.png"
+    },
+    {
+      "code": "ta",
+      "slug": "tank",
+      "name": "Tank",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Taunt Banner"
+      ],
+      "levels": [
+        {
+          "text": "+100% Health"
+        },
+        {
+          "text": "Taunted enemies deal 25% less Damage to you"
+        },
+        {
+          "text": "+150% Health"
+        },
+        {
+          "text": "+50% Health",
+          "tag": "team"
+        },
+        {
+          "text": "Taunted enemies take 5x the Damage they deal to you",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 26.png"
+    },
+    {
+      "code": "ti",
+      "slug": "timekeeper",
+      "name": "Timekeeper",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Pocket Watch"
+      ],
+      "levels": [
+        {
+          "text": "Status Effects on you wear off 50% faster"
+        },
+        {
+          "text": "Nearby enemies move & attack 25% slower"
+        },
+        {
+          "text": "Pocket Watch can Rewind cleared Dungeons, fully resetting them"
+        },
+        {
+          "text": "Status Effects on players wear off 25% faster",
+          "tag": "team"
+        },
+        {
+          "text": "Event Clock can be crafted in the Crafting Shack",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 28.png"
+    },
+    {
+      "code": "v",
+      "slug": "vampire",
+      "name": "Vampire",
+      "tier": 3,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Vampire's Pendant"
+      ],
+      "levels": [
+        {
+          "text": "Heal 2% of the Melee Damage you deal"
+        },
+        {
+          "text": "When below 50% Health, gain +200% Healing from all sources"
+        },
+        {
+          "text": "Feed on Corpses to heal and gain +1 Max HP"
+        },
+        {
+          "text": "+200% Lifesteal Healing",
+          "tag": "team"
+        },
+        {
+          "text": "Unlock all Doors in Vampire Mansions",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 27.png"
+    },
+    {
+      "code": "c",
+      "slug": "crafter",
+      "name": "Crafter",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Resource Scanner",
+        "Wrench",
+        "Furnace"
+      ],
+      "levels": [
+        {
+          "text": "Crafting Shack prices are -10% off"
+        },
+        {
+          "text": "Drill Boosts grant +50% Distance, Speed & Wall Damage"
+        },
+        {
+          "text": "Your Furnace & Gem Refinery produce double"
+        },
+        {
+          "text": "Crafting Shack prices are -5% off",
+          "tag": "team"
+        },
+        {
+          "text": "Start each run with all Crafting Levels unlocked",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 01.png"
+    },
+    {
+      "code": "de",
+      "slug": "demolitionist",
+      "name": "Demolitionist",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "RPG"
+      ],
+      "levels": [
+        {
+          "text": "+100% Explosive Damage"
+        },
+        {
+          "text": "Enemies have a 10% chance to drop Special Ammo"
+        },
+        {
+          "text": "Enemies have a 25% chance to explode when defeated"
+        },
+        {
+          "text": "+50% Explosive Damage",
+          "tag": "team"
+        },
+        {
+          "text": "Nuke can be crafted in the Crafting Shack",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 17.png"
+    },
+    {
+      "code": "l",
+      "slug": "luckylooter",
+      "name": "Lucky Looter",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit"
+      ],
+      "levels": [
+        {
+          "text": "Chests drop multiple items more often (Max 4)"
+        },
+        {
+          "text": "Chests always drop 2+ items"
+        },
+        {
+          "text": "+100% Legendary & Mythic Luck from Chests"
+        },
+        {
+          "text": "+100% Money Fog Spawn Chance",
+          "tag": "team"
+        },
+        {
+          "text": "Mimics open like normal & have a 20% chance to Promote",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 18.png"
+    },
+    {
+      "code": "n",
+      "slug": "nightcrawler",
+      "name": "Nightcrawler",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit"
+      ],
+      "levels": [
+        {
+          "text": "+30% Melee Damage & Movement Speed in Darkness"
+        },
+        {
+          "text": "Enemies can't detect you in Darkness unless you attack"
+        },
+        {
+          "text": "Regenerate 1% Max HP every Second in Darkness"
+        },
+        {
+          "text": "Night Vision & +15% Movement Speed in Darkness",
+          "tag": "team"
+        },
+        {
+          "text": "Attacking in Darkness no longer reveals you",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 16.png"
+    },
+    {
+      "code": "prin",
+      "slug": "princess",
+      "name": "Princess",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Princess Staff"
+      ],
+      "levels": [
+        {
+          "text": "Start with 1,000 Coins"
+        },
+        {
+          "text": "Gain 25% of Coins collected by teammates from Money Bags"
+        },
+        {
+          "text": "Gems sell for +50% Coins"
+        },
+        {
+          "text": "+100% Legendary & Mythic Luck from Shops",
+          "tag": "team"
+        },
+        {
+          "text": "Revive yourself or teammates by paying Coins",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 20.png"
+    },
+    {
+      "code": "rea",
+      "slug": "reaper",
+      "name": "Reaper",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Soul Lantern"
+      ],
+      "levels": [
+        {
+          "text": "Enemies drop Soul Orbs on defeat (Heal 5 HP)"
+        },
+        {
+          "text": "Gain +5 Max HP for every 10 enemies defeated"
+        },
+        {
+          "text": "Gain +1 Weapon & Tool Damage for every 10 enemies defeated"
+        },
+        {
+          "text": "Soul Orbs heal +100%",
+          "tag": "team"
+        },
+        {
+          "text": "Levels 2 and 3 scale every 5 enemies defeated instead of every 10",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 30.png"
+    },
+    {
+      "code": "sal",
+      "slug": "salvager",
+      "name": "Salvager",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Magnet"
+      ],
+      "levels": [
+        {
+          "text": "Enemies have a 10% chance to drop Iron Bars"
+        },
+        {
+          "text": "Shredding Scrap grants +50% more Cogs"
+        },
+        {
+          "text": "Scrap sells for +100% Coins"
+        },
+        {
+          "text": "Enemies have a 5% chance to drop Iron Bars",
+          "tag": "team"
+        },
+        {
+          "text": "Shredding Scrap also grants its sell value in Coins",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 02.png"
+    },
+    {
+      "code": "bo",
+      "slug": "bountyhunter",
+      "name": "Bounty Hunter",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Bounty Hunter Cleaver"
+      ],
+      "levels": [
+        {
+          "text": "Enemies have a 15% chance to become Bounties when defeated"
+        },
+        {
+          "text": "+50% Gun & Melee Damage"
+        },
+        {
+          "text": "+1x Market Exchange Rate"
+        },
+        {
+          "text": "+100% Bounty Camp Spawn Chance",
+          "tag": "team"
+        },
+        {
+          "text": "Dungeon Bosses you defeat become Bounties",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 23.png"
+    },
+    {
+      "code": "en",
+      "slug": "engineer",
+      "name": "Engineer",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Basic Sentry",
+        "Advanced Sentry",
+        "Flamethrower"
+      ],
+      "levels": [
+        {
+          "text": "+50% Sentry Range & Damage"
+        },
+        {
+          "text": "Turrets are -25% off in the Crafting Shack"
+        },
+        {
+          "text": "Turret Crit Chance is 15%"
+        },
+        {
+          "text": "Enemies hit by Turrets take +5% Damage from all sources",
+          "tag": "team"
+        },
+        {
+          "text": "Your Flamethrowers & Frosthrowers never overheat",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 25.png"
+    },
+    {
+      "code": "ex",
+      "slug": "executioner",
+      "name": "Executioner",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Executioner Sword"
+      ],
+      "levels": [
+        {
+          "text": "+200% Damage to Bosses"
+        },
+        {
+          "text": "Defeating a Boss grants a random +10% bonus: Max HP, Melee or Gun Damage"
+        },
+        {
+          "text": "Hitting a Boss below 25% Health instantly defeats it"
+        },
+        {
+          "text": "Defeating a Boss grants everyone a free Rare+ Drill Upgrade — choose from 3 options",
+          "tag": "team"
+        },
+        {
+          "text": "Bosses sell for +400% Coins",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 32.png"
+    },
+    {
+      "code": "go",
+      "slug": "goblinking",
+      "name": "Goblin King",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Goblin King Scepter"
+      ],
+      "levels": [
+        {
+          "text": "Goblins sell for +200% Coins"
+        },
+        {
+          "text": "Gain +5% Gun & Melee Damage per active Goblin Recruit"
+        },
+        {
+          "text": "Goblin Rings surrender when you enter, granting their rewards"
+        },
+        {
+          "text": "Every player starts with a Goblin Knight",
+          "tag": "team"
+        },
+        {
+          "text": "Goblins won't attack you",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 24.png"
+    },
+    {
+      "code": "gunsm",
+      "slug": "gunsmith",
+      "name": "Gunsmith",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Gunsmith Musket"
+      ],
+      "levels": [
+        {
+          "text": "Guns & Ammo can be crafted in the Crafting Shack"
+        },
+        {
+          "text": "Gunshots pierce through Corpses and multiple enemies, including Stone enemies"
+        },
+        {
+          "text": "Enemies defeated with Guns turn Golden"
+        },
+        {
+          "text": "Ammo grants +100% more bullets",
+          "tag": "team"
+        },
+        {
+          "text": "Gunshots explode on impact",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 31.png"
+    },
+    {
+      "code": "pi",
+      "slug": "pirate",
+      "name": "Pirate",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Cutlass",
+        "Flintlock",
+        "Cannon"
+      ],
+      "levels": [
+        {
+          "text": "Enemies have a 10% chance to drop Gold Bars"
+        },
+        {
+          "text": "Anything Golden sells for +200% Coins"
+        },
+        {
+          "text": "Enemies defeated with Melee turn Golden"
+        },
+        {
+          "text": "Enemies have a 5% chance to drop Gold Bars",
+          "tag": "team"
+        },
+        {
+          "text": "Cannon can be crafted in the Crafting Shack",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 22.png"
+    },
+    {
+      "code": "prie",
+      "slug": "priest",
+      "name": "Priest",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Priest Staff"
+      ],
+      "levels": [
+        {
+          "text": "Regenerate 1% Max HP every 2 Seconds"
+        },
+        {
+          "text": "Blessed teammates instantly revive when defeated"
+        },
+        {
+          "text": "Blessed teammates are immune to all Status Effects (Fire, Ice, Poison)"
+        },
+        {
+          "text": "+100% Church Spawn Chance",
+          "tag": "team"
+        },
+        {
+          "text": "Immune to all Status Effects (Fire, Ice, Poison)",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 35.png"
+    },
+    {
+      "code": "pro",
+      "slug": "prospector",
+      "name": "Prospector",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Prospector Pickaxe",
+        "Gem Refinery"
+      ],
+      "levels": [
+        {
+          "text": "Ore and Gem Veins drop multiple items more often (Max 4)"
+        },
+        {
+          "text": "Ores are automatically smelted into Bars when mined"
+        },
+        {
+          "text": "Ore and Gem Veins always drop 2+ items"
+        },
+        {
+          "text": "+100% Mineshaft Spawn Chance",
+          "tag": "team"
+        },
+        {
+          "text": "Gem Veins have a 5% chance to drop 10 Gems",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 33.png"
+    },
+    {
+      "code": "sam",
+      "slug": "samurai",
+      "name": "Samurai",
+      "tier": 5,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Samurai Katana"
+      ],
+      "levels": [
+        {
+          "text": "Melee Crit Chance is 20%"
+        },
+        {
+          "text": "Melee Attacks slice through Stone enemies"
+        },
+        {
+          "text": "+100% Melee Attack Speed"
+        },
+        {
+          "text": "Melee Crit Chance is 10%",
+          "tag": "team"
+        },
+        {
+          "text": "Melee Crits chain to a nearby enemy",
+          "tag": "master"
+        }
+      ],
+      "source": "screenshot 2026-10-29 34.png"
+    }
+  ]
+}
