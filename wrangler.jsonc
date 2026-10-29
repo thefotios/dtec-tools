@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dttec-tools",
+  "compatibility_date": "2026-10-29",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths (/scout/sal2, /team/...) serve index.html with 200; the client router resolves them.
+    "not_found_handling": "single-page-application"
+  }
+}
