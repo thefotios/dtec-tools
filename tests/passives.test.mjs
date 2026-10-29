@@ -150,3 +150,14 @@ test('toSlots and fromSlots are inverse', () => {
   const entries = [{ code: cls('salvager').code, level: 2 }];
   assert.deepEqual(fromSlots(toSlots(classes, entries)), entries);
 });
+
+test('all returns saved sets keyed by class code and omits empty sets', () => {
+  const s = createPassiveStore(memory(), classes);
+  assert.deepEqual(s.all(), {});
+  s.set('scout', [slot('salvager', 3), slot('priest', 1)]);
+  s.set('crafter', [slot('priest', 2)]);
+  s.set('crafter', []);
+  const all = s.all();
+  assert.deepEqual(Object.keys(all), [cls('scout').code]);
+  assert.deepEqual(all[cls('scout').code], fromSlots(s.get('scout')));
+});

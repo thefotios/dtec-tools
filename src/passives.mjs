@@ -65,6 +65,12 @@ export function createPassiveStore(storage, classes) {
       sets = next;
       save();
     },
+    // Every saved set keyed by base class code, as entries; empty sets are omitted.
+    all() {
+      const out = {};
+      for (const c of classes) if (sets[c.slug]?.length) out[c.code] = sets[c.slug].map((e) => ({ ...e }));
+      return out;
+    },
     get last() {
       return last;
     },
