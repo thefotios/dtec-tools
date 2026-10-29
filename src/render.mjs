@@ -1,5 +1,7 @@
 import { MAX_PLAYERS } from './team.mjs';
 import { ownedClasses } from './owned.mjs';
+import { isValidName } from './players.mjs';
+import { toSlots } from './passives.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -93,6 +95,21 @@ function navButton(state, actions, view, text) {
 
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
 
+const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+function shareButtons(state, actions) {
+  const block = actions.shareBlock();
+  const copied = state.copy === 'copied';
+  const codeCopied = state.copy === 'code-copied';
+  const described = block ? 'share-hint' : null;
+  return [
+    h('button', { type: 'button', class: `btn btn-grey${codeCopied ? ' is-done' : ''}`, 'data-fk': 'copy-code', disabled: Boolean(block), 'aria-describedby': described, onclick: actions.copyCode, text: codeCopied ? 'Code copied' : 'Copy my code' }),
+    h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', disabled: Boolean(block), 'aria-describedby': described, onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
+    block ? h('span', { class: 'share-hint', id: 'share-hint', text: block }) : null,
+    h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : codeCopied ? 'Code copied' : '' }),
+  ];
+}
+
 function header(state, actions) {
   const copied = state.copy === 'copied';
   return h(
@@ -108,11 +125,15 @@ function header(state, actions) {
     h(
       'div',
       { class: 'copy-link' },
-      h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
-      h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : '' }),
+      state.view === 'team'
+        ? [
+            h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
+            h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : '' }),
+          ]
+        : shareButtons(state, actions),
     ),
     state.copy === 'failed'
-      ? h('input', { type: 'text', class: 'copy-fallback', readonly: true, 'aria-label': 'Build link', 'data-fk': 'link-field', value: actions.currentUrl(), onfocus: (e) => e.target.select() })
+      ? h('input', { type: 'text', class: 'copy-fallback', readonly: true, 'aria-label': 'Text to copy', 'data-fk': 'link-field', value: state.copyText, onfocus: (e) => e.target.select() })
       : null,
   );
 }
@@ -334,7 +355,7 @@ function pickerEditor(state, actions) {
 }
 
 // A selected passive written out like a level row, headed by its class.
-function passiveRow(state, slot) {
+function passiveRow(slot, owned) {
   const { cls, level } = slot;
   return h(
     'li',
@@ -343,23 +364,22 @@ function passiveRow(state, slot) {
     h(
       'span',
       { class: 'level-text' },
-      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, cls.name, state.store.has(cls.code, level) ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
+      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, cls.name, (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
     ),
   );
 }
 
 // The selected class's five levels, unlocked ones in color and locked ones dimmed.
-function basePanel(state) {
-  const { base } = state.build;
+function basePanel(state, base, owned) {
   return h(
     'section',
     { class: 'panel base-levels', 'aria-label': `${base.name} levels` },
-    h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), state.store.hasClass(base.code) ? null : notOwned()),
+    h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned()),
     h(
       'ol',
       { class: 'levels' },
       base.levels.map((level, i) => {
-        const on = state.store.has(base.code, i + 1);
+        const on = (owned[base.code] ?? 0) >= i + 1;
         return h(
           'li',
           {},
@@ -376,16 +396,79 @@ function basePanel(state) {
   );
 }
 
+function visitorNameError(state) {
+  const v = state.visitor;
+  const name = v.nameDraft.trim();
+  if (!name) return 'Enter a name to save this build';
+  if (!isValidName(name)) return 'Use 3 to 20 letters or digits, with at most one underscore that is not at either end';
+  if (state.players.me && sameName(name, state.players.me)) return "That's you";
+  return null;
+}
+
+// Banner, name field, and save button for another player's opened link.
+function visitorBanner(state, actions) {
+  const v = state.visitor;
+  const error = visitorNameError(state);
+  const name = v.nameDraft.trim();
+  const isSaved = v.saved && sameName(name, v.savedName);
+  const existing = !error && state.players.get(name);
+  const shown = v.error ?? (v.nameDraft ? error : null);
+  return h(
+    'section',
+    { class: 'panel visitor-banner', 'aria-label': 'Shared build' },
+    h('h2', { class: 'panel-title', text: v.player.name ? `${v.player.name}'s build` : 'Shared build' }),
+    h(
+      'form',
+      { class: 'visitor-form', onsubmit: (e) => (e.preventDefault(), isSaved ? null : actions.saveVisitor()) },
+      h('label', { class: 'field-label', for: 'visitor-name', text: 'Player name' }),
+      h(
+        'div',
+        { class: 'roster-row' },
+        h('input', { type: 'text', id: 'visitor-name', class: 'roster-field', 'data-fk': 'visitor-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', 'aria-invalid': shown ? 'true' : null, 'aria-describedby': 'visitor-msg', value: v.nameDraft, oninput: (e) => actions.setVisitorName(e.target.value) }),
+        isSaved
+          ? h('button', { type: 'button', class: 'btn btn-grey is-done', 'data-fk': 'visitor-save', disabled: true, text: 'Saved' })
+          : h('button', { type: 'submit', class: 'btn btn-green', 'data-fk': 'visitor-save', disabled: Boolean(error), text: existing ? `Update ${existing.name}` : 'Save to players' }),
+      ),
+      h('div', { id: 'visitor-msg', class: 'field-msg', 'aria-live': 'polite' },
+        shown ? h('p', { class: 'roster-error', role: 'alert', text: shown }) : null,
+        isSaved
+          ? h('p', { class: 'visitor-saved', role: 'status' }, `Saved ${v.savedName}. `, h('a', { class: 'visitor-team-link', 'data-fk': 'visitor-team', href: new URL('team', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('team')), text: 'Open the Team page' }))
+          : null,
+      ),
+    ),
+  );
+}
+
+function visitorLoadout(state, actions) {
+  const { player } = state.visitor;
+  const base = state.data.classes.find((c) => c.code === player.base);
+  const slots = toSlots(state.data.classes, player.sets[player.base] ?? []);
+  return h(
+    'div',
+    { class: 'loadout-col' },
+    visitorBanner(state, actions),
+    basePanel(state, base, player.levels),
+    h(
+      'section',
+      { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
+      h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_SLOTS})` })),
+      h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, player.levels))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
+    ),
+  );
+}
+
 function loadout(state, actions) {
+  if (state.visitor) return visitorLoadout(state, actions);
   const { base, slots } = state.build;
   if (!base) {
     return h('section', { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' }, h('p', { class: 'empty', text: 'Pick a class to see its loadout.' }));
   }
   const editing = state.loadoutEditing;
+  const owned = state.store.owned;
   return h(
     'div',
     { class: 'loadout-col' },
-    basePanel(state),
+    basePanel(state, base, owned),
     h(
       'section',
       { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
@@ -400,9 +483,45 @@ function loadout(state, actions) {
         : h(
             'div',
             { class: 'loadout-read' },
-            slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(state, sl))) : h('p', { class: 'empty', text: 'No passives yet. Tap Edit to pick up to 3.' }),
+            slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned))) : h('p', { class: 'empty', text: 'No passives yet. Tap Edit to pick up to 3.' }),
             slots.length ? h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'passive-clear', onclick: actions.clearSlots }, 'Clear', hidden(' passives')) : null,
           ),
+    ),
+  );
+}
+
+// Username: saves on change; an invalid name shows an inline error, a saved player's name asks for confirmation.
+function usernameField(state, actions) {
+  const { list } = state;
+  const value = list.nameDraft ?? state.players.me;
+  const msgId = 'username-msg';
+  return h(
+    'div',
+    { class: 'username' },
+    h('label', { class: 'field-label', for: 'username', text: 'Username' }),
+    h(
+      'div',
+      { class: 'roster-row' },
+      h('input', { type: 'text', id: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value, onchange: (e) => actions.setMe(e.target.value) }),
+    ),
+    h(
+      'div',
+      { id: msgId, class: 'field-msg', 'aria-live': 'polite' },
+      list.nameError ? h('p', { class: 'roster-error', role: 'alert', text: list.nameError }) : null,
+      list.nameConflict
+        ? h(
+            'div',
+            { class: 'claim-prompt', role: 'alert' },
+            h('p', { class: 'roster-error', text: "That's a saved player \u2014 is it you?" }),
+            h(
+              'div',
+              { class: 'roster-row' },
+              h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'username-claim', onclick: actions.claimAsMe, text: `Yes, I'm ${list.nameConflict}` }),
+              h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-claim-cancel', onclick: actions.cancelClaim, text: 'No' }),
+            ),
+          )
+        : null,
+      !list.nameError && !list.nameConflict ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
     ),
   );
 }
@@ -412,17 +531,18 @@ function rosterSection(state, actions) {
   const open = list.rosterOpen;
   return h(
     'section',
-    { class: `panel roster${open ? ' is-open' : ''}`, 'aria-label': 'Roster code' },
+    { class: `panel roster${open ? ' is-open' : ''}`, 'aria-label': 'You' },
     h(
       'button',
       { type: 'button', class: 'roster-toggle', 'data-fk': 'roster-toggle', 'aria-expanded': String(open), 'aria-controls': 'roster-body', onclick: actions.toggleRoster },
-      h('span', { class: 'panel-title', text: 'Roster code' }),
+      h('span', { class: 'panel-title', text: 'You' }),
       h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }),
     ),
     open
       ? h(
           'div',
           { class: 'roster-body', id: 'roster-body' },
+          usernameField(state, actions),
           h(
             'div',
             { class: 'roster-row' },
@@ -465,7 +585,7 @@ function classesView(state, actions) {
           h(
             'div',
             { class: 'head-actions' },
-            build.base ? h('button', { type: 'button', class: 'btn btn-green btn-small jump-loadout', 'data-fk': 'jump-loadout', onclick: actions.jumpToLoadout, text: 'Loadout' }) : null,
+            build.base || state.visitor ? h('button', { type: 'button', class: 'btn btn-green btn-small jump-loadout', 'data-fk': 'jump-loadout', onclick: actions.jumpToLoadout, text: 'Loadout' }) : null,
             h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'list-edit', 'aria-pressed': String(list.editing), onclick: () => actions.setEditing(!list.editing), text: list.editing ? 'Done' : 'Edit' }),
           ),
         ),
@@ -581,15 +701,18 @@ function teamView(state, actions) {
 
 function focusKey(root) {
   const active = document.activeElement;
-  return active && root.contains(active) ? active.getAttribute('data-fk') : null;
+  if (!active || !root.contains(active)) return null;
+  const text = active.type === 'text' || active.type === 'search';
+  return { key: active.getAttribute('data-fk'), start: text ? active.selectionStart : null, end: text ? active.selectionEnd : null };
 }
 
-function restoreFocus(root, key) {
-  if (!key) return;
-  const next = [...root.querySelectorAll('[data-fk]')].find((el) => el.getAttribute('data-fk') === key);
+function restoreFocus(root, saved) {
+  if (!saved?.key) return;
+  const next = [...root.querySelectorAll('[data-fk]')].find((el) => el.getAttribute('data-fk') === saved.key);
   if (!next) return;
   next.focus({ preventScroll: true });
   if (next.type === 'search') next.setSelectionRange(next.value.length, next.value.length);
+  else if (next.type === 'text' && saved.start != null) next.setSelectionRange(saved.start, saved.end);
 }
 
 // Replaces root's content from state. state.status is 'loading' | 'error' | 'ready'.

@@ -538,3 +538,18 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .passive-level.is-locked:hover { opacity: 0.55; }
 .passive-level.is-locked.is-selected { opacity: 1; filter: none; cursor: pointer; }
 .lock-hint { flex: none; align-self: center; margin-right: 8px; font-size: 12px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border: 2px dashed var(--panel-border); border-radius: 6px; padding: 1px 6px; }
+
+/* You panel, share actions, visitor view */
+.copy-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.share-hint { flex: 1 1 100%; color: var(--text-muted); font-size: 13px; }
+.field-label { display: block; font-size: 13px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.username { margin-bottom: 14px; }
+.field-msg { display: grid; gap: 6px; }
+.field-msg:empty { display: none; }
+.claim-prompt { display: grid; gap: 6px; }
+.claim-prompt .roster-row { margin-bottom: 0; }
+.visitor-banner .panel-title { margin-bottom: 8px; }
+.visitor-form .roster-row { margin-bottom: 6px; }
+.visitor-form .roster-field { letter-spacing: 0.02em; }
+.visitor-saved { color: var(--accent-green); padding: 4px 10px; border-left: 4px solid var(--accent-green); }
+.visitor-team-link { color: var(--text); font-weight: 900; }

@@ -1,7 +1,9 @@
-import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot, withoutBase } from './router.mjs';
+import { absoluteUrl, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot, withoutBase } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
-import { createPassiveStore } from './passives.mjs';
+import { createPassiveStore, toSlots } from './passives.mjs';
+import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
+import { createPlayersStore, isValidName, mePlayer } from './players.mjs';
 import { parseTeam, serializeTeam, createTeamStore, MAX_PLAYERS } from './team.mjs';
 
 const root = document.getElementById('app');
@@ -19,21 +21,57 @@ const state = {
   passiveFilter: '',
   // True while the loadout panel shows the passive picker.
   loadoutEditing: false,
+  // 'copied' (link), 'code-copied', 'failed' (copyText holds the text to select), or null.
   copy: null,
+  copyText: '',
+  // Another player's opened link: null or { player, bare, nameDraft, saved, savedName, error, notices }. Never saved until the user saves it.
+  visitor: null,
+  players: null,
   // Local view state; never part of the share URL.
   view: 'classes',
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
   // Rows expanded by hand in edit mode.
   expanded: new Set(),
   team: { builds: [], store: null, owned: [], errors: {}, editing: null, passiveFilter: '' },
-  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], copy: null },
+  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], copy: null, nameDraft: null, nameError: null, nameConflict: null },
 };
 
 state.team.store = createTeamStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
 
 const paint = () => render(root, state, actions);
 
-// Loads state.build from the location; rewrites a non-canonical URL without adding history.
+const classBySlug = (slug) => state.data.classes.find((c) => c.slug === slug) ?? null;
+const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+// My record for the selected base, computed fresh from the owned and passives stores and my username.
+const myPlayer = () => ({ ...mePlayer(state.data.classes, state.players.me, state.store, state.passives), base: state.build.base?.code ?? null });
+
+// '/' when my level for the base is 0 (or no base), else '/<build code>' without roster.
+function buildPath() {
+  const code = state.build.base ? serializeBuildCode(state.data.classes, myPlayer()) : '';
+  return code ? `/${code}` : '/';
+}
+
+// Why Copy my code and Copy link are unavailable, or null when sharing works.
+function shareBlock() {
+  const { base } = state.build;
+  if (!base) return 'Pick a class to share';
+  return (state.store.owned[base.code] ?? 0) > 0 ? null : `Unlock ${base.name} to share`;
+}
+
+// Shows the last selected base with its saved passives.
+function restoreLast(notices) {
+  const base = classBySlug(state.passives.last);
+  state.visitor = null;
+  state.linkView = false;
+  state.build = { base, slots: base ? state.passives.get(base.slug) : [] };
+  state.notices = notices;
+}
+
+// A bare code carries only the base at its level and the base's own passives.
+const isBare = (player) => Object.keys(player.levels).every((c) => c === player.base) && Object.keys(player.sets).every((c) => c === player.base);
+
+// Loads state from the location. The address bar is never rewritten for the Classes page; the team view still canonicalizes.
 function syncFromLocation() {
   const path = currentPath(window);
   const segment = teamSegment(path);
@@ -50,18 +88,29 @@ function syncFromLocation() {
     return;
   }
   state.view = 'classes';
-  const parsed = parsePath(state.data.classes, path);
-  const segments = path.split('/').filter(Boolean).length;
-  // "/" restores the last base; a base without a passive run loads its saved set; a run is a link and is shown as is.
-  const base = parsed.base ?? (segments === 0 ? classBySlug(state.passives.last) : null);
-  state.linkView = Boolean(parsed.base) && segments > 1;
-  const slots = !base ? [] : state.linkView ? parsed.slots : state.passives.get(base.slug);
-  state.build = { base, slots };
   state.loadoutEditing = false;
-  if (base) state.passives.setLast(base.slug);
-  state.notices = parsed.notices;
   state.copy = null;
-  if (serializePath(state.build) !== path) replaceBuild(window, state.build);
+  if (path === '/') return restoreLast([]);
+  const r = parseShare(state.data.classes, window.location.pathname + window.location.search, new URL(document.baseURI).pathname);
+  if (r.error) return restoreLast([{ token: 'link', reason: 'invalid', message: r.error }]);
+  const { player, notices } = r;
+  const me = state.players.me;
+  const mine = player.name ? Boolean(me) && sameName(player.name, me) : isBare(player);
+  if (!mine) {
+    state.visitor = { player, bare: isBare(player), nameDraft: player.name, saved: false, savedName: '', error: null, notices };
+    state.linkView = false;
+    state.build = { base: null, slots: [] };
+    state.notices = notices;
+    return;
+  }
+  const base = classByCode(state.data.classes, player.base);
+  const slots = toSlots(state.data.classes, player.sets[player.base] ?? []);
+  state.visitor = null;
+  // A link with passives shows them without saving; a bare base loads my saved set.
+  state.linkView = slots.length > 0;
+  state.build = { base, slots: state.linkView ? slots : state.passives.get(base.slug) };
+  state.passives.setLast(base.slug);
+  state.notices = notices;
 }
 
 // Decoded roster per card position: an owned map, or null when the card has no usable roster.
@@ -74,8 +123,6 @@ function refreshTeamOwned() {
 }
 
 const teamPath = () => serializeTeam(state.team.builds);
-
-const classBySlug = (slug) => state.data.classes.find((c) => c.slug === slug) ?? null;
 
 function setTeamBuild(i, build) {
   state.team.builds = state.team.builds.map((b, j) => (j === i ? build : b));
@@ -91,7 +138,7 @@ function setSlots(slots) {
   if (state.build.base) state.passives.set(state.build.base.slug, slots);
   state.notices = [];
   state.copy = null;
-  replaceBuild(window, state.build);
+  replacePath(window, buildPath());
   paint();
 }
 
@@ -103,7 +150,10 @@ const actions = {
     state.view = view;
     state.copy = null;
     if (view === 'team' && was !== 'team') pushPath(window, teamPath());
-    else if (view !== 'team' && was === 'team') pushBuild(window, state.build);
+    else if (view !== 'team' && was === 'team') {
+      if (state.visitor) restoreLast([]);
+      pushPath(window, buildPath());
+    }
     paint();
   },
   addPlayer() {
@@ -230,14 +280,15 @@ const actions = {
   // Clicking the base already shown from a saved set is a no-op; while a link's passives are shown it reloads the saved set.
   setBase(slug) {
     const base = slug ? classBySlug(slug) : null;
-    if (base && base.slug === state.build.base?.slug && !state.linkView) return paint();
+    if (!state.visitor && base && base.slug === state.build.base?.slug && !state.linkView) return paint();
+    state.visitor = null;
     state.build = { base, slots: base ? state.passives.get(base.slug) : [] };
     state.linkView = false;
     state.loadoutEditing = false;
     state.passives.setLast(base?.slug ?? null);
     state.notices = [];
     state.copy = null;
-    pushBuild(window, state.build);
+    pushPath(window, buildPath());
     paint();
   },
   setPassiveFilter(value) {
@@ -257,24 +308,81 @@ const actions = {
     state.passives.setUnlockedOnly(value);
     paint();
   },
-  currentUrl: () => absoluteUrl(document.baseURI, state.view === 'team' ? teamPath() : serializePath(state.build)),
-  async copyLink() {
-    try {
-      await navigator.clipboard.writeText(actions.currentUrl());
-      state.copy = 'copied';
-      paint();
-      setTimeout(() => {
-        if (state.copy === 'copied') {
-          state.copy = null;
-          paint();
-        }
-      }, 2000);
-    } catch {
-      state.copy = 'failed';
-      paint();
+  currentUrl: () => (state.view === 'team' ? absoluteUrl(document.baseURI, teamPath()) : serializeShare(state.data.classes, myPlayer(), document.baseURI)),
+  currentCode: () => serializeBuildCode(state.data.classes, myPlayer()),
+  shareBlock,
+  copyLink: () => copyText(actions.currentUrl(), 'copied'),
+  copyCode: () => copyText(actions.currentCode(), 'code-copied'),
+  // Saves on change. An invalid name shows an inline error and is not saved; a saved player's name asks for confirmation.
+  setMe(text) {
+    const name = text.trim();
+    state.list.nameDraft = name;
+    state.list.nameConflict = null;
+    state.list.nameError = null;
+    if (name && !isValidName(name)) {
+      state.list.nameError = 'Use 3 to 20 letters or digits, with at most one underscore that is not at either end';
+    } else {
+      const r = state.players.setMe(name);
+      if (r.error) state.list.nameError = r.error;
+      else if (r.conflict) state.list.nameConflict = name;
+      else state.list.nameDraft = null;
     }
+    paint();
+  },
+  claimAsMe() {
+    const name = state.list.nameConflict;
+    if (name) state.players.claimAsMe(name);
+    state.list.nameConflict = null;
+    state.list.nameError = null;
+    state.list.nameDraft = null;
+    paint();
+  },
+  cancelClaim() {
+    state.list.nameConflict = null;
+    state.list.nameDraft = null;
+    paint();
+  },
+  setVisitorName(text) {
+    if (!state.visitor) return;
+    state.visitor.nameDraft = text;
+    state.visitor.error = null;
+    paint();
+  },
+  // Saves the opened player to the library; a link without a roster or sets only updates the base and keeps the rest.
+  saveVisitor() {
+    const v = state.visitor;
+    if (!v) return;
+    const name = v.nameDraft.trim();
+    if (!isValidName(name) || (state.players.me && sameName(name, state.players.me))) return;
+    const r = state.players.upsert({ ...v.player, name }, { merge: v.bare });
+    if (r.error) v.error = r.error;
+    else {
+      v.error = null;
+      v.saved = true;
+      v.savedName = name;
+    }
+    paint();
   },
 };
+
+// Copies text; 'failed' shows a selectable field with the same text.
+async function copyText(text, done) {
+  try {
+    await navigator.clipboard.writeText(text);
+    state.copy = done;
+    paint();
+    setTimeout(() => {
+      if (state.copy === done) {
+        state.copy = null;
+        paint();
+      }
+    }, 2000);
+  } catch {
+    state.copy = 'failed';
+    state.copyText = text;
+    paint();
+  }
+}
 
 async function load() {
   state.status = 'loading';
@@ -286,6 +394,7 @@ async function load() {
     const data = await res.json();
     if (!Array.isArray(data.classes) || !data.tiers) throw new Error('unexpected data shape');
     state.data = data;
+    state.players = createPlayersStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }, data.classes);
     state.passives = createPassiveStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }, data.classes);
     state.status = 'ready';
     syncFromLocation();

@@ -2,14 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  parsePath,
   parseBuild,
-  serializePath,
   serializeBuild,
   relativePath,
   absoluteUrl,
-  pushBuild,
-  replaceBuild,
   sortSlots,
   addSlot,
   removeSlot,
@@ -17,14 +13,26 @@ import {
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 
+// Splits a base-relative path into parseBuild's pre-split arguments.
+const parseSplit = (classes, path) => {
+  const [base = '', run = '', ...extras] = String(path).split('/').filter(Boolean);
+  return parseBuild(classes, base, run, extras);
+};
+
+// Canonical base-relative path of a parsed build.
+const canonical = (s) => {
+  const { base, run } = serializeBuild(s);
+  return !base ? '/' : run ? `/${base}/${run}` : `/${base}`;
+};
+
 // Summarises a parse as plain data for assertions.
 const view = (path) => {
-  const s = parsePath(classes, path);
+  const s = parseSplit(classes, path);
   return {
     base: s.base?.slug ?? null,
     slots: s.slots.map((x) => `${x.cls.slug}${x.level}`),
     notices: s.notices.map((n) => [n.token, n.reason]),
-    canonical: serializePath(s),
+    canonical: canonical(s),
   };
 };
 
@@ -121,14 +129,8 @@ test('event class resolves by slug and by code', () => {
   assert.equal(view('/j').base, 'jackolantern');
 });
 
-test('serializing base Scout with Salvager 2 and 3', () => {
-  const s = parsePath(classes, '/scout/sal2sal3');
-  assert.equal(serializePath({ base: s.base, slots: s.slots }), '/scout/sal2sal3');
-  assert.equal(serializePath({ base: null, slots: s.slots }), '/');
-});
-
 test('serializeBuild gives slug and passive run', () => {
-  const s = parsePath(classes, '/scout/sal2sal3');
+  const s = parseSplit(classes, '/scout/sal2sal3');
   assert.deepEqual(serializeBuild(s), { base: 'scout', run: 'sal2sal3' });
   assert.deepEqual(serializeBuild({ base: null, slots: [] }), { base: '', run: '' });
 });
@@ -149,24 +151,6 @@ test('relativePath strips the base path', () => {
 test('absoluteUrl resolves canonical path against the base URI', () => {
   assert.equal(absoluteUrl('https://x.io/dttec-tools/', '/scout/sal2'), 'https://x.io/dttec-tools/scout/sal2');
   assert.equal(absoluteUrl('http://localhost:8080/', '/'), 'http://localhost:8080/');
-});
-
-test('history helpers push or replace the base-prefixed canonical path', () => {
-  const calls = [];
-  const win = {
-    document: { baseURI: 'https://x.io/dttec-tools/' },
-    history: {
-      pushState: (...a) => calls.push(['push', a[2]]),
-      replaceState: (...a) => calls.push(['replace', a[2]]),
-    },
-  };
-  const s = parsePath(classes, '/scout/sal2');
-  pushBuild(win, s);
-  replaceBuild(win, s);
-  assert.deepEqual(calls, [
-    ['push', '/dttec-tools/scout/sal2'],
-    ['replace', '/dttec-tools/scout/sal2'],
-  ]);
 });
 
 test('teamSegment recognizes the /team prefix only', async () => {
@@ -219,7 +203,7 @@ test('a passive of the base class is dropped with a notice', () => {
 
 test('withoutBase drops passives of the base and all passives without a base', async () => {
   const { withoutBase } = await import('../src/router.mjs');
-  const s = parsePath(classes, '/scout/sal2prie3');
+  const s = parseSplit(classes, '/scout/sal2prie3');
   const sal = classes.find((c) => c.slug === 'salvager');
   assert.deepEqual(withoutBase(s.slots, sal).map((x) => x.cls.slug), ['priest']);
   assert.deepEqual(withoutBase(s.slots, null), []);
@@ -243,7 +227,7 @@ test('addSlot inserts in canonical order and refuses duplicates and a fourth pas
 });
 
 test('removeSlot drops only the exact passive and keeps order', () => {
-  const s = parsePath(classes, '/scout/sal2sal3prie3');
+  const s = parseSplit(classes, '/scout/sal2sal3prie3');
   const sal = classes.find((c) => c.slug === 'salvager');
   assert.deepEqual(removeSlot(s.slots, sal, 2).map((x) => `${x.cls.slug}${x.level}`), ['salvager3', 'priest3']);
   assert.equal(sortSlots(classes, removeSlot(s.slots, sal, 1)).length, 3);

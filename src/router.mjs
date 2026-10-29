@@ -78,22 +78,9 @@ export function parseBuild(classes, baseToken, run = '', extras = []) {
   return { base, slots, notices };
 }
 
-// Parses a base-relative path such as "/scout/sal2sal3".
-export function parsePath(classes, path) {
-  const [baseToken = '', run = '', ...extras] = String(path).split('/').filter(Boolean);
-  return parseBuild(classes, baseToken, run, extras);
-}
-
 export function serializeBuild({ base, slots }) {
   if (!base) return { base: '', run: '' };
   return { base: base.slug, run: slots.map((s) => `${s.cls.code}${s.level}`).join('') };
-}
-
-// Canonical base-relative path: "/", "/scout", or "/scout/sal2sal3".
-export function serializePath(state) {
-  const { base, run } = serializeBuild(state);
-  if (!base) return '/';
-  return run ? `/${base}/${run}` : `/${base}`;
 }
 
 // Strips the base path (e.g. "/dttec-tools/") from a pathname; result always starts with "/".
@@ -111,20 +98,9 @@ export function absoluteUrl(baseURI, canonicalPath) {
 }
 
 const basePathOf = (win) => new URL(win.document.baseURI).pathname;
-const historyUrl = (win, state) => basePathOf(win).replace(/\/+$/, '') + serializePath(state);
-
-// History helpers take a window-like object ({ document.baseURI, history }).
-export function pushBuild(win, state) {
-  win.history.pushState(null, '', historyUrl(win, state));
-}
-
-export function replaceBuild(win, state) {
-  win.history.replaceState(null, '', historyUrl(win, state));
-}
-
 const pathUrl = (win, canonicalPath) => basePathOf(win).replace(/\/+$/, '') + canonicalPath;
 
-// Same as the build helpers, for an already-canonical path such as a team URL.
+// History helpers take a window-like object ({ document.baseURI, history }) and an already-canonical base-relative path.
 export function pushPath(win, canonicalPath) {
   win.history.pushState(null, '', pathUrl(win, canonicalPath));
 }
