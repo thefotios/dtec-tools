@@ -40,17 +40,9 @@ test('examples: sparse roster is 16XF5XD, all classes at level 3 is 31D', () => 
   assert.deepEqual(decoded('31D').owned, all);
 });
 
-test('legacy A-prefixed code decodes to the same map as the new code', () => {
-  const legacy = at({ 15: 4, 21: 3 });
-  assert.deepEqual(decoded('AAAA-AAAA-AAAA-AAAA-SAAA-AAH'), { owned: legacy, notices: [] });
-  assert.deepEqual(decoded('AAAA-AAAA-AAAA-AAAA-SAAA-AAH').owned, decoded('15XF5XD').owned);
-});
-
-test('legacy masks convert to their highest set level', () => {
-  assert.deepEqual(decoded('AB').owned, at({ 0: 1 }));
-  assert.deepEqual(decoded('A9').owned, at({ 0: 5 }));
-  assert.deepEqual(decoded('AT').owned, at({ 0: 5 }));
-  assert.deepEqual(decoded('AD').owned, at({ 0: 2 }));
+test('legacy A-prefixed codes are rejected as an invalid character', () => {
+  assert.match(decoded('AAAA-AAAA-AAAA-AAAA-SAAA-AAH').error, /Invalid character "A"/);
+  assert.match(decoded('AB').error, /Invalid character "A"/);
 });
 
 test('each level symbol maps X B C D F G to 0 to 5', () => {
@@ -85,10 +77,11 @@ test('round trip over a pseudo-random ownership map', () => {
   }
 });
 
-test('decoding ignores case, hyphens, and spaces', () => {
+test('decoding ignores case and spaces but not hyphens', () => {
   const want = decoded('16XF5XD');
   assert.deepEqual(decoded('16xf5xd'), want);
-  assert.deepEqual(decoded('16X-F5X-D'), want);
+  assert.match(decoded('16X-F5X-D').error, /Invalid character "-"/);
+  assert.match(decoded('15X-F').error, /Invalid character "-"/);
   assert.deepEqual(decoded('16X F5X D'), want);
 });
 
@@ -105,7 +98,6 @@ test('positions beyond the class list are ignored with a notice; a shorter code 
   assert.match(r.notices[0], /2 extra classes/);
   assert.deepEqual(decoded('D').owned, at({ 0: 3 }));
   assert.deepEqual(decoded('D').notices, []);
-  assert.match(decoded('A' + 'H'.repeat(classes.length + 1)).notices[0], /1 extra class /);
   assert.equal(decoded('999999999D').notices.length, 1);
 });
 
@@ -114,7 +106,6 @@ test('errors: reserved vowel version, bad character, zero count, dangling digits
   assert.match(decoded('U').error, /Unknown roster code version "U"/);
   assert.match(decoded('5H').error, /Invalid character "H"/);
   assert.match(decoded('X!').error, /Invalid character "!"/);
-  assert.match(decoded('A!').error, /Invalid character "!"/);
   assert.match(decoded('0X').error, /at least 1/);
   assert.match(decoded('3X16').error, /"16" has no level symbol/);
   assert.match(decoded('16').error, /no level symbol/);
@@ -152,10 +143,9 @@ test('store: persists the map as v2, and reloads them', () => {
   assert.deepEqual(b.owned, { mi: 3 });
 });
 
-test('store: v1 array payload migrates to each array max and ignores the retired ownedOnly field', () => {
-  const v1 = JSON.stringify({ v: 1, owned: { mi: [1, 3], sc: [5], bad: [], zz: 'x' }, ownedOnly: true });
-  const store = createStore(memory({ [KEY]: v1 }));
-  assert.deepEqual(store.owned, { mi: 3, sc: 5 });
+test('store: a v1 payload is ignored', () => {
+  const v1 = JSON.stringify({ v: 1, owned: { mi: [1, 3], sc: 5 } });
+  assert.deepEqual(createStore(memory({ [KEY]: v1 })).owned, {});
 });
 
 test('store: setLevel sets the max, and clicking the current max steps back one', () => {

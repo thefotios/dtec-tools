@@ -2,13 +2,11 @@
 
 // Level n is cumulative, so a class is owned up to a max level 0-5. Consonants only, so codes can't spell words.
 const LEVEL_SYMBOLS = 'XBCDFG';
-const LEGACY_SYMBOLS = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789';
 const STORAGE_KEY = 'class-combo-viewer:owned';
 const STORE_VERSION = 2;
 const ALIASES = { O: '0', I: '1', L: '1' };
 
 const cleanMax = (n) => (Number.isInteger(n) && n >= 1 && n <= 5 ? n : 0);
-const maxOf = (levels) => (Array.isArray(levels) ? Math.max(0, ...levels.map(cleanMax)) : cleanMax(levels));
 
 // owned: { [classCode]: maxLevel }. Classes in registry order; runs of 3+ are written as count + symbol, trailing unowned classes trimmed.
 export function encodeRoster(classes, owned) {
@@ -23,14 +21,6 @@ export function encodeRoster(classes, owned) {
     i = j;
   }
   return out;
-}
-
-// Legacy codes: 'A' then one Crockford symbol per class holding five level bits; the highest set bit is the max level.
-function decodeLegacy(chars) {
-  const bad = chars.find((ch) => !LEGACY_SYMBOLS.includes(ch));
-  if (bad) return { error: `Invalid character "${bad}" in roster code` };
-  const levels = chars.slice(1).map((ch) => 32 - Math.clz32(LEGACY_SYMBOLS.indexOf(ch)));
-  return { levels, total: levels.length };
 }
 
 // Expands runs only up to the class list; total counts every position so extras can be reported.
@@ -54,10 +44,10 @@ function decodeRuns(chars, limit) {
 
 // Returns { owned, notices } or { error }.
 export function decodeRoster(classes, text) {
-  const chars = [...String(text).toUpperCase().replace(/[\s-]+/g, '')].map((ch) => ALIASES[ch] ?? ch);
+  const chars = [...String(text).toUpperCase().replace(/\s+/g, '')].map((ch) => ALIASES[ch] ?? ch);
   if (!chars.length) return { error: 'Enter a roster code' };
   if ('EU'.includes(chars[0])) return { error: `Unknown roster code version "${chars[0]}"` };
-  const r = chars[0] === 'A' ? decodeLegacy(chars) : decodeRuns(chars, classes.length);
+  const r = decodeRuns(chars, classes.length);
   if (r.error) return r;
   const owned = {};
   classes.forEach((c, i) => {
@@ -69,7 +59,6 @@ export function decodeRoster(classes, text) {
   return { owned, notices };
 }
 
-// Extra fields in older payloads (such as the retired ownedOnly flag) are ignored.
 // Classes to list when filtering by ownership: owned ones plus any in keep (slugs).
 export function ownedClasses(classes, owned, keep = []) {
   return classes.filter((c) => (owned[c.code] ?? 0) > 0 || keep.includes(c.slug));
@@ -78,10 +67,10 @@ export function ownedClasses(classes, owned, keep = []) {
 function load(storage) {
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
-    if (parsed?.v !== 1 && parsed?.v !== STORE_VERSION) return {};
+    if (parsed?.v !== STORE_VERSION) return {};
     const owned = {};
     for (const [code, value] of Object.entries(parsed.owned ?? {})) {
-      const max = maxOf(value);
+      const max = cleanMax(value);
       if (max) owned[code] = max;
     }
     return owned;
