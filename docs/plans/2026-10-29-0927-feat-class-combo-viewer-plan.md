@@ -101,6 +101,7 @@ The game shows class effects one class at a time and passive rolls one slot at a
 
 #### Deferred to Follow-Up Work
 
+- Sparse roster code: a second format (signaled by the version character) listing only owned classes as position-plus-levels pairs, for players who own few, late-listed classes.
 - Live run room: players join a shared run-id and edit their own build in real time, optionally with chat. Needs a relay outside GitHub Pages; leading option is a Cloudflare Worker with one Durable Object per room over WebSockets. Separate plan.
 
 ### Success Criteria
