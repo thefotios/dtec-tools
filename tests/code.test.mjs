@@ -120,6 +120,19 @@ test('5a: ?s= without u parses the set and an empty name', () => {
   assert.deepEqual(r.player.sets, { c: e(['sal', 2]), mi: e(['rec', 1]) });
 });
 
+test('5b: parseShare reports whether a roster segment and a non-empty s were present', () => {
+  const flags = (text) => {
+    const r = parseShare(classes, text);
+    return [r.hasRoster, r.hasSets];
+  };
+  assert.deepEqual(flags('c5'), [false, false]);
+  assert.deepEqual(flags('c5-sal2'), [false, false]);
+  assert.deepEqual(flags('c5-sal2?s='), [false, false]);
+  assert.deepEqual(flags('c5-sal2-15XG5XD'), [true, false]);
+  assert.deepEqual(flags('c5-sal2?s=mi-rec1'), [false, true]);
+  assert.deepEqual(flags('/c5-X-D?u=bob&s=mi-rec1'), [true, true]);
+});
+
 test('6: slug bases and slug paths are unknown base errors', () => {
   assert.equal(parseBuildCode(classes, 'scout-sal2').base, null);
   assert.deepEqual(reasons(parseBuildCode(classes, 'scout')), ['unknown']);

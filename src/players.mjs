@@ -19,7 +19,17 @@ export const NAME_RULE = 'Use 3 to 20 letters or digits, with at most one unders
 // 3-20 letters, digits, or one underscore that is not at either end.
 export const isValidName = (name) => typeof name === 'string' && name.length >= 3 && name.length <= 20 && NAME_RE.test(name);
 
-const cleanTeamName = (name) => (typeof name === 'string' ? name.trim().slice(0, MAX_TEAM_NAME) : '');
+export const SELF_NAME = "That's you \u2014 edit your build on the Classes page";
+
+// Why a player name cannot be used, or null: invalid format first, then the same name as mine.
+export function nameProblem(name, me) {
+  if (!isValidName(name)) return NAME_RULE;
+  if (me && sameName(name, me)) return SELF_NAME;
+  return null;
+}
+
+// Trimmed and capped at MAX_TEAM_NAME; the cut never leaves trailing whitespace.
+export const cleanTeamName = (name) => (typeof name === 'string' ? name.trim().slice(0, MAX_TEAM_NAME).trim() : '');
 
 // Canonical record, or null when the name, base, or base level is unusable.
 function normalizeRecord(classes, record) {
@@ -145,7 +155,7 @@ export function createPlayersStore(storage, classes, { newId = defaultNewId } = 
         save();
         return { ok: true };
       }
-      if (!isValidName(name)) return { error: 'Username must be 3-20 letters, digits, or one underscore not at either end' };
+      if (!isValidName(name)) return { error: NAME_RULE };
       if (players.some((p) => sameName(p.name, name))) return { conflict: true };
       if (me) rekey([me], name);
       me = name;
@@ -175,7 +185,7 @@ export function createPlayersStore(storage, classes, { newId = defaultNewId } = 
         if (!hasCode(record.base)) return { error: 'Unknown base class' };
         return { error: 'Base class needs a level of at least 1' };
       }
-      if (me && sameName(me, next.name)) return { error: 'That is your own username' };
+      if (me && sameName(me, next.name)) return { error: SELF_NAME };
       const existing = players.find((p) => sameName(p.name, next.name));
       let saved = next;
       if (merge && existing) {

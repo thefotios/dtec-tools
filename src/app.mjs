@@ -1,9 +1,9 @@
 import { absoluteUrl, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, decodeRoster } from './owned.mjs';
-import { createPassiveStore, toSlots } from './passives.mjs';
+import { createPassiveStore, toSlots, fromSlots } from './passives.mjs';
 import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
-import { createPlayersStore, isValidName, mePlayer, playerByName, sameName, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
+import { createPlayersStore, nameProblem, mePlayer, playerByName, sameName, ownedBase as ownedBaseCode } from './players.mjs';
 import { parseTeamLink, serializeTeamLink } from './team.mjs';
 
 const root = document.getElementById('app');
@@ -25,6 +25,8 @@ const state = {
   // 'copied' (link), 'code-copied', 'failed' (copyText holds the text to select), or null.
   copy: null,
   copyText: '',
+  // One-shot: the next paint selects the clipboard fallback field, then clears it.
+  copyFocus: false,
   // Another player's opened link: null or { player, bare, nameDraft, saved, savedName, error, notices }. Never saved until the user saves it.
   visitor: null,
   players: null,
@@ -42,13 +44,25 @@ const paint = () => render(root, state, actions);
 
 const classBySlug = (slug) => state.data.classes.find((c) => c.slug === slug) ?? null;
 
+const meRecord = () => mePlayer(state.data.classes, state.players.me, state.store, state.passives);
+
 // My record for the selected base, computed fresh from the owned and passives stores and my username.
-const myPlayer = () => ({ ...mePlayer(state.data.classes, state.players.me, state.store, state.passives), base: state.build.base?.code ?? null });
+// While a link's passives are shown, they stand in for the saved set of that base so copies match the screen.
+function myPlayer() {
+  const base = state.build.base;
+  const player = { ...meRecord(), base: base?.code ?? null };
+  if (state.linkView && base) {
+    const sets = { ...player.sets };
+    if (state.build.slots.length) sets[base.code] = fromSlots(state.build.slots);
+    else delete sets[base.code];
+    player.sets = sets;
+  }
+  return player;
+}
 
 // The base a player's card shows: the stored one while owned, else the player's own base, else any owned class.
 const ownedBase = (player, stored) => ownedBaseCode(state.data.classes, player, stored);
 
-const meRecord = () => mePlayer(state.data.classes, state.players.me, state.store, state.passives);
 const resolvePlayer = (name) => playerByName(state.players, meRecord(), name);
 const activeTeam = () => state.players.teams.find((t) => t.id === state.players.active) ?? null;
 
@@ -74,8 +88,13 @@ function restoreLast(notices) {
   state.notices = notices;
 }
 
-// A bare code carries only the base at its level and the base's own passives.
-const isBare = (player) => Object.keys(player.levels).every((c) => c === player.base) && Object.keys(player.sets).every((c) => c === player.base);
+// The saved team an opened team link duplicates: same name and same member names, ignoring case and order.
+function savedTeamFor(link) {
+  if (!link?.members.length) return null;
+  const key = (names) => names.map((n) => n.toLowerCase()).sort().join('~');
+  const wanted = key(link.members.map((m) => m.name));
+  return state.players.teams.find((t) => t.name.toLowerCase() === link.name.toLowerCase() && key(t.members.map((m) => m.name)) === wanted) ?? null;
+}
 
 // Loads state from the location. The address bar is never rewritten.
 function syncFromLocation() {
@@ -102,9 +121,11 @@ function syncFromLocation() {
   if (r.error) return restoreLast([{ token: 'link', reason: 'invalid', message: r.error }]);
   const { player, notices } = r;
   const me = state.players.me;
-  const mine = player.name ? Boolean(me) && sameName(player.name, me) : isBare(player);
+  // A bare code has neither a roster segment nor `s`; without a name it is my own build.
+  const bare = !r.hasRoster && !r.hasSets;
+  const mine = player.name ? Boolean(me) && sameName(player.name, me) : bare;
   if (!mine) {
-    state.visitor = { player, bare: isBare(player), nameDraft: player.name, saved: false, savedName: '', error: null, notices };
+    state.visitor = { player, bare, nameDraft: player.name, saved: false, savedName: '', error: null, notices };
     state.linkView = false;
     state.build = { base: null, slots: [] };
     state.notices = notices;
@@ -177,14 +198,31 @@ const actions = {
     };
     const r = parseShare(state.data.classes, text, new URL(document.baseURI).pathname);
     if (r.error) return fail(r.error);
-    const name = (r.player.name || nameText).trim();
+    const name = (nameText.trim() || r.player.name).trim();
     if (!name) return fail('Enter a name for this player');
-    if (!isValidName(name)) return fail(NAME_RULE);
-    if (state.players.me && sameName(name, state.players.me)) return fail("That's you \u2014 edit your build on the Classes page");
-    const saved = state.players.upsert({ ...r.player, name }, { merge: isBare(r.player) });
+    const problem = nameProblem(name, state.players.me);
+    if (problem) return fail(problem);
+    const saved = state.players.upsert({ ...r.player, name }, { merge: !r.hasRoster && !r.hasSets });
     if (saved.error) return fail(saved.error);
     state.team.paste = { ...paste, draft: '', name: '', error: null, message: `${saved.updated ? 'Updated' : 'Added'} ${name}`, notices: r.notices.map((n) => n.message) };
     paint();
+  },
+  // Draft setters keep typed text in state without painting, so a repaint from any source cannot drop it.
+  setPasteDraft(text) {
+    state.team.paste.draft = text;
+  },
+  setPasteName(text) {
+    state.team.paste.name = text;
+  },
+  setRosterDraft(text) {
+    state.list.draft = text;
+  },
+  setNameDraft(text) {
+    state.list.nameDraft = text;
+  },
+  setTeamNameDraft(name) {
+    const team = activeTeam();
+    if (team) state.players.renameTeam(team.id, name);
   },
   removePlayer(name) {
     state.players.remove(name);
@@ -227,10 +265,20 @@ const actions = {
     state.copy = null;
     paint();
   },
+  // The saved team an opened team link duplicates, or null.
+  linkSavedTeam: () => savedTeamFor(state.team.link),
+  openTeam(id) {
+    state.players.setActive(id);
+    state.team.link = null;
+    state.notices = [];
+    state.copy = null;
+    pushPath(window, '/team');
+    paint();
+  },
   // Saves an opened team link: missing players are added from the link, existing ones stay as they are, my own name maps to Me.
   saveTeamLink() {
     const link = state.team.link;
-    if (!link || !link.members.length) return;
+    if (!link || !link.members.length || savedTeamFor(link)) return;
     const me = state.players.me;
     const members = link.members.map(({ name, player }) => {
       if (me && sameName(name, me)) return { name: me, base: player.base };
@@ -242,7 +290,7 @@ const actions = {
     state.team.link = null;
     state.notices = [];
     state.copy = null;
-    pushPath(window, '/team');
+    replacePath(window, '/team');
     paint();
   },
   setEditing(value) {
@@ -354,8 +402,9 @@ const actions = {
     state.list.nameDraft = name;
     state.list.nameConflict = null;
     state.list.nameError = null;
-    if (name && !isValidName(name)) {
-      state.list.nameError = NAME_RULE;
+    const problem = name ? nameProblem(name, '') : null;
+    if (problem) {
+      state.list.nameError = problem;
     } else {
       const r = state.players.setMe(name);
       if (r.error) state.list.nameError = r.error;
@@ -393,7 +442,7 @@ const actions = {
     const v = state.visitor;
     if (!v) return;
     const name = v.nameDraft.trim();
-    if (!isValidName(name) || (state.players.me && sameName(name, state.players.me))) return;
+    if (nameProblem(name, state.players.me)) return;
     const r = state.players.upsert({ ...v.player, name }, { merge: v.bare });
     if (r.error) v.error = r.error;
     else {
@@ -411,13 +460,16 @@ function focusUsername() {
   input?.select();
 }
 
+let copyTimer = null;
+
 // Copies text; 'failed' shows a selectable field with the same text.
 async function copyText(text, done) {
+  clearTimeout(copyTimer);
   try {
     await navigator.clipboard.writeText(text);
     state.copy = done;
     paint();
-    setTimeout(() => {
+    copyTimer = setTimeout(() => {
       if (state.copy === done) {
         state.copy = null;
         paint();
@@ -426,6 +478,7 @@ async function copyText(text, done) {
   } catch {
     state.copy = 'failed';
     state.copyText = text;
+    state.copyFocus = true;
     paint();
   }
 }
@@ -450,6 +503,21 @@ async function load() {
   }
   paint();
 }
+
+// Another tab wrote one of the stores: reload it from storage so this tab's next write does not overwrite that change.
+window.addEventListener('storage', (e) => {
+  if (state.status !== 'ready') return;
+  const key = e.key ?? '';
+  const all = e.key === null;
+  const hit = (suffix) => all || key === `class-combo-viewer:${suffix}`;
+  if (!hit('owned') && !hit('passives') && !hit('players')) return;
+  const classes = state.data.classes;
+  if (hit('owned')) state.store = createStore(storage);
+  if (hit('passives')) state.passives = createPassiveStore(storage, classes);
+  if (hit('players')) state.players = createPlayersStore(storage, classes);
+  if (state.build.base && !state.linkView) state.build = { ...state.build, slots: state.passives.get(state.build.base.slug) };
+  paint();
+});
 
 window.addEventListener('popstate', () => {
   if (state.status !== 'ready') return;

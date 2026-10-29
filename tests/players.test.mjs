@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isValidName, mePlayer, playerByName, createPlayersStore } from '../src/players.mjs';
+import { isValidName, nameProblem, NAME_RULE, SELF_NAME, ownedBase, mePlayer, playerByName, createPlayersStore } from '../src/players.mjs';
 import { createPassiveStore } from '../src/passives.mjs';
 import { createStore } from '../src/owned.mjs';
 
@@ -236,4 +236,32 @@ test('playerByName never matches Me while me is empty', () => {
   s.upsert(rec('ann'));
   assert.equal(playerByName(s, { name: '' }, ''), null);
   assert.equal(playerByName(s, { name: '' }, 'ann').name, 'ann');
+});
+
+test('ownedBase: stored owned wins, then the player base, then the first owned class, else null', () => {
+  const player = (base, levels) => ({ base, levels });
+  assert.equal(ownedBase(classes, player(SC, { [MI]: 2, [SC]: 3 }), MI), MI);
+  assert.equal(ownedBase(classes, player(SC, { [MI]: 2, [SC]: 3 }), PR), SC);
+  assert.equal(ownedBase(classes, player(SC, { [MI]: 2, [SC]: 3 }), undefined), SC);
+  assert.equal(ownedBase(classes, player(PR, { [SC]: 3, [MI]: 2 }), SAL), classes.find((c) => c.code === MI || c.code === SC).code);
+  assert.equal(ownedBase(classes, player(PR, { [MI]: 0, [SC]: 0 }), MI), null);
+  assert.equal(ownedBase(classes, player(null, {}), null), null);
+});
+
+test('claimAsMe with me and the claimed player on one team keeps one membership with the first entry base', () => {
+  const s = make();
+  s.setMe('fotios');
+  s.upsert(rec('bob'));
+  const t = s.createTeam('A', [{ name: 'fotios', base: MI }, { name: 'bob', base: SC }, { name: 'ann', base: SAL }]);
+  s.claimAsMe('bob');
+  assert.equal(s.me, 'bob');
+  assert.deepEqual(s.teams.find((x) => x.id === t).members, [{ name: 'bob', base: MI }, { name: 'ann', base: SAL }]);
+});
+
+test('nameProblem: format first, then my own name in any case, else null', () => {
+  assert.equal(nameProblem('b', 'fotios'), NAME_RULE);
+  assert.equal(nameProblem('', ''), NAME_RULE);
+  assert.equal(nameProblem('FOTIOS', 'fotios'), SELF_NAME);
+  assert.equal(nameProblem('bob', 'fotios'), null);
+  assert.equal(nameProblem('fotios', ''), null);
 });

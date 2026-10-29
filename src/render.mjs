@@ -1,5 +1,5 @@
 import { ownedClasses } from './owned.mjs';
-import { isValidName, playerByName, sameName, ownedBase, NAME_RULE, MAX_MEMBERS } from './players.mjs';
+import { nameProblem, playerByName, sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
 import { toSlots, MAX_PASSIVES } from './passives.mjs';
 
 // Renders from state only; all data text goes through textContent.
@@ -394,9 +394,7 @@ function visitorNameError(state) {
   const v = state.visitor;
   const name = v.nameDraft.trim();
   if (!name) return 'Enter a name to save this build';
-  if (!isValidName(name)) return NAME_RULE;
-  if (state.players.me && sameName(name, state.players.me)) return "That's you";
-  return null;
+  return nameProblem(name, state.players.me);
 }
 
 // Banner, name field, and save button for another player's opened link.
@@ -511,7 +509,7 @@ function usernameField(state, actions) {
           h(
             'div',
             { class: 'roster-row' },
-            h('input', { type: 'text', id: 'username', name: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value: list.nameDraft ?? me }),
+            h('input', { type: 'text', id: 'username', name: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value: list.nameDraft ?? me, oninput: (e) => actions.setNameDraft(e.target.value) }),
             h('button', { type: 'submit', class: 'btn btn-green btn-small', 'data-fk': 'username-save', text: 'Save' }),
             me ? h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-cancel', onclick: actions.cancelEditUsername, text: 'Cancel' }) : null,
           ),
@@ -565,7 +563,7 @@ function rosterSection(state, actions) {
           h(
             'form',
             { class: 'roster-row', onsubmit: (e) => (e.preventDefault(), actions.importRoster(e.target.elements.roster.value)) },
-            h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': 'roster-import', 'aria-label': 'Paste a roster code', placeholder: 'Paste a roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': list.error ? 'true' : null, 'aria-describedby': list.error ? 'roster-error' : null, value: list.draft }),
+            h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': 'roster-import', 'aria-label': 'Paste a roster code', placeholder: 'Paste a roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': list.error ? 'true' : null, 'aria-describedby': list.error ? 'roster-error' : null, value: list.draft, oninput: (e) => actions.setRosterDraft(e.target.value) }),
             h('button', { type: 'submit', class: 'btn btn-grey', 'data-fk': 'roster-import-btn', text: 'Import' }),
           ),
         )
@@ -662,12 +660,12 @@ function libraryPanel(state, actions) {
       'form',
       { class: 'paste-form', onsubmit: (e) => (e.preventDefault(), actions.pastePlayer(e.target.elements.text.value, e.target.elements.name.value)) },
       h('label', { class: 'field-label', for: 'paste-text', text: 'Player link or code' }),
-      h('input', { type: 'text', id: 'paste-text', name: 'text', class: 'roster-field', 'data-fk': 'paste-text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Paste a link, path, or code', 'aria-invalid': paste.error ? 'true' : null, 'aria-describedby': 'paste-msg', value: paste.draft }),
+      h('input', { type: 'text', id: 'paste-text', name: 'text', class: 'roster-field', 'data-fk': 'paste-text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Paste a link, path, or code', 'aria-invalid': paste.error ? 'true' : null, 'aria-describedby': 'paste-msg', value: paste.draft, oninput: (e) => actions.setPasteDraft(e.target.value) }),
       h('label', { class: 'field-label', for: 'paste-name', text: 'Player name' }),
       h(
         'div',
         { class: 'roster-row' },
-        h('input', { type: 'text', id: 'paste-name', name: 'name', class: 'roster-field', 'data-fk': 'paste-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Needed when the link has no username', value: paste.name }),
+        h('input', { type: 'text', id: 'paste-name', name: 'name', class: 'roster-field', 'data-fk': 'paste-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: "Defaults to the link's username", value: paste.name, oninput: (e) => actions.setPasteName(e.target.value) }),
         h('button', { type: 'submit', class: 'btn btn-green', 'data-fk': 'paste-add', text: 'Add player' }),
       ),
       h(
@@ -780,7 +778,7 @@ function teamPanel(state, actions) {
             h(
               'div',
               { class: 'roster-row' },
-              h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, onchange: (e) => actions.renameTeam(e.target.value) }),
+              h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, oninput: (e) => actions.setTeamNameDraft(e.target.value), onchange: (e) => actions.renameTeam(e.target.value) }),
               h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'team-delete', onclick: actions.deleteTeam }, 'Delete', hidden(' team')),
             ),
             addPlayerSelect(state, actions, team, me),
@@ -797,6 +795,7 @@ function teamPanel(state, actions) {
 function teamLinkView(state, actions) {
   const link = state.team.link;
   const classes = state.data.classes;
+  const savedTeam = actions.linkSavedTeam();
   return h(
     'main',
     { class: 'team' },
@@ -810,7 +809,12 @@ function teamLinkView(state, actions) {
         h(
           'div',
           { class: 'head-actions' },
-          h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
+          savedTeam
+            ? [
+                h('button', { type: 'button', class: 'btn btn-grey', 'data-fk': 'team-saved', disabled: true, text: 'Saved' }),
+                h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-open', onclick: () => actions.openTeam(savedTeam.id), text: 'Open team' }),
+              ]
+            : h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
           copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: false, block: null, onclick: actions.copyLink, small: false }),
         ),
       ),
@@ -858,6 +862,8 @@ export function render(root, state, actions) {
     ...[noticesBar(state.notices, actions)].filter(Boolean),
     state.view === 'team' ? teamView(state, actions) : classesView(state, actions),
   );
-  if (state.copy === 'failed') root.querySelector('.copy-fallback')?.select();
-  else restoreFocus(root, key);
+  if (state.copyFocus) {
+    state.copyFocus = false;
+    root.querySelector('.copy-fallback')?.select();
+  } else restoreFocus(root, key);
 }

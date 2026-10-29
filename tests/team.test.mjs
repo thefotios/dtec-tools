@@ -40,6 +40,12 @@ test('team link: empty name gives empty search; unresolved members are skipped',
   assert.deepEqual(serializeTeamLink(classes, { name: '', members: [] }, () => null), { path: '/team', search: '' });
 });
 
+test('team link: later case-insensitive duplicate member names are dropped with a notice', () => {
+  const t = link('/bob.c5~ann.mi3~Bob.mi2');
+  assert.deepEqual(t.members.map((m) => m[0]), ['bob', 'ann']);
+  assert.deepEqual(t.notices.map((n) => n.reason), ['duplicate']);
+});
+
 test('team link: bad members are dropped with a notice naming them', () => {
   for (const bad of ['bob', 'b.o.b.c5', 'bob.scout-sal2', 'bob.c9']) {
     const t = link(`/ann.mi3~${bad}~cat.c2`);

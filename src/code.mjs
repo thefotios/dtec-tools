@@ -144,7 +144,7 @@ export function serializeSets(classes, player) {
     .join('.');
 }
 
-// Accepts a full URL on any host, a path, or a bare code. Returns { player, notices } or { error }.
+// Accepts a full URL on any host, a path, or a bare code. Returns { player, hasRoster, hasSets, notices } or { error }.
 // The player's base level wins over the roster's; name comes from `u`, trimmed, or is ''.
 export function parseShare(classes, text, basePath = '/') {
   const input = String(text ?? '').trim();
@@ -165,6 +165,9 @@ export function parseShare(classes, text, basePath = '/') {
   if (build.slots.length) sets.sets[build.base] = build.slots;
   return {
     player: { name: (url.searchParams.get('u') ?? '').trim(), base: build.base, levels, sets: sets.sets },
+    // hasRoster / hasSets: whether the input carried a roster segment / a non-empty `s`; neither makes it a bare code.
+    hasRoster: build.roster !== null,
+    hasSets: Boolean((url.searchParams.get('s') ?? '').trim()),
     notices: [...build.notices, ...sets.notices, ...extras.map((e) => notice(e, 'extra'))],
   };
 }
