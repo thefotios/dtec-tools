@@ -86,6 +86,11 @@ function noticesBar(notices, actions) {
   );
 }
 
+// "New here? See Help" pointer shown inside first-run empty states.
+function helpLink(actions) {
+  return h('p', { class: 'help-pointer' }, 'New here? ', h('a', { class: 'visitor-team-link', 'data-fk': 'help-link', href: new URL('help', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('help')), text: 'See Help' }));
+}
+
 function navButton(state, actions, view, text) {
   const current = state.view === view;
   return h('button', { type: 'button', class: `btn ${current ? 'btn-green' : 'btn-grey'}`, 'data-fk': `nav-${view}`, 'aria-current': current ? 'page' : null, onclick: () => actions.setView(view), text });
@@ -120,6 +125,7 @@ function header(state, actions) {
       { class: 'app-nav', 'aria-label': 'Sections' },
       navButton(state, actions, 'classes', 'Classes'),
       navButton(state, actions, 'team', 'Team'),
+      navButton(state, actions, 'help', 'Help'),
     ),
   );
 }
@@ -617,6 +623,7 @@ function classesView(state, actions) {
         rows.length
           ? h('ul', { class: 'own-list' }, rows.map((c) => ownRow(state, actions, c)))
           : h('p', { class: 'empty', text: !list.editing && !store.hasAny() ? "You haven't marked any classes yet. Tap Edit to add some." : 'No classes match' }),
+        !rows.length && !list.editing && !store.hasAny() ? helpLink(actions) : null,
       ),
     ),
     loadout(state, actions),
@@ -688,6 +695,7 @@ function libraryPanel(state, actions) {
       players.map((p) => libraryRow(state, actions, p, { me: false })),
     ),
     players.length ? null : h('p', { class: 'empty', text: 'Paste a link to add players' }),
+    players.length ? null : helpLink(actions),
   );
 }
 
@@ -792,7 +800,7 @@ function teamPanel(state, actions) {
             ? h('ul', { class: 'team-grid' }, team.members.map((m) => teamCard(state, actions, m, me)))
             : h('p', { class: 'empty', text: 'Add players from your library' }),
         ]
-      : h('p', { class: 'empty', text: 'Create a team to start' }),
+      : [h('p', { class: 'empty', text: 'Create a team to start' }), helpLink(actions)],
   );
 }
 
@@ -840,6 +848,68 @@ function teamView(state, actions) {
   return h('main', { class: 'team' }, libraryPanel(state, actions), teamPanel(state, actions));
 }
 
+const HELP_SAMPLE = 'c5-sc1sal2sal3-D5XB8XG5XD';
+
+function helpView(state) {
+  const section = (title, ...body) => h('section', { class: 'panel help-panel', 'aria-label': title }, h('h2', { class: 'panel-title', text: title }), ...body);
+  const code = (text) => h('code', { text });
+  return h(
+    'main',
+    { class: 'help' },
+    section(
+      'Getting started',
+      h(
+        'ol',
+        { class: 'help-list' },
+        h('li', {}, 'Open Classes and tap Edit. Mark the classes you own and unlock their levels. Levels are cumulative: unlocking level 3 unlocks levels 1 and 2.'),
+        h('li', {}, 'Tap Done, then tap a class to make it your base class.'),
+        h('li', {}, 'In the base class passives panel, tap Edit and pick up to 3 passives (levels 1 to 3). You can only pick levels you have unlocked, and a class can never be its own passive. Each class keeps its own set of passives.'),
+      ),
+    ),
+    section(
+      'Sharing your build',
+      h('p', {}, 'Set a username in the You panel first. Then use the buttons on the base class panel:'),
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, h('strong', { text: 'Copy link' }), ' shares everything: your build, your classes, your username, and the passives for every class. Best for Discord and similar.'),
+        h('li', {}, h('strong', { text: 'Copy code' }), ' is a short code that fits in Roblox chat, such as ', code(HELP_SAMPLE), '.'),
+      ),
+      h('p', {}, 'Opening someone else\'s link shows their build read-only. Tap Save to players to keep them.'),
+    ),
+    section(
+      'Players and teams',
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, 'On the Team page, paste links or codes to build your players list. Pasting the same player again updates them.'),
+        h('li', {}, 'Make named teams of up to 8 players.'),
+        h('li', {}, 'On each team card, the class menu lists the classes that player owns and shows the passives they saved for that class. Passives can\'t be changed here, because re-rolling costs in game.'),
+        h('li', {}, 'Copy team link shares the team. Opening a team link lets you tap Save team.'),
+      ),
+    ),
+    section(
+      'Reading a code',
+      h('p', {}, code(HELP_SAMPLE), ' breaks down like this:'),
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, code('c5'), ': base class Crafter at level 5.'),
+        h('li', {}, code('sc1sal2sal3'), ': passives, each a class code plus a level: Scout 1, Salvager 2, Salvager 3.'),
+        h('li', {}, code('D5XB8XG5XD'), ': the classes you own, one symbol per class in list order. The symbol is the highest level unlocked and a number repeats it.'),
+      ),
+      h('p', {}, 'Class codes:'),
+      h(
+        'table',
+        { class: 'code-table' },
+        h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: 'Code' }), h('th', { scope: 'col', text: 'Class' }))),
+        h('tbody', {}, state.data.classes.map((c) => h('tr', {}, h('td', {}, code(c.code)), h('td', { text: c.name })))),
+      ),
+    ),
+    section('Your data', h('p', {}, 'Everything is stored in this browser only. Nothing is uploaded, and clearing site data removes it. Nothing syncs between devices: on a new device, paste the roster part of your code (the letters after the last dash) into Import roster, then pick your passives again.')),
+  );
+}
+
 function focusKey(root) {
   const active = document.activeElement;
   if (!active || !root.contains(active)) return null;
@@ -865,7 +935,7 @@ export function render(root, state, actions) {
   root.append(
     header(state, actions),
     ...[noticesBar(state.notices, actions)].filter(Boolean),
-    state.view === 'team' ? teamView(state, actions) : classesView(state, actions),
+    state.view === 'help' ? helpView(state) : state.view === 'team' ? teamView(state, actions) : classesView(state, actions),
   );
   if (state.copyFocus) {
     state.copyFocus = false;

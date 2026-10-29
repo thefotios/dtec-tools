@@ -100,6 +100,12 @@ function savedTeamFor(link) {
 function syncFromLocation() {
   const path = currentPath(window);
   const segment = teamSegment(path);
+  if (path === '/help' || path === '/help/') {
+    state.view = 'help';
+    state.copy = null;
+    state.notices = [];
+    return;
+  }
   if (segment !== null) {
     state.view = 'team';
     state.copy = null;
@@ -158,13 +164,15 @@ const actions = {
     const was = state.view;
     state.view = view;
     state.copy = null;
-    if (view === 'team') {
+    if (view === 'help') {
+      if (was !== 'help') pushPath(window, '/help');
+    } else if (view === 'team') {
       if (was !== 'team' || state.team.link) {
         state.team.link = null;
         state.notices = [];
         pushPath(window, '/team');
       }
-    } else if (was === 'team') {
+    } else if (was === 'team' || was === 'help') {
       if (state.visitor) restoreLast([]);
       state.team.link = null;
       state.notices = [];

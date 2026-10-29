@@ -62,6 +62,10 @@ A team has a name and up to 8 members, each a library player; a player can be on
 
 A team link is `/team/ann.c5-sc1sal2sal3~bob.mi3-rec1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy team link" in the team panel header copies the active team's link and is disabled with a hint when there is no team or the team is empty. Opening a team link shows it read-only with "Save team" and a "Copy link" button that copies the opened URL, which creates the team, adds players whose names are not in the library, maps your own name to Me, and opens `/team` in place of the link. A link whose name and member names match a saved team shows "Saved" and an "Open team" button instead. A repeated member name (case-insensitive) is dropped with a notice. Links never import anything on their own.
 
+## Help
+
+The Help page at `/help` is reached from the "Help" button in the header and from the "New here? See Help" link in the first-run empty states on the Classes and Team pages. It explains getting started, sharing a build, players and teams, how to read a code (with a table of class codes generated from `data/classes.json`), and where your data is stored. It is handled before build-code parsing, so `help` is never read as a class code.
+
 ## Local development
 
 ```

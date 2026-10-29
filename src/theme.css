@@ -536,3 +536,12 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .visitor-form .roster-field { letter-spacing: 0.02em; }
 .visitor-saved { color: var(--accent-green); padding: 4px 10px; border-left: 4px solid var(--accent-green); }
 .visitor-team-link { color: var(--text); font-weight: 900; }
+
+/* Help */
+.help { display: grid; gap: 14px; max-width: 760px; }
+.help-panel p + p, .help-panel p + ul, .help-panel p + table { margin-top: 10px; }
+.help-list { padding-left: 22px; display: grid; gap: 8px; }
+.help-panel code { background: var(--panel-raised); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
+.code-table { border-collapse: collapse; width: 100%; max-width: 100%; }
+.code-table th, .code-table td { text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--panel-border); }
+.help-pointer { color: var(--text-muted); text-align: center; padding: 0 8px 12px; }
