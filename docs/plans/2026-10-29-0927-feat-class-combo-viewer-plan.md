@@ -66,6 +66,7 @@ The game shows class effects one class at a time and passive rolls one slot at a
 **Ownership (local state)**
 
 - R23. The player can mark, per class, which levels 1 to 5 they own; marks persist in the browser across visits and never appear in the URL.
+- R34. Ownership is edited in one "My classes" grid, not per class page: one row per class (name, tier diamonds) with five level toggles colored by level; checking the class name marks level 1 owned and unchecking it clears the row. Rows are filterable by name and togglable between "all classes" and "owned only".
 - R24. An "owned only" toggle filters the base picker to owned classes and limits each slot's class and level choices to owned class levels 1 to 3; it never alters a build loaded from a URL, and a slot's current value always stays selectable. Premise: the game rolls passives only from owned class levels (in-game hint: "Unlocking class levels allows you to roll them as Passives").
 - R25. A loaded build that uses unowned levels still renders in full, with those slots or the base marked by a "not owned" label (not only muted styling, which would read like the MASTER row).
 - R26. Ownership exports to and imports from a roster code short enough to paste in Roblox chat: no URL, no spaces needed, at most 1 + (class count) characters. Invalid import text shows an inline error and leaves marks unchanged. With "owned only" on and nothing owned, the picker shows an empty message pointing to the ownership toggles.
@@ -301,13 +302,13 @@ drill-dashboard/
 ### U6. Ownership marks and filtering
 
 - **Goal:** let the player mark owned class levels and filter selection by them.
-- **Requirements:** R23, R24, R25, R26, R30; KTD15, KTD16.
+- **Requirements:** R23, R24, R25, R26, R30, R34; KTD15, KTD16.
 - **Dependencies:** U4.
 - **Files:** `src/owned.mjs`, `src/render.mjs`, `src/app.mjs`, `src/theme.css`, `scripts/check-data.mjs`, `tests/owned.test.mjs`, `tests/check-data.test.mjs`.
 - **Approach:**
   1. `owned.mjs` exports a pure roster codec per KTD16 (ownership map plus ordered class list to code, and back) and a small store that loads and saves the map through an injectable storage object.
   2. `checkData` gains the KTD16 order rule: data order must match registry insertion order.
-  3. The base panel gets a per-level owned toggle on each of the five level rows; the picker card shows an owned indicator.
+  3. A "My classes" view (R34) is the single place to edit ownership, reachable from the header and holding the roster code control; the picker cards and base panel only display an owned indicator.
   4. A header toggle "Owned only" filters the picker and slot choices per R24; filter state is also kept in storage.
   5. Unowned parts of a loaded build get a muted style and a "not owned" label per R25.
   6. A "Roster code" control shows the code with a copy button (displayed in groups of four separated by hyphens) and accepts a pasted one.
@@ -324,6 +325,7 @@ drill-dashboard/
   - `checkData` reports a violation when two data entries are swapped relative to the registry order.
   - A storage object that throws on read yields an empty map and no exception.
   - A storage object that throws on write leaves the in-memory map updated and raises no exception.
+  - Manual: in "My classes", check Salvager and toggle levels 2 and 3 without leaving the grid; unchecking the name clears the row.
   - Manual: mark Salvager 1 to 3, enable "Owned only", confirm the picker lists only Salvager and slot level buttons offer only owned levels.
   - Manual: with nothing owned, open `/scout/sal2sal3prie3`; the build renders in full with every part labeled not owned.
   - Manual: reload the page; marks and the filter toggle persist.
