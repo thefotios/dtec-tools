@@ -1,10 +1,10 @@
-import { absoluteUrl, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot, withoutBase } from './router.mjs';
+import { absoluteUrl, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
 import { createPassiveStore, toSlots } from './passives.mjs';
 import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
-import { createPlayersStore, isValidName, mePlayer } from './players.mjs';
-import { parseTeam, serializeTeam, createTeamStore, MAX_PLAYERS } from './team.mjs';
+import { createPlayersStore, isValidName, mePlayer, playerByName } from './players.mjs';
+import { parseTeamLink, serializeTeamLink } from './team.mjs';
 
 const root = document.getElementById('app');
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
@@ -32,11 +32,10 @@ const state = {
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
   // Rows expanded by hand in edit mode.
   expanded: new Set(),
-  team: { builds: [], store: null, owned: [], errors: {}, editing: null, passiveFilter: '' },
+  // link: an opened team link, null or { name, members, saved }; paste: the library paste form's drafts and feedback.
+  team: { link: null, paste: { draft: '', name: '', error: null, message: null, notices: [] } },
   list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], copy: null, nameDraft: null, nameError: null, nameConflict: null },
 };
-
-state.team.store = createTeamStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
 
 const paint = () => render(root, state, actions);
 
@@ -45,6 +44,18 @@ const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 // My record for the selected base, computed fresh from the owned and passives stores and my username.
 const myPlayer = () => ({ ...mePlayer(state.data.classes, state.players.me, state.store, state.passives), base: state.build.base?.code ?? null });
+
+// The base a player's card shows: the stored one while owned, else the player's own base, else any owned class.
+function ownedBase(player, stored) {
+  const owns = (code) => (player.levels[code] ?? 0) > 0;
+  if (owns(stored)) return stored;
+  if (owns(player.base)) return player.base;
+  return state.data.classes.find((c) => owns(c.code))?.code ?? null;
+}
+
+const meRecord = () => mePlayer(state.data.classes, state.players.me, state.store, state.passives);
+const resolvePlayer = (name) => playerByName(state.players, meRecord(), name);
+const activeTeam = () => state.players.teams.find((t) => t.id === state.players.active) ?? null;
 
 // '/' when my level for the base is 0 (or no base), else '/<build code>' without roster.
 function buildPath() {
@@ -71,20 +82,21 @@ function restoreLast(notices) {
 // A bare code carries only the base at its level and the base's own passives.
 const isBare = (player) => Object.keys(player.levels).every((c) => c === player.base) && Object.keys(player.sets).every((c) => c === player.base);
 
-// Loads state from the location. The address bar is never rewritten for the Classes page; the team view still canonicalizes.
+// Loads state from the location. The address bar is never rewritten.
 function syncFromLocation() {
   const path = currentPath(window);
   const segment = teamSegment(path);
   if (segment !== null) {
-    const parsed = parseTeam(state.data.classes, segment);
     state.view = 'team';
-    state.team.builds = parsed.builds;
-    state.team.errors = {};
-    state.team.editing = null;
-    refreshTeamOwned();
-    state.notices = parsed.notices;
     state.copy = null;
-    if (serializeTeam(parsed.builds) !== path) replacePath(window, serializeTeam(parsed.builds));
+    if (segment === '' || segment === '/') {
+      state.team.link = null;
+      state.notices = [];
+      return;
+    }
+    const parsed = parseTeamLink(state.data.classes, segment, window.location.search);
+    state.team.link = { name: parsed.name, members: parsed.members, saved: false };
+    state.notices = parsed.notices;
     return;
   }
   state.view = 'classes';
@@ -113,25 +125,6 @@ function syncFromLocation() {
   state.notices = notices;
 }
 
-// Decoded roster per card position: an owned map, or null when the card has no usable roster.
-function refreshTeamOwned() {
-  state.team.owned = state.team.builds.map((_, i) => {
-    const text = state.team.store.roster(i);
-    const r = text ? decodeRoster(state.data.classes, text) : null;
-    return r && !r.error && Object.keys(r.owned).length ? r.owned : null;
-  });
-}
-
-const teamPath = () => serializeTeam(state.team.builds);
-
-function setTeamBuild(i, build) {
-  state.team.builds = state.team.builds.map((b, j) => (j === i ? build : b));
-  state.notices = [];
-  state.copy = null;
-  replacePath(window, teamPath());
-  paint();
-}
-
 function setSlots(slots) {
   state.build = { ...state.build, slots };
   state.linkView = false;
@@ -149,72 +142,100 @@ const actions = {
     const was = state.view;
     state.view = view;
     state.copy = null;
-    if (view === 'team' && was !== 'team') pushPath(window, teamPath());
-    else if (view !== 'team' && was === 'team') {
+    if (view === 'team') {
+      if (was !== 'team' || state.team.link) {
+        state.team.link = null;
+        state.notices = [];
+        pushPath(window, '/team');
+      }
+    } else if (was === 'team') {
       if (state.visitor) restoreLast([]);
+      state.team.link = null;
+      state.notices = [];
       pushPath(window, buildPath());
     }
     paint();
   },
-  addPlayer() {
-    if (state.team.builds.length >= MAX_PLAYERS) return;
-    state.team.builds = [...state.team.builds, { base: null, slots: [] }];
-    state.team.editing = state.team.builds.length - 1;
-    refreshTeamOwned();
+  // Opens the You panel on the Classes page with the username field focused.
+  openUsername() {
+    state.list.rosterOpen = true;
+    actions.setView('classes');
+    document.querySelector('[data-fk="username"]')?.focus();
+  },
+  pastePlayer(text, nameText) {
+    const paste = state.team.paste;
+    const fail = (error) => {
+      state.team.paste = { draft: text, name: nameText, error, message: null, notices: [] };
+      paint();
+    };
+    const r = parseShare(state.data.classes, text, new URL(document.baseURI).pathname);
+    if (r.error) return fail(r.error);
+    const name = (r.player.name || nameText).trim();
+    if (!name) return fail('Enter a name for this player');
+    if (!isValidName(name)) return fail('Use 3 to 20 letters or digits, with at most one underscore that is not at either end');
+    if (state.players.me && sameName(name, state.players.me)) return fail("That's you \u2014 edit your build on the Classes page");
+    const saved = state.players.upsert({ ...r.player, name }, { merge: isBare(r.player) });
+    if (saved.error) return fail(saved.error);
+    state.team.paste = { ...paste, draft: '', name: '', error: null, message: `${saved.updated ? 'Updated' : 'Added'} ${name}`, notices: r.notices.map((n) => n.message) };
+    paint();
+  },
+  removePlayer(name) {
+    state.players.remove(name);
+    paint();
+  },
+  createTeam() {
+    state.players.createTeam(`Team ${state.players.teams.length + 1}`, []);
+    paint();
+  },
+  renameTeam(name) {
+    const team = activeTeam();
+    if (team) state.players.renameTeam(team.id, name);
+    paint();
+  },
+  deleteTeam() {
+    const team = activeTeam();
+    if (team) state.players.deleteTeam(team.id);
+    paint();
+  },
+  setActiveTeam(id) {
+    state.players.setActive(id);
     state.copy = null;
-    pushPath(window, teamPath());
     paint();
   },
-  removePlayer(i) {
-    state.team.builds = state.team.builds.filter((_, j) => j !== i);
-    state.team.store.remove(i);
-    state.team.errors = {};
-    state.team.editing = null;
-    refreshTeamOwned();
+  addMember(name) {
+    const team = activeTeam();
+    const player = name ? resolvePlayer(name) : null;
+    const base = player ? ownedBase(player, player.base) : null;
+    if (team && player && base) state.players.addMember(team.id, player.name, base);
+    paint();
+  },
+  removeMember(name) {
+    const team = activeTeam();
+    if (team) state.players.removeMember(team.id, name);
+    paint();
+  },
+  setMemberBase(name, base) {
+    const team = activeTeam();
+    if (team) state.players.setMemberBase(team.id, name, base);
     state.copy = null;
-    pushPath(window, teamPath());
     paint();
   },
-  editPlayer(i) {
-    state.team.editing = state.team.editing === i ? null : i;
-    paint();
-  },
-  setTeamBase(i, slug) {
-    const base = slug ? classBySlug(slug) : null;
-    const cur = state.team.builds[i];
-    setTeamBuild(i, { base, slots: withoutBase(cur.slots, base) });
-  },
-  // Toggles one passive on a card: removes it when present, otherwise adds it in canonical order.
-  toggleTeamSlot(i, slug, level) {
-    const cls = classBySlug(slug);
-    const cur = state.team.builds[i];
-    if (!cls) return;
-    const has = cur.slots.some((s) => s.cls.slug === slug && s.level === level);
-    const slots = has ? removeSlot(cur.slots, cls, level) : addSlot(state.data.classes, cur.slots, cls, level);
-    setTeamBuild(i, { ...cur, slots });
-  },
-  clearTeamSlots: (i) => setTeamBuild(i, { ...state.team.builds[i], slots: [] }),
-  setTeamPassiveFilter(value) {
-    state.team.passiveFilter = value;
-    paint();
-  },
-  // Typing never repaints: the field keeps focus and caret.
-  setTeamLabel(i, text) {
-    state.team.store.setLabel(i, text);
-  },
-  importTeamRoster(i, text) {
-    if (!text.trim()) {
-      state.team.store.setRoster(i, '');
-      delete state.team.errors[i];
-    } else {
-      const r = decodeRoster(state.data.classes, text);
-      if (r.error) state.team.errors[i] = { message: r.error, draft: text };
-      else {
-        state.team.store.setRoster(i, text);
-        delete state.team.errors[i];
-      }
-    }
-    refreshTeamOwned();
+  // Saves an opened team link: missing players are added from the link, existing ones stay as they are, my own name maps to Me.
+  saveTeamLink() {
+    const link = state.team.link;
+    if (!link || !link.members.length) return;
+    const me = state.players.me;
+    const members = link.members.map(({ name, player }) => {
+      if (me && sameName(name, me)) return { name: me, base: player.base };
+      const existing = state.players.get(name);
+      if (!existing) state.players.upsert(player);
+      return { name: existing?.name ?? name, base: player.base };
+    });
+    state.players.createTeam(link.name || 'Team', members);
+    state.team.link = null;
+    state.notices = [];
+    state.copy = null;
+    pushPath(window, '/team');
     paint();
   },
   setEditing(value) {
@@ -247,6 +268,7 @@ const actions = {
     state.loadoutEditing = value;
     paint();
   },
+  mePlayer: meRecord,
   rosterCode: () => encodeRoster(state.data.classes, state.store.owned),
   importRoster(text) {
     const r = decodeRoster(state.data.classes, text);
@@ -308,7 +330,24 @@ const actions = {
     state.passives.setUnlockedOnly(value);
     paint();
   },
-  currentUrl: () => (state.view === 'team' ? absoluteUrl(document.baseURI, teamPath()) : serializeShare(state.data.classes, myPlayer(), document.baseURI)),
+  currentUrl() {
+    if (state.view !== 'team') return serializeShare(state.data.classes, myPlayer(), document.baseURI);
+    if (state.team.link) return window.location.href;
+    const team = activeTeam();
+    const { path, search } = serializeTeamLink(state.data.classes, team, (name) => {
+      const p = resolvePlayer(name);
+      const base = p ? ownedBase(p, p.base) : null;
+      return base ? { ...p, base } : null;
+    });
+    return absoluteUrl(document.baseURI, path + search);
+  },
+  // Why the team Copy link is unavailable, or null.
+  teamShareBlock() {
+    if (state.team.link) return null;
+    const team = activeTeam();
+    if (!team) return 'Create a team to share';
+    return team.members.length ? null : 'Add players to share';
+  },
   currentCode: () => serializeBuildCode(state.data.classes, myPlayer()),
   shareBlock,
   copyLink: () => copyText(actions.currentUrl(), 'copied'),

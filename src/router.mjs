@@ -1,26 +1,4 @@
-import { tokenize, resolve } from './resolve.mjs';
-
 export const MAX_SLOTS = 3;
-
-const REASON_TEXT = {
-  unknown: 'unknown class',
-  ambiguous: 'matches more than one class',
-  level: 'level must be 1 to 3',
-  malformed: 'not a class and level',
-  extra: 'extra path ignored',
-  duplicate: 'duplicate passive ignored',
-  self: 'a class cannot be its own passive',
-};
-
-function notice(token, reason) {
-  return { token, reason, message: `"${token}": ${REASON_TEXT[reason]}` };
-}
-
-// Why a token failed to resolve: several slug prefixes match, or none do.
-function failReason(classes, token) {
-  const t = token.toLowerCase();
-  return classes.filter((c) => c.slug.startsWith(t)).length > 1 ? 'ambiguous' : 'unknown';
-}
 
 export const sameSlot = (a, b) => a.cls.slug === b.cls.slug && a.level === b.level;
 
@@ -37,50 +15,9 @@ export function addSlot(classes, slots, cls, level) {
   return sortSlots(classes, [...slots, slot]);
 }
 
-// Drops passives of the base class itself.
-export const withoutBase = (slots, base) => (base ? slots.filter((s) => s.cls.slug !== base.slug) : []);
-
 // Removes one passive; the rest stay in canonical order.
 export function removeSlot(slots, cls, level) {
   return slots.filter((s) => !sameSlot(s, { cls, level }));
-}
-
-// Parses one build: a base token plus a passive run. Pure; returns { base, slots, notices }.
-// An invalid base drops the whole passive run. Groups are validated first, duplicates and passives of the base
-// class are dropped with a notice,
-// the first three are kept, and the result is in canonical order.
-export function parseBuild(classes, baseToken, run = '', extras = []) {
-  const notices = [];
-  let base = null;
-  if (baseToken) {
-    base = resolve(classes, baseToken);
-    if (!base) notices.push(notice(baseToken, failReason(classes, baseToken)));
-  }
-  const slots = [];
-  if (base) {
-    for (const g of tokenize(run)) {
-      if (!g.token) {
-        notices.push(notice(g.raw, 'malformed'));
-      } else if (!g.valid) {
-        notices.push(notice(g.raw, 'level'));
-      } else {
-        const cls = resolve(classes, g.token);
-        if (!cls) notices.push(notice(g.token, failReason(classes, g.token)));
-        else if (cls.slug === base.slug) notices.push(notice(g.raw, 'self'));
-        else if (slots.some((s) => sameSlot(s, { cls, level: g.level }))) notices.push(notice(g.raw, 'duplicate'));
-        else slots.push({ cls, level: g.level });
-      }
-    }
-    slots.length = Math.min(slots.length, MAX_SLOTS);
-    slots.splice(0, slots.length, ...sortSlots(classes, slots));
-    for (const e of extras) notices.push(notice(e, 'extra'));
-  }
-  return { base, slots, notices };
-}
-
-export function serializeBuild({ base, slots }) {
-  if (!base) return { base: '', run: '' };
-  return { base: base.slug, run: slots.map((s) => `${s.cls.code}${s.level}`).join('') };
 }
 
 // Strips the base path (e.g. "/dttec-tools/") from a pathname; result always starts with "/".

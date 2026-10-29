@@ -469,7 +469,7 @@ button.own-pill:hover { border-color: var(--accent-green); }
 
 /* Team view */
 .team { display: grid; gap: 14px; }
-.team-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.team-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 .team-card {
   display: flex;
   flex-direction: column;
@@ -479,51 +479,27 @@ button.own-pill:hover { border-color: var(--accent-green); }
   border-radius: 12px;
   padding: 12px;
 }
-.card-label {
-  width: 100%;
-  font: inherit;
-  font-weight: 900;
-  font-size: 17px;
-  color: var(--text);
-  background: transparent;
-  border: 2px solid transparent;
-  border-bottom-color: var(--panel-border);
-  border-radius: 6px;
-  padding: 4px 6px;
-}
-.card-label:hover, .card-label:focus { border-color: var(--panel-border); background: var(--bg); }
 .card-base { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 8px; }
 .card-base-name { font-size: 20px; font-weight: 900; text-shadow: var(--outline); }
 .card-empty { color: var(--text-muted); }
-.chips { display: grid; gap: 6px; }
-.chip {
-  --lv-deep: color-mix(in srgb, var(--lv, #888) 58%, #000);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  border: 2px solid var(--lv);
-  border-radius: 8px;
-  background: linear-gradient(90deg, var(--lv-deep), #0f1014 85%);
-  padding: 4px 10px 4px 4px;
-}
-.chip-level {
-  min-width: 26px;
-  text-align: center;
-  font-weight: 900;
-  text-shadow: var(--outline);
-  background: var(--lv-deep);
-  border-radius: 5px;
-  padding: 0 6px;
-}
-.chip-name { font-weight: 800; }
-.chip .not-owned { margin-left: auto; }
-.card-editor { display: grid; gap: 8px; }
+.card-name { font-size: 17px; font-weight: 900; overflow-wrap: anywhere; }
+.team-card .slot-select { width: 100%; }
+.team-card .levels { margin: 0; }
 .card-actions { display: flex; gap: 8px; margin-top: auto; }
-.card-roster { display: flex; gap: 8px; }
-.card-roster .roster-field { padding: 6px 10px; min-height: 40px; letter-spacing: 0.04em; }
-.team-card .roster-error { font-size: 14px; }
-.team-hint { color: var(--text-muted); font-size: 14px; margin-top: 12px; }
+.team-controls { display: grid; gap: 4px; margin-bottom: 14px; }
+.team-controls .roster-row { margin-bottom: 8px; }
+.team-add { margin-top: 4px; }
+.team-add .slot-select { width: 100%; }
+.paste-form { display: grid; gap: 4px; margin-bottom: 8px; }
+.paste-form .roster-row { margin-bottom: 6px; }
+.player-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.player-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; background: var(--panel-raised); border: 2px solid var(--panel-border); border-radius: 10px; padding: 8px 12px; }
+.player-row.is-me { border-color: var(--tier-gold); }
+.player-name { font-weight: 900; overflow-wrap: anywhere; }
+.player-base { color: var(--text); }
+.player-marker, .player-sets { color: var(--text-muted); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+.player-row .btn { margin-left: auto; }
+.player-setname { color: var(--text); font-weight: 900; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 
 /* Passive picker level rows (build page) */

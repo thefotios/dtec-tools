@@ -1,6 +1,5 @@
-import { MAX_PLAYERS } from './team.mjs';
 import { ownedClasses } from './owned.mjs';
-import { isValidName } from './players.mjs';
+import { isValidName, playerByName, MAX_MEMBERS } from './players.mjs';
 import { toSlots } from './passives.mjs';
 
 // Renders from state only; all data text goes through textContent.
@@ -110,8 +109,17 @@ function shareButtons(state, actions) {
   ];
 }
 
-function header(state, actions) {
+function teamShare(state, actions) {
+  const block = actions.teamShareBlock();
   const copied = state.copy === 'copied';
+  return [
+    h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', disabled: Boolean(block), 'aria-describedby': block ? 'share-hint' : null, onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
+    block ? h('span', { class: 'share-hint', id: 'share-hint', text: block }) : null,
+    h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : '' }),
+  ];
+}
+
+function header(state, actions) {
   return h(
     'header',
     { class: 'app-header' },
@@ -125,12 +133,7 @@ function header(state, actions) {
     h(
       'div',
       { class: 'copy-link' },
-      state.view === 'team'
-        ? [
-            h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
-            h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : '' }),
-          ]
-        : shareButtons(state, actions),
+      state.view === 'team' ? teamShare(state, actions) : shareButtons(state, actions),
     ),
     state.copy === 'failed'
       ? h('input', { type: 'text', class: 'copy-fallback', readonly: true, 'aria-label': 'Text to copy', 'data-fk': 'link-field', value: state.copyText, onfocus: (e) => e.target.select() })
@@ -364,37 +367,45 @@ function passiveRow(slot, owned) {
     h(
       'span',
       { class: 'level-text' },
-      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, cls.name, (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
+      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
     ),
   );
 }
 
-// The selected class's five levels, unlocked ones in color and locked ones dimmed.
+// A class's five levels, unlocked ones in color and locked ones dimmed.
+function levelList(base, owned) {
+  return h(
+    'ol',
+    { class: 'levels' },
+    base.levels.map((level, i) => {
+      const on = (owned[base.code] ?? 0) >= i + 1;
+      return h(
+        'li',
+        {},
+        h(
+          'div',
+          { class: `level own-level is-readonly${on ? ' is-unlocked' : ''}`, 'data-level': i + 1, 'data-tag': level.tag },
+          levelChip(level, i),
+          h('span', { class: 'level-text', text: level.text }),
+          on ? null : h('span', { class: 'lock-hint', text: 'Locked' }),
+        ),
+      );
+    }),
+  );
+}
+
+// The selected class's five levels.
 function basePanel(state, base, owned) {
   return h(
     'section',
     { class: 'panel base-levels', 'aria-label': `${base.name} levels` },
     h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned()),
-    h(
-      'ol',
-      { class: 'levels' },
-      base.levels.map((level, i) => {
-        const on = (owned[base.code] ?? 0) >= i + 1;
-        return h(
-          'li',
-          {},
-          h(
-            'div',
-            { class: `level own-level is-readonly${on ? ' is-unlocked' : ''}`, 'data-level': i + 1, 'data-tag': level.tag },
-            levelChip(level, i),
-            h('span', { class: 'level-text', text: level.text }),
-            on ? null : h('span', { class: 'lock-hint', text: 'Locked' }),
-          ),
-        );
-      }),
-    ),
+    levelList(base, owned),
   );
 }
+
+// A player record with only its base level has no roster to judge passives against.
+const passiveOwned = (player) => (Object.keys(player.levels).length > 1 ? player.levels : null);
 
 function visitorNameError(state) {
   const v = state.visitor;
@@ -452,7 +463,7 @@ function visitorLoadout(state, actions) {
       'section',
       { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
       h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_SLOTS})` })),
-      h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, player.levels))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
+      h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, passiveOwned(player)))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
     ),
   );
 }
@@ -603,100 +614,203 @@ function classesView(state, actions) {
   );
 }
 
-function chip(cls, level, unowned) {
-  return h('li', { class: 'chip', 'data-level': level }, h('span', { class: 'chip-level', text: String(level) }), h('span', { class: 'chip-name', text: cls.name }), unowned ? notOwned() : null);
+// Pieces shared by library rows and team cards.
+function memberBase(state, player, stored) {
+  const owns = (code) => (player.levels[code] ?? 0) > 0;
+  const code = owns(stored) ? stored : owns(player.base) ? player.base : state.data.classes.find((c) => owns(c.code))?.code;
+  return state.data.classes.find((c) => c.code === code) ?? null;
 }
 
-function cardEditor(state, actions, i) {
-  const { classes } = state.data;
-  const build = state.team.builds[i];
-  const owned = state.team.owned[i];
-  // A card with an imported roster lists only what that roster owns, plus its selected items.
-  const choices = owned ? ownedClasses(classes, owned, build.base ? [build.base.slug] : []) : classes;
-  return h(
-    'div',
-    { class: 'card-editor' },
-    h(
-      'select',
-      { class: 'slot-select', 'data-fk': `team-${i}-base`, 'aria-label': `Player ${i + 1} base class`, onchange: (e) => actions.setTeamBase(i, e.target.value || null) },
-      h('option', { value: '', text: 'Choose base class' }),
-      choices.map((c) => h('option', { value: c.slug, selected: build.base?.slug === c.slug, text: c.name })),
-    ),
-    build.base
-      ? passivePicker(state, actions, {
-          base: build.base,
-          slots: build.slots,
-          has: (code, n) => (owned?.[code] ?? 0) >= n,
-          ownedOnly: Boolean(owned),
-          flag: (code, n) => Boolean(owned) && (owned[code] ?? 0) < n,
-          filter: state.team.passiveFilter,
-          filterKey: `team-${i}-passive-filter`,
-          keyPrefix: `team-${i}-passive`,
-          onFilter: actions.setTeamPassiveFilter,
-          onToggle: (c, n) => actions.toggleTeamSlot(i, c.slug, n),
-          onClear: () => actions.clearTeamSlots(i),
-        })
-      : null,
-  );
-}
-
-function teamCard(state, actions, i) {
-  const { store } = state.team;
-  const owned = state.team.owned[i];
-  const build = state.team.builds[i];
-  const flag = (code, level) => owned && (owned[code] ?? 0) < level;
-  const editing = state.team.editing === i;
-  const err = state.team.errors[i];
-  const hasRoster = Boolean(store.roster(i));
+function libraryRow(state, actions, player, { me }) {
+  const base = memberBase(state, player, player.base);
+  const sets = Object.keys(player.sets).length;
+  const marker = me ? 'live' : Object.keys(player.levels).length > 1 ? 'roster' : 'code';
   return h(
     'li',
-    { class: 'team-card', 'data-card': i + 1 },
-    h('input', { type: 'text', class: 'card-label', 'data-fk': `team-${i}-label`, 'aria-label': `Player ${i + 1} label`, placeholder: `Player ${i + 1}`, maxlength: '24', autocomplete: 'off', value: store.label(i), oninput: (e) => actions.setTeamLabel(i, e.target.value) }),
-    build.base
-      ? h(
-          'div',
-          { class: 'card-build' },
-          h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: build.base.name }), diamonds(build.base, state.data.tiers), owned && !owned[build.base.code] ? notOwned() : null),
-          build.slots.length ? h('ul', { class: 'chips' }, build.slots.map((sl) => chip(sl.cls, sl.level, flag(sl.cls.code, sl.level)))) : h('p', { class: 'card-empty', text: 'No passives' }),
-        )
-      : h('p', { class: 'card-empty', text: 'No class chosen' }),
-    editing ? cardEditor(state, actions, i) : null,
-    h(
-      'div',
-      { class: 'card-actions' },
-      h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': `team-${i}-edit`, 'aria-expanded': String(editing), onclick: () => actions.editPlayer(i) }, editing ? 'Done' : 'Edit', hidden(` player ${i + 1}`)),
-      h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `team-${i}-remove`, onclick: () => actions.removePlayer(i) }, 'Remove', hidden(` player ${i + 1}`)),
-    ),
-    h(
-      'form',
-      { class: 'card-roster', onsubmit: (e) => (e.preventDefault(), actions.importTeamRoster(i, e.target.elements.roster.value)) },
-      h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': `team-${i}-roster`, 'aria-label': `Player ${i + 1} roster code`, placeholder: 'Paste roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': err ? 'true' : null, 'aria-describedby': err ? `team-${i}-error` : null, value: err ? err.draft : store.roster(i) }),
-      h('button', { type: 'submit', class: 'btn btn-grey btn-small', 'data-fk': `team-${i}-roster-btn`, text: hasRoster && !err ? 'Update' : 'Set' }),
-    ),
-    err ? h('p', { class: 'roster-error', id: `team-${i}-error`, role: 'alert', text: err.message }) : null,
+    { class: `player-row${me ? ' is-me' : ''}`, 'data-player': player.name },
+    h('span', { class: 'player-name', text: me ? `${player.name} (you)` : player.name }),
+    h('span', { class: 'player-base', text: base ? `${base.name} L${player.levels[base.code]}` : 'No classes' }),
+    h('span', { class: 'player-marker', text: marker }),
+    h('span', { class: 'player-sets', text: `${sets} ${sets === 1 ? 'set' : 'sets'}` }),
+    me ? null : h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `player-${player.name.toLowerCase()}-remove`, onclick: () => actions.removePlayer(player.name) }, 'Remove', hidden(` ${player.name} from library`)),
   );
 }
 
-function teamView(state, actions) {
-  const count = state.team.builds.length;
+function meRow(state, actions) {
+  if (state.players.me) return libraryRow(state, actions, playerByName(state.players, actions.mePlayer(), state.players.me), { me: true });
+  return h(
+    'li',
+    { class: 'player-row is-me' },
+    h('span', { class: 'player-name', text: 'Me' }),
+    h('a', { class: 'player-setname', 'data-fk': 'set-username', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.openUsername()), text: 'Set your username' }),
+  );
+}
+
+function libraryPanel(state, actions) {
+  const { paste } = state.team;
+  const players = state.players.players;
+  return h(
+    'section',
+    { class: 'panel library', 'aria-label': 'Players' },
+    h('h2', { class: 'panel-title', text: 'Players' }),
+    h(
+      'form',
+      { class: 'paste-form', onsubmit: (e) => (e.preventDefault(), actions.pastePlayer(e.target.elements.text.value, e.target.elements.name.value)) },
+      h('label', { class: 'field-label', for: 'paste-text', text: 'Player link or code' }),
+      h('input', { type: 'text', id: 'paste-text', name: 'text', class: 'roster-field', 'data-fk': 'paste-text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Paste a link, path, or code', 'aria-invalid': paste.error ? 'true' : null, 'aria-describedby': 'paste-msg', value: paste.draft }),
+      h('label', { class: 'field-label', for: 'paste-name', text: 'Player name' }),
+      h(
+        'div',
+        { class: 'roster-row' },
+        h('input', { type: 'text', id: 'paste-name', name: 'name', class: 'roster-field', 'data-fk': 'paste-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Needed when the link has no username', value: paste.name }),
+        h('button', { type: 'submit', class: 'btn btn-green', 'data-fk': 'paste-add', text: 'Add player' }),
+      ),
+      h(
+        'div',
+        { id: 'paste-msg', class: 'field-msg', 'aria-live': 'polite' },
+        paste.error ? h('p', { class: 'roster-error', role: 'alert', text: paste.error }) : null,
+        paste.message ? h('p', { class: 'visitor-saved', text: paste.message }) : null,
+        paste.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
+      ),
+    ),
+    h(
+      'ul',
+      { class: 'player-list' },
+      meRow(state, actions),
+      players.map((p) => libraryRow(state, actions, p, { me: false })),
+    ),
+    players.length ? null : h('p', { class: 'empty', text: 'Paste a link to add players' }),
+  );
+}
+
+// One player card: name, class, that class's five levels per the player's levels, and read-only passives.
+function playerCard(state, actions, { name, player, base, controls }) {
+  const slots = base ? toSlots(state.data.classes, player.sets[base.code] ?? []) : [];
+  const owned = passiveOwned(player);
+  return h(
+    'li',
+    { class: 'team-card', 'data-player': name },
+    h('h3', { class: 'card-name', text: name }),
+    controls?.select ?? (base ? h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: base.name }), diamonds(base, state.data.tiers)) : null),
+    base ? levelList(base, player.levels) : h('p', { class: 'card-empty', text: 'No classes owned' }),
+    base
+      ? slots.length
+        ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned)))
+        : h('p', { class: 'card-empty', text: 'No passives saved' })
+      : null,
+    controls?.actions ?? null,
+  );
+}
+
+function teamCard(state, actions, member) {
+  const player = playerByName(state.players, actions.mePlayer(), member.name);
+  if (!player) return null;
+  const base = memberBase(state, player, member.base);
+  const owned = state.data.classes.filter((c) => (player.levels[c.code] ?? 0) > 0);
+  const k = `member-${member.name.toLowerCase()}`;
+  return playerCard(state, actions, {
+    name: player.name,
+    player,
+    base,
+    controls: {
+      select: h(
+        'select',
+        { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${player.name} class`, onchange: (e) => actions.setMemberBase(player.name, e.target.value) },
+        owned.map((c) => h('option', { value: c.code, selected: base?.code === c.code, text: `${c.name} (L${player.levels[c.code]})` })),
+      ),
+      actions: h('div', { class: 'card-actions' }, h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(player.name) }, 'Remove from team', hidden(` ${player.name}`))),
+    },
+  });
+}
+
+function addPlayerSelect(state, actions, team) {
+  const mePlayer = actions.mePlayer();
+  const onTeam = new Set(team.members.map((m) => m.name.toLowerCase()));
+  const candidates = [
+    ...(state.players.me && Object.keys(mePlayer.levels).length ? [mePlayer] : []),
+    ...state.players.players,
+  ].filter((p) => !onTeam.has(p.name.toLowerCase()));
+  const full = team.members.length >= MAX_MEMBERS;
+  const disabled = full || !candidates.length;
+  return h(
+    'div',
+    { class: 'team-add' },
+    h('label', { class: 'field-label', for: 'team-add', text: 'Add player' }),
+    h(
+      'select',
+      { id: 'team-add', class: 'slot-select', 'data-fk': 'team-add', disabled, onchange: (e) => actions.addMember(e.target.value) },
+      h('option', { value: '', text: full ? 'Team is full (8)' : candidates.length ? 'Choose a player' : 'All players added' }),
+      disabled ? null : candidates.map((p) => h('option', { value: p.name, text: p.name })),
+    ),
+  );
+}
+
+function teamPanel(state, actions) {
+  const teams = state.players.teams;
+  const team = teams.find((t) => t.id === state.players.active) ?? null;
+  return h(
+    'section',
+    { class: 'panel team-panel', 'aria-label': 'Team' },
+    h(
+      'div',
+      { class: 'panel-head' },
+      h('h2', { class: 'panel-title', text: team ? `Team (${team.members.length}/${MAX_MEMBERS})` : 'Team' }),
+      h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'team-new', onclick: actions.createTeam, text: 'New' }),
+    ),
+    team
+      ? [
+          h(
+            'div',
+            { class: 'team-controls' },
+            h('label', { class: 'field-label', for: 'team-select', text: 'Team' }),
+            h('select', { id: 'team-select', class: 'slot-select', 'data-fk': 'team-select', onchange: (e) => actions.setActiveTeam(e.target.value) }, teams.map((t) => h('option', { value: t.id, selected: t.id === team.id, text: t.name || 'Unnamed team' }))),
+            h('label', { class: 'field-label', for: 'team-name', text: 'Team name' }),
+            h(
+              'div',
+              { class: 'roster-row' },
+              h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, onchange: (e) => actions.renameTeam(e.target.value) }),
+              h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'team-delete', onclick: actions.deleteTeam }, 'Delete', hidden(' team')),
+            ),
+            addPlayerSelect(state, actions, team),
+          ),
+          team.members.length
+            ? h('ul', { class: 'team-grid' }, team.members.map((m) => teamCard(state, actions, m)))
+            : h('p', { class: 'empty', text: 'Add players from your library' }),
+        ]
+      : h('p', { class: 'empty', text: 'Create a team to start' }),
+  );
+}
+
+// An opened team link: read-only cards and a Save team action. Nothing is imported until saved.
+function teamLinkView(state, actions) {
+  const link = state.team.link;
+  const classes = state.data.classes;
   return h(
     'main',
     { class: 'team' },
     h(
       'section',
-      { class: 'panel team-panel', 'aria-label': 'Team' },
+      { class: 'panel team-panel', 'aria-label': 'Team link' },
       h(
         'div',
         { class: 'panel-head' },
-        h('h2', { class: 'panel-title', text: `Team (${count}/${MAX_PLAYERS})` }),
-        h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'team-add', disabled: count >= MAX_PLAYERS, onclick: actions.addPlayer, text: 'Add player' }),
+        h('h2', { class: 'panel-title', text: link.name ? `${link.name} (${link.members.length}/${MAX_MEMBERS})` : `Shared team (${link.members.length}/${MAX_MEMBERS})` }),
+        h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
       ),
-      count
-        ? h('ul', { class: 'team-grid' }, state.team.builds.map((_, i) => teamCard(state, actions, i)))
-        : h('p', { class: 'empty', text: 'No players yet. Add a player to plan a build.' }),
-      h('p', { class: 'team-hint', text: 'Roster codes and labels stay in this browser; the link carries builds only.' }),
+      link.members.length
+        ? h(
+            'ul',
+            { class: 'team-grid' },
+            link.members.map(({ name, player }) => playerCard(state, actions, { name, player, base: classes.find((c) => c.code === player.base) ?? null })),
+          )
+        : h('p', { class: 'empty', text: 'No valid players in this link.' }),
     ),
   );
+}
+
+function teamView(state, actions) {
+  if (state.team.link) return teamLinkView(state, actions);
+  return h('main', { class: 'team' }, libraryPanel(state, actions), teamPanel(state, actions));
 }
 
 function focusKey(root) {
