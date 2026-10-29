@@ -14,11 +14,11 @@ $table
 
 ## My classes and roster code
 
-Mark the classes and levels (1 to 5) you own in the My classes grid; marks persist in the browser. "Owned only" limits the picker to owned classes.
+Mark the highest level (1 to 5) you own for each class in the My classes grid; levels are cumulative, so owning level 3 means levels 1 to 3. Clicking your current top level steps back one level. Marks persist in the browser. "Owned only" limits the picker to owned classes.
 
-The roster code encodes your marks as a short string you can paste in Roblox chat. The first character is the format version (`A`). Then one character per class, in the order of `data/classes.json`, each encoding that class's five owned-level bits (bit 0 is level 1, bit 4 is level 5) as one Crockford base32 symbol. Values 0 to 21 map to the letters `ABCDEFGHJKMNPQRSTVWXYZ`, values 22 to 31 to the digits `0` to `9`, so common patterns are letters and digit runs are rare. Trailing characters for classes with nothing owned are trimmed.
+The roster code encodes your marks as a short string you can paste in Roblox chat. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `16XF5XD` is level 4 on the 17th class and level 3 on the 23rd, and `31D` is every class at level 3.
 
-Decoding is case-insensitive, ignores spaces and hyphens, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so old codes stay valid when classes are added. Invalid text shows an inline error and leaves your marks unchanged.
+Decoding is case-insensitive, ignores spaces and hyphens, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so codes stay valid when classes are added. Old codes starting with `A` still import. Invalid text shows an inline error and leaves your marks unchanged.
 
 A team lead imports a player's code in the team view to see what that player owns.
 

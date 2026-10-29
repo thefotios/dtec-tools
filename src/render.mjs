@@ -1,4 +1,3 @@
-import { groupCode } from './owned.mjs';
 import { MAX_PLAYERS } from './team.mjs';
 
 // Renders from state only; all data text goes through textContent.
@@ -343,7 +342,7 @@ function mineView(state, actions) {
       h(
         'div',
         { class: 'roster-row' },
-        h('input', { type: 'text', class: 'roster-field', readonly: true, 'data-fk': 'roster-code', 'aria-label': 'Your roster code', value: groupCode(code), onfocus: (e) => e.target.select() }),
+        h('input', { type: 'text', class: 'roster-field', readonly: true, 'data-fk': 'roster-code', 'aria-label': 'Your roster code', value: code, onfocus: (e) => e.target.select() }),
         h('button', { type: 'button', class: `btn btn-green${mine.copy === 'copied' ? ' is-done' : ''}`, 'data-fk': 'roster-copy', onclick: actions.copyRoster, text: mine.copy === 'copied' ? 'Copied' : mine.copy === 'failed' ? 'Copy failed' : 'Copy' }),
       ),
       h(
@@ -384,7 +383,7 @@ function mineView(state, actions) {
                   'div',
                   { class: 'own-levels', role: 'group', 'aria-label': `${c.name} levels` },
                   [1, 2, 3, 4, 5].map((n) =>
-                    h('button', { type: 'button', class: 'own-level', 'data-level': n, 'data-fk': `own-${c.slug}-${n}`, 'aria-pressed': String(store.has(c.code, n)), 'aria-label': `${c.name} level ${n}`, onclick: () => actions.toggleLevel(c.code, n), text: String(n) }),
+                    h('button', { type: 'button', class: 'own-level', 'data-level': n, 'data-fk': `own-${c.slug}-${n}`, 'aria-pressed': String(store.has(c.code, n)), 'aria-label': `${c.name} level ${n}`, onclick: () => actions.setLevel(c.code, n), text: String(n) }),
                   ),
                 ),
               ),
@@ -446,7 +445,7 @@ function teamCard(state, actions, i) {
   const { store } = state.team;
   const owned = state.team.owned[i];
   const build = state.team.builds[i];
-  const flag = (code, level) => owned && !(owned[code] ?? []).includes(level);
+  const flag = (code, level) => owned && (owned[code] ?? 0) < level;
   const editing = state.team.editing === i;
   const err = state.team.errors[i];
   const hasRoster = Boolean(store.roster(i));
@@ -458,7 +457,7 @@ function teamCard(state, actions, i) {
       ? h(
           'div',
           { class: 'card-build' },
-          h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: build.base.name }), diamonds(build.base, state.data.tiers), owned && !(owned[build.base.code] ?? []).length ? notOwned() : null),
+          h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: build.base.name }), diamonds(build.base, state.data.tiers), owned && !owned[build.base.code] ? notOwned() : null),
           build.slots.length ? h('ul', { class: 'chips' }, build.slots.map((sl) => chip(sl.cls, sl.level, flag(sl.cls.code, sl.level)))) : h('p', { class: 'card-empty', text: 'No passives' }),
         )
       : h('p', { class: 'card-empty', text: 'No class chosen' }),

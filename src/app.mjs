@@ -144,8 +144,8 @@ const actions = {
     state.store.setOwnedOnly(value);
     paint();
   },
-  toggleLevel(code, level) {
-    state.store.toggleLevel(code, level);
+  setLevel(code, level) {
+    state.store.setLevel(code, level);
     paint();
   },
   toggleClass(code) {
