@@ -1,6 +1,7 @@
 import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot, withoutBase } from './router.mjs';
 import { render } from './render.mjs';
 import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
+import { createPassiveStore } from './passives.mjs';
 import { parseTeam, serializeTeam, createTeamStore, MAX_PLAYERS } from './team.mjs';
 
 const root = document.getElementById('app');
@@ -11,6 +12,9 @@ const state = {
   error: null,
   data: null,
   build: { base: null, slots: [] },
+  // True while the build shows a link's passives, which are not saved until the user edits passives.
+  linkView: false,
+  passives: null,
   notices: [],
   filter: '',
   passiveFilter: '',
@@ -46,10 +50,16 @@ function syncFromLocation() {
   }
   if (state.view === 'team') state.view = 'build';
   const parsed = parsePath(state.data.classes, path);
-  state.build = { base: parsed.base, slots: parsed.slots };
+  const segments = path.split('/').filter(Boolean).length;
+  // "/" restores the last base; a base without a passive run loads its saved set; a run is a link and is shown as is.
+  const base = parsed.base ?? (segments === 0 ? classBySlug(state.passives.last) : null);
+  state.linkView = Boolean(parsed.base) && segments > 1;
+  const slots = !base ? [] : state.linkView ? parsed.slots : state.passives.get(base.slug);
+  state.build = { base, slots };
+  if (base) state.passives.setLast(base.slug);
   state.notices = parsed.notices;
   state.copy = null;
-  if (serializePath(parsed) !== path) replaceBuild(window, parsed);
+  if (serializePath(state.build) !== path) replaceBuild(window, state.build);
 }
 
 // Decoded roster per card position: an owned map, or null when the card has no usable roster.
@@ -75,6 +85,8 @@ function setTeamBuild(i, build) {
 
 function setSlots(slots) {
   state.build = { ...state.build, slots };
+  state.linkView = false;
+  if (state.build.base) state.passives.set(state.build.base.slug, slots);
   state.notices = [];
   state.copy = null;
   replaceBuild(window, state.build);
@@ -203,10 +215,14 @@ const actions = {
     state.notices = state.notices.filter((_, j) => j !== i);
     paint();
   },
-  // Base change pushes a history entry and drops passives of the new base class; clearing the base drops them all.
+  // Base change pushes a history entry and loads the new base's saved set (empty when none); clearing the base empties the build.
+  // Clicking the base already shown from a saved set is a no-op; while a link's passives are shown it reloads the saved set.
   setBase(slug) {
     const base = slug ? classBySlug(slug) : null;
-    state.build = { base, slots: withoutBase(state.build.slots, base) };
+    if (base && base.slug === state.build.base?.slug && !state.linkView) return paint();
+    state.build = { base, slots: base ? state.passives.get(base.slug) : [] };
+    state.linkView = false;
+    state.passives.setLast(base?.slug ?? null);
     state.notices = [];
     state.copy = null;
     pushBuild(window, state.build);
@@ -225,6 +241,10 @@ const actions = {
     setSlots(slots);
   },
   clearSlots: () => setSlots([]),
+  setUnlockedOnly(value) {
+    state.passives.setUnlockedOnly(value);
+    paint();
+  },
   currentUrl: () => absoluteUrl(document.baseURI, state.view === 'team' ? teamPath() : serializePath(state.build)),
   async copyLink() {
     try {
@@ -254,6 +274,7 @@ async function load() {
     const data = await res.json();
     if (!Array.isArray(data.classes) || !data.tiers) throw new Error('unexpected data shape');
     state.data = data;
+    state.passives = createPassiveStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }, data.classes);
     state.status = 'ready';
     syncFromLocation();
   } catch (e) {

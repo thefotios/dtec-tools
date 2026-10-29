@@ -106,7 +106,6 @@ function navButton(state, actions, view, text) {
 
 // Shown only once the player has marked any ownership, so first-time visitors see clean builds.
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
-const ownedMark = () => h('span', { class: 'owned-mark', 'aria-hidden': 'true', text: '\u2713' });
 
 function header(state, actions) {
   const copied = state.copy === 'copied';
@@ -241,7 +240,7 @@ function picker(state, actions) {
                           actions.setBase(c.slug);
                         },
                       },
-                      h('span', { class: 'class-name' }, c.name, store.hasClass(c.code) ? [ownedMark(), hidden(' owned')] : null),
+                      h('span', { class: 'class-name' }, c.name, store.hasClass(c.code) ? null : notOwned()),
                       diamonds(c, tiers),
                     ),
                   ),
@@ -275,7 +274,7 @@ function baseLevels(state, actions) {
 
 // Every passive at once: one row per class (tier order), one toggle cell per level.
 // The base class is never listed: a class cannot be its own passive.
-// opts: { base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+// opts: { levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
@@ -284,7 +283,11 @@ function passivePicker(state, actions, opts) {
   const f = opts.filter.trim().toLowerCase();
   const ordered = Object.keys(tiers).flatMap((tier) => classes.filter((c) => String(c.tier) === tier));
   const visibleLevels = (c) => [1, 2, 3].filter((n) => picked(c, n) || !opts.ownedOnly || opts.has(c.code, n));
-  const rows = ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
+  const hasPicked = (c) => slots.some((s) => s.cls.slug === c.slug);
+  const levelRowsVisible = (c) => [1, 2, 3].filter((n) => picked(c, n) || !opts.unlockedOnly || opts.has(c.code, n));
+  const rows = opts.levelRows
+    ? ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && (opts.has(c.code, 1) || hasPicked(c)) && levelRowsVisible(c).length)
+    : ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
   const k = opts.keyPrefix;
   const cell = (c, n) => {
     const on = picked(c, n);
@@ -306,6 +309,54 @@ function passivePicker(state, actions, opts) {
       opts.flag(c.code, n) ? notOwned() : null,
     );
   };
+  // Ownership-style row: all levels written out; locked levels (above the owned max) are gray and not selectable.
+  const levelRow = (c) => {
+    const max = state.store.owned[c.code] ?? 0;
+    return h(
+      'li',
+      { class: 'own-row passive-own', 'data-class': c.slug },
+      h(
+        'div',
+        { class: 'own-head' },
+        h('span', { class: 'own-toggle passive-own-name' }, h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
+        max ? h('span', { class: 'own-pill is-owned', 'data-level': max }, `L${max}`, hidden(` owned, level ${max}`)) : notOwned(),
+      ),
+      h(
+        'div',
+        { class: 'own-body' },
+        h(
+          'ol',
+          { class: 'levels' },
+          levelRowsVisible(c).map((n) => {
+            const on = picked(c, n);
+            const locked = !opts.has(c.code, n);
+            const blocked = !on && (locked || full);
+            return h(
+              'li',
+              {},
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: `level own-level passive-level${on ? ' is-selected' : ''}${locked ? ' is-locked' : ' is-unlocked'}${!locked && blocked ? ' is-disabled' : ''}`,
+                  'data-level': n,
+                  'data-fk': `${k}-${c.slug}-${n}`,
+                  'aria-pressed': String(on),
+                  'aria-disabled': blocked ? 'true' : null,
+                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}`,
+                  onclick: () => (blocked ? null : opts.onToggle(c, n)),
+                },
+                levelChip(c.levels[n - 1], n - 1),
+                h('span', { class: 'level-text', text: c.levels[n - 1].text }),
+                locked ? (on ? notOwned() : h('span', { class: 'lock-hint', title: `Own ${c.name} at level ${n} to unlock`, text: 'Locked' })) : null,
+                h('span', { class: 'own-check', 'aria-hidden': 'true', text: on ? '\u2713' : '' }),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  };
   return h(
     'div',
     { class: 'passive-picker' },
@@ -313,6 +364,14 @@ function passivePicker(state, actions, opts) {
       'div',
       { class: 'passive-head' },
       h('h2', { class: 'panel-title', text: `Passives (${slots.length}/${MAX_SLOTS})` }),
+      opts.levelRows
+        ? h(
+            'label',
+            { class: 'unlocked-only' },
+            h('input', { type: 'checkbox', 'data-fk': `${k}-unlocked-only`, checked: opts.unlockedOnly, onchange: (e) => opts.onUnlockedOnly(e.target.checked) }),
+            h('span', { text: 'Unlocked only' }),
+          )
+        : null,
       h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-clear`, disabled: !slots.length, onclick: opts.onClear }, 'Clear', hidden(' passives')),
     ),
     h(
@@ -340,9 +399,9 @@ function passivePicker(state, actions, opts) {
     rows.length
       ? h(
           'ul',
-          { class: 'passive-rows' },
+          { class: opts.levelRows ? 'own-list' : 'passive-rows' },
           rows.map((c) =>
-            h(
+            opts.levelRows ? levelRow(c) : h(
               'li',
               { class: 'passive-row', 'data-class': c.slug },
               h('div', { class: 'passive-name' }, h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
@@ -364,6 +423,9 @@ function slotsPanel(state, actions) {
       slots: state.build.slots,
       has: (code, n) => store.has(code, n),
       ownedOnly: true,
+      levelRows: true,
+      unlockedOnly: state.passives.unlockedOnly,
+      onUnlockedOnly: actions.setUnlockedOnly,
       flag: (code, n) => !store.has(code, n),
       emptyText: 'No owned passives to pick. Mark classes in My classes.',
       filter: state.passiveFilter,
