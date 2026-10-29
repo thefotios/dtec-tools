@@ -14,7 +14,7 @@ const TYPES = {
   '.ico': 'image/x-icon',
 };
 
-// Usage: node scripts/serve.mjs [rootDir] ; env BASE_PATH (e.g. /dttec-tools/) and PORT.
+// Usage: node scripts/serve.mjs [rootDir] ; env BASE_PATH (e.g. /dtec-tools/) and PORT.
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const root = resolve(process.argv[2] ?? repoRoot);
 const prefix = (process.env.BASE_PATH ?? '/').replace(/\/+$/, '');

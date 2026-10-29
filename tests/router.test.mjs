@@ -11,13 +11,13 @@ const slot = (slug, level) => ({ cls: by(slug), level });
 
 test('relativePath strips the base path', () => {
   assert.equal(relativePath('/c5-sal2', '/'), '/c5-sal2');
-  assert.equal(relativePath('/dttec-tools/c5-sal2', '/dttec-tools/'), '/c5-sal2');
-  assert.equal(relativePath('/dttec-tools/', '/dttec-tools/'), '/');
-  assert.equal(relativePath('/dttec-tools', '/dttec-tools/'), '/');
+  assert.equal(relativePath('/dtec-tools/c5-sal2', '/dtec-tools/'), '/c5-sal2');
+  assert.equal(relativePath('/dtec-tools/', '/dtec-tools/'), '/');
+  assert.equal(relativePath('/dtec-tools', '/dtec-tools/'), '/');
 });
 
 test('absoluteUrl resolves canonical path against the base URI', () => {
-  assert.equal(absoluteUrl('https://x.io/dttec-tools/', '/c5-sal2'), 'https://x.io/dttec-tools/c5-sal2');
+  assert.equal(absoluteUrl('https://x.io/dtec-tools/', '/c5-sal2'), 'https://x.io/dtec-tools/c5-sal2');
   assert.equal(absoluteUrl('http://localhost:8080/', '/'), 'http://localhost:8080/');
 });
 
@@ -34,7 +34,7 @@ test('teamSegment recognizes the /team prefix only', () => {
 test('history helpers push or replace an arbitrary canonical path', () => {
   const calls = [];
   const win = {
-    document: { baseURI: 'https://x.io/dttec-tools/' },
+    document: { baseURI: 'https://x.io/dtec-tools/' },
     history: {
       pushState: (...a) => calls.push(['push', a[2]]),
       replaceState: (...a) => calls.push(['replace', a[2]]),
@@ -43,8 +43,8 @@ test('history helpers push or replace an arbitrary canonical path', () => {
   pushPath(win, '/team');
   replacePath(win, '/c5-sal2');
   assert.deepEqual(calls, [
-    ['push', '/dttec-tools/team'],
-    ['replace', '/dttec-tools/c5-sal2'],
+    ['push', '/dtec-tools/team'],
+    ['replace', '/dtec-tools/c5-sal2'],
   ]);
 });
 

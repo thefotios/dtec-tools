@@ -159,7 +159,7 @@ Classes page flow: location path plus search go to `parseShare`; the result is M
   5. `c5-sal2-sal3` (two runs) keeps the first with an extra notice; a fourth group is dropped; `c5-c2` is a self notice; `c5-sal2sal2` is a duplicate notice; `c5-zz1` is unknown; `c5-sal` is malformed; `c5-sal2sc` (a run ending in a letter) drops the roster segment with a malformed notice.
   5a. `/c5-sal2?s=mi-rec1` (no `u`) parses the Miner set and an empty name.
   6. `scout-sal2` (slug) and `scout` are unknown base errors; `/scout/sal2` is an error.
-  7. `parseShare` accepts `https://example.com/c5-sal2?u=Bob`, `/c5-sal2?u=Bob`, `c5-sal2`, and `https://host/dttec-tools/c5-sal2` with basePath `/dttec-tools/`, all giving base Crafter and name `Bob` where present.
+  7. `parseShare` accepts `https://example.com/c5-sal2?u=Bob`, `/c5-sal2?u=Bob`, `c5-sal2`, and `https://host/dtec-tools/c5-sal2` with basePath `/dtec-tools/`, all giving base Crafter and name `Bob` where present.
   8. `?s=mi-rec1sc2.sal-c2` yields sets for Miner and Salvager; `?s=zz-rec1.mi-mi1` drops both with notices; an `s` item for the path's base is ignored.
   9. Share with roster `15XF5XD` and base `c5` gives `levels` with Crafter at 5 (code wins) plus the roster's other classes; share without roster gives `levels = { c: 5 }`.
   10. `serializeShare` emits `u` only when `name` is non-empty and `s` only for sets other than the base's; the output re-parses to an equal record.

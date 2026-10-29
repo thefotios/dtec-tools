@@ -15,7 +15,7 @@ import {
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const reasons = (r) => r.notices.map((n) => n.reason);
 const e = (...pairs) => pairs.map(([code, level]) => ({ code, level }));
-const BASE_URI = 'https://example.com/dttec-tools/';
+const BASE_URI = 'https://example.com/dtec-tools/';
 
 test('classByCode matches exact codes case-insensitively and nothing else', () => {
   assert.equal(classByCode(classes, 'c').slug, 'crafter');
@@ -145,8 +145,8 @@ test('7: parseShare accepts URLs, paths, and bare codes, with a base path', () =
     ['https://example.com/c5-sal2?u=Bob', '/', 'Bob'],
     ['/c5-sal2?u=Bob', '/', 'Bob'],
     ['c5-sal2', '/', ''],
-    ['https://host/dttec-tools/c5-sal2', '/dttec-tools/', ''],
-    ['  https://host/dttec-tools/c5-sal2?u=%20Bob%20 ', '/dttec-tools/', 'Bob'],
+    ['https://host/dtec-tools/c5-sal2', '/dtec-tools/', ''],
+    ['  https://host/dtec-tools/c5-sal2?u=%20Bob%20 ', '/dtec-tools/', 'Bob'],
   ];
   for (const [text, basePath, name] of inputs) {
     const r = parseShare(classes, text, basePath);
@@ -196,7 +196,7 @@ test('9: roster levels fill the record and the code wins for the base; no roster
 test('10: serializeShare emits u and s only when present and re-parses to an equal record', () => {
   const bare = { name: '', base: 'c', levels: { c: 5 }, sets: { c: e(['sal', 2]) } };
   const bareUrl = new URL(serializeShare(classes, bare, BASE_URI));
-  assert.equal(bareUrl.pathname, '/dttec-tools/c5-sal2-15XG');
+  assert.equal(bareUrl.pathname, '/dtec-tools/c5-sal2-15XG');
   assert.equal(bareUrl.search, '');
 
   const full = {
@@ -208,10 +208,10 @@ test('10: serializeShare emits u and s only when present and re-parses to an equ
   const url = new URL(serializeShare(classes, full, BASE_URI));
   assert.equal(url.searchParams.get('u'), 'Bob');
   assert.equal(url.searchParams.get('s'), 'mi-rec1');
-  const back = parseShare(classes, url.href, '/dttec-tools/');
+  const back = parseShare(classes, url.href, '/dtec-tools/');
   assert.deepEqual(back.notices, []);
   assert.deepEqual(back.player, full);
-  assert.deepEqual(parseShare(classes, serializeShare(classes, bare, BASE_URI), '/dttec-tools/').player, bare);
+  assert.deepEqual(parseShare(classes, serializeShare(classes, bare, BASE_URI), '/dtec-tools/').player, bare);
 });
 
 test('11: team links and empty text are errors', () => {

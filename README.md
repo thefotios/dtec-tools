@@ -1,4 +1,4 @@
-# DTTEC Tools
+# DTEC Tools
 
 Class and passive combo viewer for Drill to Earth's Core. Pick a base class and up to three passives (levels 1 to 3) to see the combined effects. Client-side only: static ES modules, no framework, data in `data/classes.json`, hosted on GitHub Pages.
 
@@ -75,7 +75,7 @@ npm run check   # validate data/classes.json against scripts/codes.lock.json
 npm run build   # static site into dist/ (env BASE_PATH, default /)
 ```
 
-Node only, no dependencies. `BASE_PATH` is the sub-path the site is served under, e.g. `BASE_PATH=/dttec-tools/ npm run build`.
+Node only, no dependencies. `BASE_PATH` is the sub-path the site is served under, e.g. `BASE_PATH=/dtec-tools/ npm run build`.
 
 ## Deploy
 

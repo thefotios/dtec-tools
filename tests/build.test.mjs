@@ -23,11 +23,11 @@ test('BASE_PATH build: index and 404 identical with prefixed base href', () => {
   const root = tmp();
   try {
     const out = join(root, 'dist');
-    const r = run(out, { BASE_PATH: '/dttec-tools/' });
+    const r = run(out, { BASE_PATH: '/dtec-tools/' });
     assert.equal(r.status, 0, r.stderr);
     const index = readFileSync(join(out, 'index.html'), 'utf8');
     assert.equal(index, readFileSync(join(out, '404.html'), 'utf8'));
-    assert.match(index, /<base href="\/dttec-tools\/">/);
+    assert.match(index, /<base href="\/dtec-tools\/">/);
     assert.ok(existsSync(join(out, 'src/app.mjs')));
     assert.ok(existsSync(join(out, 'data/classes.json')));
   } finally {
@@ -39,8 +39,8 @@ test('BASE_PATH is normalized to leading and trailing slash', () => {
   const root = tmp();
   try {
     const out = join(root, 'dist');
-    assert.equal(run(out, { BASE_PATH: 'dttec-tools' }).status, 0);
-    assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /<base href="\/dttec-tools\/">/);
+    assert.equal(run(out, { BASE_PATH: 'dtec-tools' }).status, 0);
+    assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /<base href="\/dtec-tools\/">/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
