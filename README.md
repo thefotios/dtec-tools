@@ -14,7 +14,11 @@ $table
 
 ## My classes and roster code
 
-Mark the highest level (1 to 5) you own for each class in the My classes grid; levels are cumulative, so owning level 3 means levels 1 to 3. Clicking your current top level steps back one level. Marks persist in the browser. "Owned only" limits the picker to owned classes.
+My classes lists the classes you own as rows with a pill showing the level (`L3`). Expanding a row lists the five levels with their effects; tapping a level unlocks every level up to it (levels are cumulative), and tapping your current top level steps back one level. "Remove class" returns it to unowned. Marks persist in the browser.
+
+"Edit" in the My classes panel lists every class, with a "+" pill that buys level 1 of an unowned class; "Done" returns to the owned list. Edit mode is not saved and is not part of any URL. The filter box applies in both modes.
+
+The build page lists only the classes you own, plus the selected base, and its passive picker lists only owned classes and levels, plus selected passives. A selected base or passive you don't own is flagged "Not owned". With no classes marked, the class list says so and links to My classes. A team card with an imported roster is filtered the same way by that roster.
 
 The roster code encodes your marks as a short string you can paste in Roblox chat. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `16XF5XD` is level 4 on the 17th class and level 3 on the 23rd, and `31D` is every class at level 3.
 

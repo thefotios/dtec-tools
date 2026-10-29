@@ -1,4 +1,5 @@
 import { MAX_PLAYERS } from './team.mjs';
+import { ownedClasses } from './owned.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -49,18 +50,17 @@ function diamonds(cls, tiers) {
   );
 }
 
-function levelRow(level, index) {
+function levelChip(level, index) {
   return h(
-    'li',
-    { class: 'level', 'data-level': index + 1, 'data-tag': level.tag },
-    h(
-      'span',
-      { class: 'level-chip' },
-      h('span', { class: 'level-num', text: String(index + 1) }),
-      level.tag ? h('span', { class: 'level-tag', text: TAG_LABEL[level.tag] ?? level.tag }) : null,
-    ),
-    h('span', { class: 'level-text', text: level.text }),
+    'span',
+    { class: 'level-chip' },
+    h('span', { class: 'level-num', text: String(index + 1) }),
+    level.tag ? h('span', { class: 'level-tag', text: TAG_LABEL[level.tag] ?? level.tag }) : null,
   );
+}
+
+function levelRow(level, index) {
+  return h('li', { class: 'level', 'data-level': index + 1, 'data-tag': level.tag }, levelChip(level, index), h('span', { class: 'level-text', text: level.text }));
 }
 
 function matches(cls, filter) {
@@ -120,14 +120,6 @@ function header(state, actions) {
       navButton(state, actions, 'build', 'Build'),
       navButton(state, actions, 'mine', 'My classes'),
       navButton(state, actions, 'team', 'Team'),
-      h('button', {
-        type: 'button',
-        class: 'btn btn-grey',
-        'data-fk': 'owned-only',
-        'aria-pressed': String(state.store.ownedOnly),
-        onclick: () => actions.setOwnedOnly(!state.store.ownedOnly),
-        text: 'Owned only',
-      }),
     ),
     h(
       'div',
@@ -141,13 +133,63 @@ function header(state, actions) {
   );
 }
 
+// Used by My classes. view keys the expanded set and the focus keys.
+function ownRow(state, actions, cls, view) {
+  const { store } = state;
+  const max = store.owned[cls.code] ?? 0;
+  const open = state.expanded[view].has(cls.slug);
+  const k = `own-${view}-${cls.slug}`;
+  return h(
+    'li',
+    { class: `own-row${open ? ' is-open' : ''}`, 'data-class': cls.slug },
+    h(
+      'div',
+      { class: 'own-head' },
+      h(
+        'button',
+        { type: 'button', class: 'own-toggle', 'data-fk': k, 'aria-expanded': String(open), 'aria-controls': `${k}-levels`, onclick: () => actions.toggleExpanded(view, cls.slug) },
+        h('span', { class: 'class-name', text: cls.name }),
+        diamonds(cls, state.data.tiers),
+        h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }),
+      ),
+      max
+        ? h('span', { class: 'own-pill is-owned', 'data-level': max }, `L${max}`, hidden(` owned, level ${max}`))
+        : h('button', { type: 'button', class: 'own-pill', 'data-fk': `${k}-buy`, 'aria-label': `Buy ${cls.name}`, onclick: () => actions.setLevel(cls.code, 1), text: '+' }),
+    ),
+    open
+      ? h(
+          'div',
+          { class: 'own-body', id: `${k}-levels` },
+          h(
+            'ol',
+            { class: 'levels' },
+            cls.levels.map((level, i) =>
+              h(
+                'li',
+                {},
+                h(
+                  'button',
+                  { type: 'button', class: `level own-level${store.has(cls.code, i + 1) ? ' is-unlocked' : ''}`, 'data-level': i + 1, 'data-tag': level.tag, 'data-fk': `${k}-${i + 1}`, 'aria-pressed': String(store.has(cls.code, i + 1)), onclick: () => actions.setLevel(cls.code, i + 1) },
+                  levelChip(level, i),
+                  h('span', { class: 'level-text', text: level.text }),
+                  h('span', { class: 'own-check', 'aria-hidden': 'true', text: store.has(cls.code, i + 1) ? '\u2713' : '' }),
+                ),
+              ),
+            ),
+          ),
+          max ? h('button', { type: 'button', class: 'btn btn-red btn-small own-remove', 'data-fk': `${k}-remove`, onclick: () => actions.setLevel(cls.code, 0) }, 'Remove class', hidden(` ${cls.name}`)) : null,
+        )
+      : null,
+  );
+}
+
 function picker(state, actions) {
   const { classes, tiers } = state.data;
   const { store } = state;
   const open = pickerOpen ?? !state.build.base;
-  const shown = (c) => !store.ownedOnly || store.hasClass(c.code) || state.build.base?.slug === c.slug;
+  const visible = ownedClasses(classes, store.owned, state.build.base ? [state.build.base.slug] : []);
   const groups = Object.keys(tiers)
-    .map((tier) => ({ tier, items: classes.filter((c) => String(c.tier) === tier && shown(c) && matches(c, state.filter)) }))
+    .map((tier) => ({ tier, items: visible.filter((c) => String(c.tier) === tier && matches(c, state.filter)) }))
     .filter((g) => g.items.length);
   const panel = h('section', { class: `panel picker${open ? '' : ' is-collapsed'}`, 'aria-label': 'Classes' });
   const toggle = h('button', {
@@ -165,13 +207,16 @@ function picker(state, actions) {
     text: 'Change class',
   });
   panel.append(
-    h('h2', { class: 'panel-title picker-title', text: 'Classes' }),
-    toggle,
+    h('div', { class: 'picker-head' }, h('h2', { class: 'panel-title picker-title', text: 'Classes' }), toggle),
     h(
       'div',
       { class: 'picker-body', id: 'picker-body' },
-      h('input', { type: 'search', class: 'picker-filter', 'data-fk': 'filter', 'aria-label': 'Filter classes', placeholder: 'Filter classes', value: state.filter, oninput: (e) => actions.setFilter(e.target.value) }),
-      groups.length
+      visible.length
+        ? h('input', { type: 'search', class: 'picker-filter', 'data-fk': 'filter', 'aria-label': 'Filter classes', placeholder: 'Filter classes', value: state.filter, oninput: (e) => actions.setFilter(e.target.value) })
+        : null,
+      !visible.length
+        ? h('div', { class: 'own-prompt' }, h('p', { text: "You haven't marked any classes yet." }), h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'prompt-mine', onclick: () => actions.setView('mine'), text: 'My classes' }))
+        : groups.length
         ? groups.map((g) =>
             h(
               'div',
@@ -204,14 +249,7 @@ function picker(state, actions) {
               ),
             ),
           )
-        : store.ownedOnly && !store.hasAny() && !state.filter
-          ? h(
-              'div',
-              { class: 'empty' },
-              h('p', { text: 'No owned classes yet. Mark the classes you own in My classes.' }),
-              h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'empty-to-mine', onclick: () => actions.setView('mine'), text: 'Open My classes' }),
-            )
-          : h('p', { class: 'empty', text: 'No classes match' }),
+        : h('p', { class: 'empty', text: 'No classes match' }),
     ),
   );
   return panel;
@@ -228,7 +266,7 @@ function baseLevels(state, actions) {
     h(
       'div',
       { class: 'panel-head' },
-      h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), !state.store.hasAny() || state.store.hasClass(base.code) ? null : notOwned()),
+      h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), state.store.hasClass(base.code) ? null : notOwned()),
       h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'clear-base', onclick: () => actions.setBase(null) }, 'Clear', hidden(` base ${base.name}`)),
     ),
     h('ol', { class: 'levels' }, base.levels.map(levelRow)),
@@ -237,7 +275,7 @@ function baseLevels(state, actions) {
 
 // Every passive at once: one row per class (tier order), one toggle cell per level.
 // The base class is never listed: a class cannot be its own passive.
-// opts: { base, slots, has(code, level), ownedOnly, flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+// opts: { base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
@@ -312,7 +350,7 @@ function passivePicker(state, actions, opts) {
             ),
           ),
         )
-      : h('p', { class: 'empty', text: opts.ownedOnly && !opts.hasAny ? 'No owned classes yet. Mark the classes you own in My classes.' : 'No passives match' }),
+      : h('p', { class: 'empty', text: !f && opts.ownedOnly && opts.emptyText ? opts.emptyText : 'No passives match' }),
   );
 }
 
@@ -325,9 +363,9 @@ function slotsPanel(state, actions) {
       base: state.build.base,
       slots: state.build.slots,
       has: (code, n) => store.has(code, n),
-      ownedOnly: store.ownedOnly,
-      hasAny: store.hasAny(),
-      flag: (code, n) => store.hasAny() && !store.has(code, n),
+      ownedOnly: true,
+      flag: (code, n) => !store.has(code, n),
+      emptyText: 'No owned passives to pick. Mark classes in My classes.',
       filter: state.passiveFilter,
       filterKey: 'passive-filter',
       keyPrefix: 'passive',
@@ -345,7 +383,7 @@ function combined(state) {
   if (!base) return null;
   const rows = [
     ...base.levels.map((l, i) => ({ label: `Base ${i + 1}`, level: i + 1, text: l.text })),
-    ...slots.map((s, i) => ({ label: `Passive ${i + 1}`, level: s.level, text: s.cls.levels[s.level - 1].text, from: `${s.cls.name} ${s.level}`, unowned: store.hasAny() && !store.has(s.cls.code, s.level) })),
+    ...slots.map((s, i) => ({ label: `Passive ${i + 1}`, level: s.level, text: s.cls.levels[s.level - 1].text, from: `${s.cls.name} ${s.level}`, unowned: !store.has(s.cls.code, s.level) })),
   ];
   return h(
     'section',
@@ -368,15 +406,11 @@ function combined(state) {
 }
 
 function mineView(state, actions) {
-  const { classes, tiers } = state.data;
-  const { store, mine } = state;
+  const { classes } = state.data;
+  const { mine, store } = state;
   const f = mine.filter.trim().toLowerCase();
-  const rows = classes
-    .filter((c) => c.name.toLowerCase().includes(f) && (!mine.ownedOnly || store.hasClass(c.code)))
-    .sort((a, b) => a.tier - b.tier);
+  const rows = classes.filter((c) => (mine.editing || store.hasClass(c.code)) && c.name.toLowerCase().includes(f)).sort((a, b) => a.tier - b.tier);
   const code = actions.rosterCode();
-  const segment = (label, value) =>
-    h('button', { type: 'button', class: 'btn btn-small btn-grey', 'data-fk': `mine-${label}`, 'aria-pressed': String(mine.ownedOnly === value), onclick: () => actions.setMineOwnedOnly(value), text: label });
   return h(
     'main',
     { class: 'mine' },
@@ -401,40 +435,21 @@ function mineView(state, actions) {
     ),
     h(
       'section',
-      { class: 'panel mine-grid-panel', 'aria-label': 'My classes' },
-      h('h2', { class: 'panel-title', text: 'My classes' }),
+      { class: 'panel mine-panel', 'aria-label': 'My classes' },
+      h(
+        'div',
+        { class: 'panel-head' },
+        h('h2', { class: 'panel-title', text: 'My classes' }),
+        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'mine-edit', 'aria-pressed': String(mine.editing), onclick: () => actions.setMineEditing(!mine.editing), text: mine.editing ? 'Done' : 'Edit' }),
+      ),
       h(
         'div',
         { class: 'mine-controls' },
         h('input', { type: 'search', class: 'picker-filter', 'data-fk': 'mine-filter', 'aria-label': 'Filter my classes', placeholder: 'Filter classes', value: mine.filter, oninput: (e) => actions.setMineFilter(e.target.value) }),
-        h('div', { class: 'segment', role: 'group', 'aria-label': 'Show' }, segment('All classes', false), segment('Owned only', true)),
       ),
       rows.length
-        ? h(
-            'ul',
-            { class: 'mine-grid' },
-            rows.map((c) =>
-              h(
-                'li',
-                { class: 'mine-row', 'data-class': c.slug },
-                h(
-                  'label',
-                  { class: 'mine-name' },
-                  h('input', { type: 'checkbox', 'data-fk': `own-${c.slug}`, checked: store.hasClass(c.code), onchange: () => actions.toggleClass(c.code) }),
-                  h('span', { text: c.name }),
-                ),
-                diamonds(c, tiers),
-                h(
-                  'div',
-                  { class: 'own-levels', role: 'group', 'aria-label': `${c.name} levels` },
-                  [1, 2, 3, 4, 5].map((n) =>
-                    h('button', { type: 'button', class: 'own-level', 'data-level': n, 'data-fk': `own-${c.slug}-${n}`, 'aria-pressed': String(store.has(c.code, n)), 'aria-label': `${c.name} level ${n}`, onclick: () => actions.setLevel(c.code, n), text: String(n) }),
-                  ),
-                ),
-              ),
-            ),
-          )
-        : h('p', { class: 'empty', text: 'No classes match' }),
+        ? h('ul', { class: 'own-list' }, rows.map((c) => ownRow(state, actions, c, 'mine')))
+        : h('p', { class: 'empty', text: !mine.editing && !store.hasAny() ? "You haven't marked any classes yet. Tap Edit to add some." : 'No classes match' }),
     ),
   );
 }
@@ -447,6 +462,8 @@ function cardEditor(state, actions, i) {
   const { classes } = state.data;
   const build = state.team.builds[i];
   const owned = state.team.owned[i];
+  // A card with an imported roster lists only what that roster owns, plus its selected items.
+  const choices = owned ? ownedClasses(classes, owned, build.base ? [build.base.slug] : []) : classes;
   return h(
     'div',
     { class: 'card-editor' },
@@ -454,15 +471,14 @@ function cardEditor(state, actions, i) {
       'select',
       { class: 'slot-select', 'data-fk': `team-${i}-base`, 'aria-label': `Player ${i + 1} base class`, onchange: (e) => actions.setTeamBase(i, e.target.value || null) },
       h('option', { value: '', text: 'Choose base class' }),
-      classes.map((c) => h('option', { value: c.slug, selected: build.base?.slug === c.slug, text: c.name })),
+      choices.map((c) => h('option', { value: c.slug, selected: build.base?.slug === c.slug, text: c.name })),
     ),
     build.base
       ? passivePicker(state, actions, {
           base: build.base,
           slots: build.slots,
-          has: () => true,
-          ownedOnly: false,
-          hasAny: false,
+          has: (code, n) => (owned?.[code] ?? 0) >= n,
+          ownedOnly: Boolean(owned),
           flag: (code, n) => Boolean(owned) && (owned[code] ?? 0) < n,
           filter: state.team.passiveFilter,
           filterKey: `team-${i}-passive-filter`,

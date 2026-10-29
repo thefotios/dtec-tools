@@ -18,8 +18,10 @@ const state = {
   // Local view state; never part of the share URL.
   view: new URLSearchParams(window.location.search).get('view') === 'mine' ? 'mine' : 'build',
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
+  // Expanded ownership rows are UI-only, per view.
+  expanded: { build: new Set(), mine: new Set() },
   team: { builds: [], store: null, owned: [], errors: {}, editing: null, passiveFilter: '' },
-  mine: { filter: '', ownedOnly: false, draft: '', error: null, notices: [], copy: null },
+  mine: { editing: false, filter: '', draft: '', error: null, notices: [], copy: null },
 };
 
 state.team.store = createTeamStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
@@ -155,24 +157,21 @@ const actions = {
     refreshTeamOwned();
     paint();
   },
-  setOwnedOnly(value) {
-    state.store.setOwnedOnly(value);
+  setMineEditing(value) {
+    state.mine.editing = value;
+    paint();
+  },
+  toggleExpanded(view, slug) {
+    const set = state.expanded[view];
+    if (!set.delete(slug)) set.add(slug);
     paint();
   },
   setLevel(code, level) {
     state.store.setLevel(code, level);
     paint();
   },
-  toggleClass(code) {
-    state.store.toggleClass(code);
-    paint();
-  },
   setMineFilter(value) {
     state.mine.filter = value;
-    paint();
-  },
-  setMineOwnedOnly(value) {
-    state.mine.ownedOnly = value;
     paint();
   },
   rosterCode: () => encodeRoster(state.data.classes, state.store.owned),

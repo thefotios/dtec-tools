@@ -69,27 +69,33 @@ export function decodeRoster(classes, text) {
   return { owned, notices };
 }
 
+// Extra fields in older payloads (such as the retired ownedOnly flag) are ignored.
+// Classes to list when filtering by ownership: owned ones plus any in keep (slugs).
+export function ownedClasses(classes, owned, keep = []) {
+  return classes.filter((c) => (owned[c.code] ?? 0) > 0 || keep.includes(c.slug));
+}
+
 function load(storage) {
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
-    if (parsed?.v !== 1 && parsed?.v !== STORE_VERSION) return { owned: {}, ownedOnly: false };
+    if (parsed?.v !== 1 && parsed?.v !== STORE_VERSION) return {};
     const owned = {};
     for (const [code, value] of Object.entries(parsed.owned ?? {})) {
       const max = maxOf(value);
       if (max) owned[code] = max;
     }
-    return { owned, ownedOnly: parsed.ownedOnly === true };
+    return owned;
   } catch {
-    return { owned: {}, ownedOnly: false };
+    return {};
   }
 }
 
 // Reads and writes never throw: a blocked store degrades to in-memory state.
 export function createStore(storage) {
-  let { owned, ownedOnly } = load(storage);
+  let owned = load(storage);
   const save = () => {
     try {
-      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, owned, ownedOnly }));
+      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, owned }));
     } catch {
       /* in-memory only */
     }
@@ -105,25 +111,18 @@ export function createStore(storage) {
     get owned() {
       return owned;
     },
-    get ownedOnly() {
-      return ownedOnly;
-    },
     has: (code, level) => (owned[code] ?? 0) >= level,
     hasAny: () => Object.keys(owned).length > 0,
     hasClass: (code) => (owned[code] ?? 0) > 0,
-    // Clicking the current max steps back one level, so a class can return to unowned.
+    // Clicking the current max steps back one level, so a class can return to unowned; 0 removes the class.
     setLevel(code, n) {
-      set(code, (owned[code] ?? 0) === n ? n - 1 : n);
+      set(code, n <= 0 ? 0 : (owned[code] ?? 0) === n ? n - 1 : n);
     },
     toggleClass(code) {
       set(code, owned[code] ? 0 : 1);
     },
     replace(map) {
       owned = map;
-      save();
-    },
-    setOwnedOnly(value) {
-      ownedOnly = Boolean(value);
       save();
     },
   };

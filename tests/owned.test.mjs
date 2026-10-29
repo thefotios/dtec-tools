@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { encodeRoster, decodeRoster, createStore } from '../src/owned.mjs';
+import { encodeRoster, decodeRoster, createStore, ownedClasses } from '../src/owned.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const decoded = (text, list = classes) => decodeRoster(list, text);
@@ -133,33 +133,29 @@ test('appending a class keeps existing codes decoding to the same map', () => {
 test('store: storage that throws on read yields an empty map', () => {
   const store = createStore(throwing('read'));
   assert.deepEqual(store.owned, {});
-  assert.equal(store.ownedOnly, false);
 });
 
 test('store: storage that throws on write keeps the in-memory map', () => {
   const store = createStore(throwing('write'));
   store.setLevel('mi', 2);
   assert.deepEqual(store.owned, { mi: 2 });
-  store.setOwnedOnly(true);
-  assert.equal(store.ownedOnly, true);
 });
 
-test('store: persists map and flag as v2, and reloads them', () => {
+test('store: persists the map as v2, and reloads them', () => {
   const storage = memory();
   const a = createStore(storage);
   a.setLevel('mi', 3);
-  a.setOwnedOnly(true);
-  assert.equal(JSON.parse(storage.data.get(KEY)).v, 2);
+  const saved = JSON.parse(storage.data.get(KEY));
+  assert.equal(saved.v, 2);
+  assert.equal('ownedOnly' in saved, false);
   const b = createStore(storage);
   assert.deepEqual(b.owned, { mi: 3 });
-  assert.equal(b.ownedOnly, true);
 });
 
-test('store: v1 array payload migrates to each array max', () => {
+test('store: v1 array payload migrates to each array max and ignores the retired ownedOnly field', () => {
   const v1 = JSON.stringify({ v: 1, owned: { mi: [1, 3], sc: [5], bad: [], zz: 'x' }, ownedOnly: true });
   const store = createStore(memory({ [KEY]: v1 }));
   assert.deepEqual(store.owned, { mi: 3, sc: 5 });
-  assert.equal(store.ownedOnly, true);
 });
 
 test('store: setLevel sets the max, and clicking the current max steps back one', () => {
@@ -206,4 +202,21 @@ test('store: replace sets the whole map', () => {
   assert.deepEqual(store.owned, { mi: 2 });
   assert.equal(store.has('mi', 2), true);
   assert.equal(store.has('mi', 3), false);
+});
+
+test('store: setLevel 0 removes the class', () => {
+  const store = createStore(memory());
+  store.setLevel('mi', 3);
+  store.setLevel('mi', 0);
+  assert.deepEqual(store.owned, {});
+  store.setLevel('mi', 0);
+  assert.deepEqual(store.owned, {});
+});
+
+test('ownedClasses: owned plus kept slugs, nothing when nothing is owned', () => {
+  const list = [{ code: 'a', slug: 'aa' }, { code: 'b', slug: 'bb' }, { code: 'c', slug: 'cc' }];
+  assert.deepEqual(ownedClasses(list, { b: 2 }).map((c) => c.slug), ['bb']);
+  assert.deepEqual(ownedClasses(list, { b: 2 }, ['cc']).map((c) => c.slug), ['bb', 'cc']);
+  assert.deepEqual(ownedClasses(list, {}).map((c) => c.slug), []);
+  assert.deepEqual(ownedClasses(list, {}, ['cc']).map((c) => c.slug), ['cc']);
 });
