@@ -16,16 +16,17 @@ const state = {
   linkView: false,
   passives: null,
   notices: [],
-  filter: '',
   passiveFilter: '',
+  // True while the loadout panel shows the passive picker.
+  loadoutEditing: false,
   copy: null,
   // Local view state; never part of the share URL.
-  view: new URLSearchParams(window.location.search).get('view') === 'mine' ? 'mine' : 'build',
+  view: 'classes',
   store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
-  // Expanded ownership rows are UI-only, per view.
-  expanded: { build: new Set(), mine: new Set() },
+  // Rows expanded by hand in edit mode.
+  expanded: new Set(),
   team: { builds: [], store: null, owned: [], errors: {}, editing: null, passiveFilter: '' },
-  mine: { editing: false, filter: '', draft: '', error: null, notices: [], copy: null },
+  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], copy: null },
 };
 
 state.team.store = createTeamStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
@@ -48,7 +49,7 @@ function syncFromLocation() {
     if (serializeTeam(parsed.builds) !== path) replacePath(window, serializeTeam(parsed.builds));
     return;
   }
-  if (state.view === 'team') state.view = 'build';
+  state.view = 'classes';
   const parsed = parsePath(state.data.classes, path);
   const segments = path.split('/').filter(Boolean).length;
   // "/" restores the last base; a base without a passive run loads its saved set; a run is a link and is shown as is.
@@ -56,6 +57,7 @@ function syncFromLocation() {
   state.linkView = Boolean(parsed.base) && segments > 1;
   const slots = !base ? [] : state.linkView ? parsed.slots : state.passives.get(base.slug);
   state.build = { base, slots };
+  state.loadoutEditing = false;
   if (base) state.passives.setLast(base.slug);
   state.notices = parsed.notices;
   state.copy = null;
@@ -95,10 +97,6 @@ function setSlots(slots) {
 
 const actions = {
   retry: () => load(),
-  setFilter(value) {
-    state.filter = value;
-    paint();
-  },
   // Team has its own URL; leaving it returns to the single-build URL.
   setView(view) {
     const was = state.view;
@@ -169,45 +167,58 @@ const actions = {
     refreshTeamOwned();
     paint();
   },
-  setMineEditing(value) {
-    state.mine.editing = value;
+  setEditing(value) {
+    state.list.editing = value;
+    state.expanded.clear();
     paint();
   },
-  toggleExpanded(view, slug) {
-    const set = state.expanded[view];
-    if (!set.delete(slug)) set.add(slug);
+  // Outside edit mode a row selects its class; in edit mode it only expands.
+  selectClass(slug) {
+    if (!state.list.editing) return actions.setBase(slug);
+    if (!state.expanded.delete(slug)) state.expanded.add(slug);
     paint();
   },
   setLevel(code, level) {
     state.store.setLevel(code, level);
     paint();
   },
-  setMineFilter(value) {
-    state.mine.filter = value;
+  setListFilter(value) {
+    state.list.filter = value;
+    paint();
+  },
+  toggleRoster() {
+    state.list.rosterOpen = !state.list.rosterOpen;
+    paint();
+  },
+  jumpToLoadout() {
+    document.getElementById('loadout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+  setLoadoutEditing(value) {
+    state.loadoutEditing = value;
     paint();
   },
   rosterCode: () => encodeRoster(state.data.classes, state.store.owned),
   importRoster(text) {
     const r = decodeRoster(state.data.classes, text);
-    state.mine.copy = null;
+    state.list.copy = null;
     if (r.error) {
-      state.mine.error = r.error;
-      state.mine.notices = [];
-      state.mine.draft = text;
+      state.list.error = r.error;
+      state.list.notices = [];
+      state.list.draft = text;
     } else {
       state.store.replace(r.owned);
-      state.mine.error = null;
-      state.mine.notices = r.notices;
-      state.mine.draft = '';
+      state.list.error = null;
+      state.list.notices = r.notices;
+      state.list.draft = '';
     }
     paint();
   },
   async copyRoster() {
     try {
       await navigator.clipboard.writeText(actions.rosterCode());
-      state.mine.copy = 'copied';
+      state.list.copy = 'copied';
     } catch {
-      state.mine.copy = 'failed';
+      state.list.copy = 'failed';
     }
     paint();
   },
@@ -222,6 +233,7 @@ const actions = {
     if (base && base.slug === state.build.base?.slug && !state.linkView) return paint();
     state.build = { base, slots: base ? state.passives.get(base.slug) : [] };
     state.linkView = false;
+    state.loadoutEditing = false;
     state.passives.setLast(base?.slug ?? null);
     state.notices = [];
     state.copy = null;

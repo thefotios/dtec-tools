@@ -12,21 +12,29 @@ Class codes:
 
 $table
 
-## My classes and roster code
+## Classes page
 
-My classes lists the classes you own as rows with a pill showing the level (`L3`). Expanding a row lists the five levels with their effects; tapping a level unlocks every level up to it (levels are cumulative), and tapping your current top level steps back one level. "Remove class" returns it to unowned. Marks persist in the browser.
+The Classes page has two columns: your classes on the left, the selected class's loadout on the right. On a phone the loadout follows the class list, and a "Loadout" button in the list header jumps to it.
 
-"Edit" in the My classes panel lists every class, with a "+" pill that buys level 1 of an unowned class; "Done" returns to the owned list. Edit mode is not saved and is not part of any URL. The filter box applies in both modes.
+The class list shows the classes you own in tier order, each with a pill showing the level (`L3`). Tapping a class selects it as the base class. Its five levels head the loadout column, unlocked levels in color and locked ones dimmed and marked "Locked". Marks persist in the browser.
 
-The build page lists only the classes you own, plus the selected base. A selected base or passive you don't own is flagged "Not owned". With no classes marked, the class list says so and links to My classes. A team card with an imported roster is filtered the same way by that roster.
+"Edit" in the class list is the only place to change what you own. It shows every class, with a "+" pill that buys level 1 of an unowned class. Tapping a row only expands it and never changes the selected class. Tapping a level unlocks every level up to it (levels are cumulative), and tapping your current top level steps back one level. "Remove class" returns a class to unowned. "Done" returns to the owned list. Edit mode is not saved and is not part of any URL. The filter box applies in both modes.
+
+A selected base class or passive you don't own is flagged "Not owned". With no classes marked, the list says so and the loadout asks you to pick a class. A team card with an imported roster is filtered by that roster.
 
 ## Passive sets
 
-Each base class has its own set of up to 3 passives, saved in the browser. Choosing a class on the build page loads that class's saved set, or an empty set if none is saved. Toggling or clearing passives saves them into the current class's set. The same passive can be in any number of classes' sets, but not twice in one set, and a class is never its own passive. The last selected class is remembered, and opening `/` restores it with its saved set. A class path without a passive run, such as `/scout`, also loads the saved set.
+Each base class has its own set of up to 3 passives, saved in the browser. Selecting a class loads that class's saved set, or an empty set if none is saved. The same passive can be in any number of classes' sets, but not twice in one set, and a class is never its own passive. The last selected class is remembered, and opening `/` restores it with its saved set. A class path without a passive run, such as `/scout`, also loads the saved set.
 
-A link with passives, such as `/scout/sal2sal3prie3`, shows the link's passives without changing the saved set for that class. Editing passives on that view saves the displayed set. Clicking the already-selected class while viewing a link reloads its saved set.
+The loadout panel is titled "<Class> passives (n/3)". It lists the selected passives as level rows headed by their class, and "Clear" removes the passives.
 
-The passive picker has one row per owned class (plus classes of selected passives), with levels 1 to 3 written out like the My classes rows. Select up to 3 across the whole list; the base class is not listed. Levels above what you own are shown gray and marked "Locked", and cannot be selected, so you can see what to level next. The "Unlocked only" checkbox in the picker header hides locked levels, and the choice is saved. Team card editors use the earlier all-at-once picker.
+"Edit" in the loadout opens the passive picker and "Done" closes it. The picker has one row per owned class (plus classes of selected passives), with levels 1 to 3 written out like the class list rows. Select up to 3 across the whole list; the base class is not listed. Levels above what you own are shown gray and marked "Locked", and cannot be selected, so you can see what to level next. The "Unlocked only" checkbox in the picker header hides locked levels, and the choice is saved. Team card editors use the earlier all-at-once picker.
+
+A link with passives, such as `/scout/sal2sal3prie3`, shows the link's passives without changing the saved set for that class. Editing passives on that view saves the displayed set. Selecting the already-selected class while viewing a link reloads its saved set.
+
+## Roster code
+
+The Roster code section at the top of the class list is collapsed by default. It shows your code with a Copy button and a field to paste and import another code.
 
 The roster code encodes your marks as a short string you can paste in Roblox chat. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `16XF5XD` is level 4 on the 17th class and level 3 on the 23rd, and `31D` is every class at level 3.
 
