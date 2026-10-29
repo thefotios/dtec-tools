@@ -16,7 +16,7 @@ execution: code
 - Means: static, framework-free ES-module app on GitHub Pages (KTD1, KTD2) driven by `data/classes.json` as the single source of truth (KTD3), with frozen short codes and a lenient resolver (KTD4, KTD5), History API path routing with a 404.html fallback (KTD8), and a built-ins-only check/build/test toolchain (KTD12).
 - Authority hierarchy: user statements in the session > this plan's Product Contract > Key Technical Decisions > implementer judgment.
 - Stop conditions: a class entry in `data/classes.json` fails the check script; a URL in the Test scenarios resolves differently than specified; the Pages deploy needs any dependency beyond Node built-ins and the official Pages actions; theme work would require changing the data contract.
-- Execution profile: implementation runs on sonnet; one unit per commit in the order U1, U2, U3, U4, U6, U5; each unit's Verification passes before the next unit starts.
+- Execution profile: implementation runs on sonnet; one unit per commit in the order U1, U2, U3, U4, U6, U7, U5; each unit's Verification passes before the next unit starts.
 - Tail ownership: the implementer runs the Verification Contract, opens the PR with evidence in the body, and hands the deployed deep-link smoke check to the user (Pages must be enabled on the repo).
 
 ---
@@ -68,7 +68,14 @@ The game shows class effects one class at a time and passive rolls one slot at a
 - R23. The player can mark, per class, which levels 1 to 5 they own; marks persist in the browser across visits and never appear in the URL.
 - R24. An "owned only" toggle filters the base picker to owned classes and limits each slot's class and level choices to owned class levels 1 to 3; it never alters a build loaded from a URL, and a slot's current value always stays selectable. Premise: the game rolls passives only from owned class levels (in-game hint: "Unlocking class levels allows you to roll them as Passives").
 - R25. A loaded build that uses unowned levels still renders in full, with those slots or the base marked by a "not owned" label (not only muted styling, which would read like the MASTER row).
-- R26. Ownership can be exported to and imported from a short text string, so it survives a browser change. Invalid import text shows an inline error and leaves marks unchanged. With "owned only" on and nothing owned, the picker shows an empty message pointing to the ownership toggles.
+- R26. Ownership exports to and imports from a roster code short enough to paste in Roblox chat: no URL, no spaces needed, at most 1 + (class count) characters. Invalid import text shows an inline error and leaves marks unchanged. With "owned only" on and nothing owned, the picker shows an empty message pointing to the ownership toggles.
+- R30. Roster code format: one version character, then one character per registered class in registry order, each character encoding that class's five owned-level bits; trailing all-unowned characters are trimmed. Decoding is case-insensitive, ignores hyphens and spaces, and treats classes past the end of the code as unowned, so codes stay valid as classes are added.
+
+**Team planning**
+
+- R31. A team view holds up to 8 players. Each player has a local label, an optional imported roster code, and a build (base plus up to 3 passives).
+- R32. The team view renders players as a grid of compact build cards; each card flags parts the player does not own per their roster, when one is imported.
+- R33. The team's builds share as one URL (`/team/<build>~<build>…`, each build `<baseSlug>.<passive run>`); labels and rosters stay in the lead's browser and never enter the URL.
 
 **Hosting and quality**
 
@@ -88,12 +95,11 @@ The game shows class effects one class at a time and passive rolls one slot at a
 ### Scope Boundaries
 
 - In: 31-class data file, viewer, URL codec, theme, check script, tests, Pages deploy, README.
-- In: per-browser ownership marks with filtering and export/import.
+- In: per-browser ownership marks with filtering, the chat-pasteable roster code, and a team planning view for up to 8 players.
 - Out: live game data, log or OCR dashboards, roll-odds or shard calculators, slot rarity, daily stock state, accounts, server-side storage, analytics.
 
 #### Deferred to Follow-Up Work
 
-- Team grid: up to 8 builds in one shareable URL rendered side by side (for example `/team/scout.sal2sal3prie3~miner.rec1c2`). Client-side only; reuses the single-build codec (KTD14).
 - Live run room: players join a shared run-id and edit their own build in real time, optionally with chat. Needs a relay outside GitHub Pages; leading option is a Cloudflare Worker with one Durable Object per room over WebSockets. Separate plan.
 
 ### Success Criteria
@@ -121,8 +127,9 @@ The game shows class effects one class at a time and passive rolls one slot at a
 - KTD11. **Theme via CSS custom properties, font Nunito 700/900 from Google Fonts.** Palette tokens on `:root`; Nunito's rounded heavy weights approximate the game's look; fallback `system-ui, sans-serif`. Rationale: concrete, swappable, no asset bundling.
 - KTD12. **Built-ins-only toolchain.** `scripts/check-data.mjs`, `scripts/build.mjs`, `scripts/serve.mjs` use `node:` built-ins only; tests use `node --test`. `package.json` holds scripts only, no dependencies. Rationale: user constraint; nothing to install in CI.
 - KTD13. **Deploy with the official Pages actions.** `actions/checkout`, `actions/configure-pages`, `actions/upload-pages-artifact`, `actions/deploy-pages`; the implementer confirms current major versions at execution time. Rationale: standard, token-free Pages deploy.
-- KTD14. **Single-build codec is its own pure unit.** Parsing one build string to `{base, slots, notices}` and serializing it back live in `src/router.mjs` as pure functions with no DOM or history access. Rationale: the deferred team grid and run room reuse it unchanged.
-- KTD15. **Ownership in `localStorage`, keyed by class code, levels as a set.** One versioned key holds the ownership map (frozen code to owned level numbers) and the "owned only" flag; reads and writes are wrapped in try/catch so a blocked or empty store degrades to "nothing owned" and the app still works. Levels are a set, not a max, because levels 4 and 5 unlock by depth independently of 2 and 3. Export uses the same `<code><levels>` token style (for example `sal123sc12`) so the format matches the URL codec. Rationale: browser-local state needs no server; frozen codes keep stored marks valid as the roster grows.
+- KTD14. **Single-build codec is its own pure unit.** Parsing one build string to `{base, slots, notices}` and serializing it back live in `src/router.mjs` as pure functions with no DOM or history access. Rationale: the team view and the deferred run room reuse it unchanged.
+- KTD15. **Ownership in `localStorage`, keyed by class code, levels as a set.** One versioned key holds the ownership map (frozen code to owned level numbers) and the "owned only" flag; reads and writes are wrapped in try/catch so a blocked or empty store degrades to "nothing owned" and the app still works. Levels are a set, not a max, because levels 4 and 5 unlock by depth independently of 2 and 3. Rationale: browser-local state needs no server; frozen codes keep stored marks valid as the roster grows.
+- KTD16. **Roster code uses the Crockford base32 symbol set with a letters-first value map.** Five owned-level bits per class fit one base32 character exactly (bit 0 = level 1 … bit 4 = level 5). The symbols are Crockford's 32 (digits plus letters without I, L, O, U), so they avoid look-alike characters. Values 0 to 21 map to the 22 letters `ABCDEFGHJKMNPQRSTVWXYZ` and values 22 to 31 to the digits `0`–`9`, so the common patterns (none, L1, L1–2, L1–3, L1–4) are letters and long digit runs, which Roblox chat tends to replace with `#`, are rare. The version character is value 0 (`A`) for this format. Class order is the order of `data/classes.json`; new classes are appended at the end, and the check script fails when that order differs from the insertion order of the append-only `scripts/codes.lock.json`. The UI sorts for display, so file order only drives the roster code. Decoding also maps Crockford aliases `O`→`0` and `I`/`L`→`1`. Example: 31 classes all at L1–3 encode as `A` plus 31 `H` characters (32 chars). Rationale: one character per class is simple to reason about and to extend, and the user wants a single short version marker rather than a format tag.
 
 ### High-Level Technical Design
 
@@ -157,7 +164,7 @@ resolve   := exactCode | exactSlug | uniqueSlugPrefix | invalid
 canonical := "/" baseSlug [ "/" (slotCode slotLevel){1,3} ]
 ```
 
-Directional new-class code rule: given new slug `s`, existing codes `C`, and all other slugs `S`, pick the smallest `k` such that `p = s[0..k)` is not in `C` and no member of `S` starts with `p`; if no `k` below the slug length qualifies, use the full slug. Examples against the current roster: `cannoneer` gives `ca`; `priestess` gives `priests` (because `pries` and `priest` both prefix the slug `priest`); `prince` gives `prince`. Registered codes are never recomputed.
+Directional new-class code rule: given new slug `s`, existing codes `C`, and all other slugs `S`, pick the smallest `k` such that `p = s[0..k)` is not in `C` and no member of `S` starts with `p`; if no `k` below the slug length qualifies, use the full slug. Examples against the current roster: `cannoneer` gives `ca`; `priestess` gives `prieste` (because `pries` and `priest` both prefix the slug `priest`); `prince` gives `prince`. Registered codes are never recomputed.
 
 ### Output Structure
 
@@ -169,7 +176,8 @@ drill-dashboard/
 │   ├── resolve.mjs             pure tokenizer + token resolution (shared)
 │   ├── router.mjs              pure build codec + history wrapper
 │   ├── render.mjs              DOM builders for picker, base, slots, combined panel
-│   ├── owned.mjs               ownership store, export/import codec
+│   ├── owned.mjs               ownership store, roster code codec
+│   ├── team.mjs                team codec (up to 8 builds)
 │   └── theme.css               custom properties, layout, level/tier colors
 ├── data/
 │   └── classes.json            single source of truth (exists)
@@ -183,7 +191,8 @@ drill-dashboard/
 │   ├── resolve.test.mjs        resolution, tokenizer, code rule
 │   ├── check-data.test.mjs     checkData violations and registry stability
 │   ├── router.test.mjs         parse and canonicalize scenarios
-│   └── owned.test.mjs          ownership codec and storage fallback
+│   ├── owned.test.mjs          roster code and storage fallback
+│   └── team.test.mjs           team codec
 ├── .github/workflows/pages.yml
 ├── package.json                scripts only
 ├── .gitignore                  dist/
@@ -216,7 +225,7 @@ drill-dashboard/
   - Run `sal2sal3prie3` tokenizes to `[sal,2],[sal,3],[prie,3]`.
   - Runs `sal4` and `sal0` each yield one invalid group.
   - Code rule for slug `cannoneer` against the current roster yields `ca`.
-  - Code rule for slug `priestess` against the current roster yields `priests`.
+  - Code rule for slug `priestess` against the current roster yields `prieste`.
   - Code rule for slug `prince` against the current roster yields `prince`; with Prince added, `prin` resolves to Princess and `prince` to Prince.
   - With a hypothetical `cannoneer` entry (code `ca`) added, token `c` still resolves to Crafter and token `ca` resolves to Cannoneer.
   - Registry stability: with `cannoneer`/`ca` registered, adding `cart` yields `car` and `checkData` reports no violation for Cannoneer.
@@ -225,7 +234,7 @@ drill-dashboard/
   - A data entry whose code differs from the registry gets a violation.
   - A data entry with `tier: 6` gets a violation; `tier: 4` passes although `tiers` keys are strings.
 - **Execution note:** implement the resolver and code rule test-first; the scenarios above are the contract later units rely on.
-- **Verification:** `node --test tests/` passes; `node scripts/check-data.mjs` exits 0.
+- **Verification:** `node --test` passes; `node scripts/check-data.mjs` exits 0.
 
 ### U2. App shell, router, and local dev server
 
@@ -256,7 +265,7 @@ drill-dashboard/
   - `/jackolantern/j1` resolves the event class by slug and code.
   - Serializing base Scout with slots `[Salvager 2, Salvager 3]` gives `/scout/sal2sal3`.
   - Manual: run the dev server, open `/scout/sal2`, confirm it renders with no console errors; change base, press back, confirm the previous base returns.
-- **Verification:** `node --test tests/` passes; the dev server serves `/scout/sal2` with HTTP 200 and the view renders.
+- **Verification:** `node --test` passes; the dev server serves `/scout/sal2` with HTTP 200 and the view renders.
 
 ### U3. UI and game theme
 
@@ -287,24 +296,32 @@ drill-dashboard/
   - Manual at `/scout/sal2pri3`: the notice bar names `pri3` as ambiguous; dismissing it removes the line.
   - Manual: Copy link shows "Link copied" and the pasted URL is canonical and absolute.
   - Manual: the whole build can be made with keyboard only; focus rings are visible.
-- **Verification:** `node --test tests/` still passes; browser check at 390px, 1280px, and 3440px with zero console errors.
+- **Verification:** `node --test` still passes; browser check at 390px, 1280px, and 3440px with zero console errors.
 
 ### U6. Ownership marks and filtering
 
 - **Goal:** let the player mark owned class levels and filter selection by them.
-- **Requirements:** R23, R24, R25, R26; KTD15.
+- **Requirements:** R23, R24, R25, R26, R30; KTD15, KTD16.
 - **Dependencies:** U4.
-- **Files:** `src/owned.mjs`, `src/render.mjs`, `src/app.mjs`, `src/theme.css`, `tests/owned.test.mjs`.
+- **Files:** `src/owned.mjs`, `src/render.mjs`, `src/app.mjs`, `src/theme.css`, `scripts/check-data.mjs`, `tests/owned.test.mjs`, `tests/check-data.test.mjs`.
 - **Approach:**
-  1. `owned.mjs` exports a pure codec (map to export string and back, ignoring unknown codes and levels outside 1 to 5) and a small store that loads and saves the map through an injectable storage object.
-  2. The base panel gets a per-level owned toggle on each of the five level rows; the picker card shows an owned indicator.
-  3. A header toggle "Owned only" filters the picker and slot choices per R24; filter state is also kept in storage.
-  4. Unowned parts of a loaded build get a muted style and a "not owned" label per R25.
-  5. An export/import control shows the string and accepts a pasted one.
+  1. `owned.mjs` exports a pure roster codec per KTD16 (ownership map plus ordered class list to code, and back) and a small store that loads and saves the map through an injectable storage object.
+  2. `checkData` gains the KTD16 order rule: data order must match registry insertion order.
+  3. The base panel gets a per-level owned toggle on each of the five level rows; the picker card shows an owned indicator.
+  4. A header toggle "Owned only" filters the picker and slot choices per R24; filter state is also kept in storage.
+  5. Unowned parts of a loaded build get a muted style and a "not owned" label per R25.
+  6. A "Roster code" control shows the code with a copy button (displayed in groups of four separated by hyphens) and accepts a pasted one.
 - **Patterns to follow:** pure codec plus thin side-effect wrapper, same as U2's router.
 - **Test scenarios:**
-  - Exporting `{sal: [1,2,3], sc: [1,2]}` gives `sal123sc12`, and importing it gives the same map.
-  - Importing `sal123zzz1sc9` keeps `sal` levels 1 to 3, drops `zzz1`, and drops level 9.
+  - Empty ownership encodes to `A` and decodes to an empty map.
+  - Every class at levels 1 to 3 encodes to `A` plus one `H` per class, in data order.
+  - Miner (first class) at levels 1 to 5 only encodes to `A9` (value 31 maps to `9`), trailing unowned classes trimmed.
+  - Round trip: a random ownership map over all 31 classes decodes back to itself.
+  - Decoding `a9`, `A-9`, and `A 9` all equal decoding `A9`; `O` decodes as `0` and `I`/`L` as `1`.
+  - A code longer than the class list ignores extra characters with a notice; a code shorter than the list leaves later classes unowned.
+  - A code with an unknown version character, or a character outside the symbol set (`U`, `!`), is rejected with an error and leaves marks unchanged.
+  - Appending a new class to the data and registry leaves every existing code decoding to the same map.
+  - `checkData` reports a violation when two data entries are swapped relative to the registry order.
   - A storage object that throws on read yields an empty map and no exception.
   - A storage object that throws on write leaves the in-memory map updated and raises no exception.
   - Manual: mark Salvager 1 to 3, enable "Owned only", confirm the picker lists only Salvager and slot level buttons offer only owned levels.
@@ -312,7 +329,31 @@ drill-dashboard/
   - Manual: reload the page; marks and the filter toggle persist.
   - Manual: with "Owned only" on and nothing owned, open `/scout/sal2`; slot 1 still shows Salvager 2, labeled not owned, and the picker shows the empty message.
   - Manual: importing `!!!` shows an inline error and leaves marks unchanged.
-- **Verification:** `node --test tests/` passes; the manual scenarios pass in a browser with no console errors.
+  - Manual (user, in game): paste three sample roster codes into Roblox chat and confirm they arrive unfiltered; if they are filtered, record which and stop for a format decision.
+- **Verification:** `node --test` passes; the manual scenarios pass in a browser with no console errors.
+
+### U7. Team planning view
+
+- **Goal:** a team lead can collect up to 8 players' roster codes and plan each player's build in one grid.
+- **Requirements:** R31, R32, R33; KTD14, KTD16.
+- **Dependencies:** U6.
+- **Files:** `src/team.mjs`, `src/router.mjs`, `src/render.mjs`, `src/app.mjs`, `src/theme.css`, `tests/team.test.mjs`, `tests/router.test.mjs`.
+- **Approach:**
+  1. `team.mjs` exports a pure team codec: a `~`-joined list of builds, each `<base token>.<passive run>`, parsed and serialized with KTD14's single-build codec; at most 8 builds.
+  2. The router recognizes the `/team/` prefix and routes to the team view; `/team` with no builds opens an empty team.
+  3. Each grid card shows the player label, the build in compact form, a roster-code paste field, and "not owned" flags from that player's roster; clicking a card edits its build with the same picker and slots as the single view.
+  4. Labels and rosters are stored locally keyed by card position; the URL carries builds only (R33).
+  5. Copy link copies the team URL.
+- **Patterns to follow:** KTD14 codec reuse; the single-build view's render functions.
+- **Test scenarios:**
+  - `/team/scout.sal2sal3prie3~miner.rec1c2` parses to two builds with the expected bases and slots.
+  - A team with an invalid build (`zzz.sal2`) keeps the other builds and adds a notice naming the bad build.
+  - More than 8 builds keeps the first 8 with a notice.
+  - Serializing two builds gives the canonical `~`-joined path with base slugs and passive codes.
+  - `/team` parses to an empty team.
+  - Manual: paste two different roster codes into two cards; each card flags only its own player's unowned parts.
+  - Manual: reload; labels and rosters persist; the URL still carries only builds.
+- **Verification:** `node --test` passes; the manual scenarios pass in a browser with no console errors.
 
 ### U4. Build and GitHub Pages deploy
 
@@ -334,9 +375,9 @@ drill-dashboard/
 
 - **Goal:** a maintainer can add a class without reading the code.
 - **Requirements:** R22, R5.
-- **Dependencies:** U6.
+- **Dependencies:** U7.
 - **Files:** `README.md`.
-- **Approach:** sections for what the tool is, the URL format with the `/scout/sal2sal3prie3` example and the code table, ownership marks and export, local run, and "Adding a class": copy an entry, fill fields, run the check to get the expected R5 code, set it on the entry, add the code-to-slug line to `scripts/codes.lock.json` in the same change, rerun the check, and note that registered codes never change and deploy happens on merge to main. Worked examples: `cannoneer` to `ca`, `prince` to `prince`.
+- **Approach:** sections for what the tool is, the URL format with the `/scout/sal2sal3prie3` example and the code table, ownership marks, roster codes, the team view, local run, and "Adding a class": copy an entry, fill fields, run the check to get the expected R5 code, set it on the entry, add the code-to-slug line to `scripts/codes.lock.json` in the same change, rerun the check, and note that registered codes never change and deploy happens on merge to main. Worked examples: `cannoneer` to `ca`, `prince` to `prince`.
 - **Patterns to follow:** final-state prose, one paragraph per line.
 - **Test scenarios:** Test expectation: none -- documentation unit; followed once with a throwaway entry that the check script accepts.
 - **Verification:** a dummy class added per the README passes `node scripts/check-data.mjs`; the entry is then reverted.
@@ -347,7 +388,7 @@ drill-dashboard/
 
 | Gate | Command or check | Pass signal |
 |---|---|---|
-| Unit tests | `node --test tests/` | zero failures |
+| Unit tests | `node --test` | zero failures |
 | Data check | `node scripts/check-data.mjs` | exit 0 |
 | Build | `BASE_PATH=/drill-dashboard/ node scripts/build.mjs` | `dist/index.html` and `dist/404.html` byte-identical, correct base href |
 | Local app | `node scripts/serve.mjs`, open `/scout/sal2sal3prie3` | build renders, no console errors |
@@ -359,7 +400,7 @@ drill-dashboard/
 
 ## Definition of Done
 
-- All six units committed in the Goal Capsule order, each passing its Verification.
+- All seven units committed in the Goal Capsule order, each passing its Verification.
 - Verification Contract gates up to "Prefixed serve" executed with fresh output recorded in the PR body; the Deploy gate is handed to the user.
 - `data/classes.json` unchanged except where the check script required a fix, and `scripts/codes.lock.json` matches it.
 - README "Adding a class" followed once end to end.
