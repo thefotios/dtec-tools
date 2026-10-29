@@ -94,26 +94,19 @@ function navButton(state, actions, view, text) {
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
 
 
-function shareButtons(state, actions) {
-  const block = actions.shareBlock();
-  const copied = state.copy === 'copied';
-  const codeCopied = state.copy === 'code-copied';
-  const described = block ? 'share-hint' : null;
-  return [
-    h('button', { type: 'button', class: `btn btn-grey${codeCopied ? ' is-done' : ''}`, 'data-fk': 'copy-code', disabled: Boolean(block), 'aria-describedby': described, onclick: actions.copyCode, text: codeCopied ? 'Code copied' : 'Copy my code' }),
-    h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', disabled: Boolean(block), 'aria-describedby': described, onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
-    block ? h('span', { class: 'share-hint', id: 'share-hint', text: block }) : null,
-    h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : codeCopied ? 'Code copied' : '' }),
-  ];
+function copyButton(state, actions, { key, done, idle, doneText, primary, block, onclick, small = true }) {
+  const isDone = state.copy === done;
+  return h('button', { type: 'button', class: `btn ${primary ? 'btn-green' : 'btn-grey'}${small ? ' btn-small' : ''}${isDone ? ' is-done' : ''}`, 'data-fk': key, disabled: Boolean(block), 'aria-describedby': block ? 'share-hint' : null, onclick, text: isDone ? doneText : idle });
 }
 
-function teamShare(state, actions) {
-  const block = actions.teamShareBlock();
-  const copied = state.copy === 'copied';
+// Feedback shared by every copy action: a hint when sharing is unavailable, a live status, and a selectable field when the clipboard fails.
+function copyFeedback(state, block) {
   return [
-    h('button', { type: 'button', class: `btn btn-green${copied ? ' is-done' : ''}`, 'data-fk': 'copy', disabled: Boolean(block), 'aria-describedby': block ? 'share-hint' : null, onclick: actions.copyLink, text: copied ? 'Link copied' : 'Copy link' }),
-    block ? h('span', { class: 'share-hint', id: 'share-hint', text: block }) : null,
-    h('span', { class: 'visually-hidden', role: 'status', text: copied ? 'Link copied' : '' }),
+    block ? h('p', { class: 'share-hint', id: 'share-hint', text: block }) : null,
+    h('span', { class: 'visually-hidden', role: 'status', text: state.copy === 'copied' ? 'Link copied' : state.copy === 'code-copied' ? 'Code copied' : '' }),
+    state.copy === 'failed'
+      ? h('input', { type: 'text', class: 'copy-fallback', readonly: true, 'aria-label': 'Text to copy', 'data-fk': 'link-field', value: state.copyText, onfocus: (e) => e.target.select() })
+      : null,
   ];
 }
 
@@ -128,14 +121,6 @@ function header(state, actions) {
       navButton(state, actions, 'classes', 'Classes'),
       navButton(state, actions, 'team', 'Team'),
     ),
-    h(
-      'div',
-      { class: 'copy-link' },
-      state.view === 'team' ? teamShare(state, actions) : shareButtons(state, actions),
-    ),
-    state.copy === 'failed'
-      ? h('input', { type: 'text', class: 'copy-fallback', readonly: true, 'aria-label': 'Text to copy', 'data-fk': 'link-field', value: state.copyText, onfocus: (e) => e.target.select() })
-      : null,
   );
 }
 
@@ -474,6 +459,7 @@ function loadout(state, actions) {
   }
   const editing = state.loadoutEditing;
   const owned = state.store.owned;
+  const shareBlock = actions.shareBlock();
   return h(
     'div',
     { class: 'loadout-col' },
@@ -485,8 +471,15 @@ function loadout(state, actions) {
         'div',
         { class: 'panel-head' },
         h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` }),
-        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
+        h(
+          'div',
+          { class: 'head-actions' },
+          copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: true, block: shareBlock, onclick: actions.copyLink }),
+          copyButton(state, actions, { key: 'copy-code', done: 'code-copied', idle: 'Copy code', doneText: 'Code copied', primary: false, block: shareBlock, onclick: actions.copyCode }),
+          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
+        ),
       ),
+      copyFeedback(state, shareBlock),
       editing
         ? pickerEditor(state, actions)
         : h(
@@ -499,20 +492,37 @@ function loadout(state, actions) {
   );
 }
 
-// Username: saves on change; an invalid name shows an inline error, a saved player's name asks for confirmation.
+// Username: a saved name shows as text with an Edit button; otherwise (or while editing) the input saves on Save or Enter.
+// An invalid name shows an inline error, a saved player's name asks for confirmation.
 function usernameField(state, actions) {
   const { list } = state;
-  const value = list.nameDraft ?? state.players.me;
+  const me = state.players.me;
+  const editing = list.nameEditing || !me || list.nameDraft != null;
   const msgId = 'username-msg';
+  const save = (form) => actions.setMe(form.elements.username.value);
   return h(
     'div',
     { class: 'username' },
-    h('label', { class: 'field-label', for: 'username', text: 'Username' }),
-    h(
-      'div',
-      { class: 'roster-row' },
-      h('input', { type: 'text', id: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value, onchange: (e) => actions.setMe(e.target.value) }),
-    ),
+    editing
+      ? h(
+          'form',
+          { class: 'username-form', onsubmit: (e) => (e.preventDefault(), save(e.target)), onkeydown: (e) => (e.key === 'Escape' && me ? (e.preventDefault(), actions.cancelEditUsername()) : null) },
+          h('label', { class: 'field-label', for: 'username', text: 'Username' }),
+          h(
+            'div',
+            { class: 'roster-row' },
+            h('input', { type: 'text', id: 'username', name: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value: list.nameDraft ?? me }),
+            h('button', { type: 'submit', class: 'btn btn-green btn-small', 'data-fk': 'username-save', text: 'Save' }),
+            me ? h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-cancel', onclick: actions.cancelEditUsername, text: 'Cancel' }) : null,
+          ),
+        )
+      : h(
+          'div',
+          { class: 'identity-row' },
+          h('span', { class: 'field-label', text: 'Username' }),
+          h('span', { class: 'identity-name', 'data-fk': 'username-text', text: me }),
+          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-edit', 'aria-label': 'Edit username', onclick: actions.editUsername, text: '\u270e' }),
+        ),
     h(
       'div',
       { id: msgId, class: 'field-msg', 'aria-live': 'polite' },
@@ -530,7 +540,7 @@ function usernameField(state, actions) {
             ),
           )
         : null,
-      !list.nameError && !list.nameConflict ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
+      !me && !list.nameError && !list.nameConflict ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
     ),
   );
 }
@@ -540,34 +550,32 @@ function rosterSection(state, actions) {
   const open = list.rosterOpen;
   return h(
     'section',
-    { class: `panel roster${open ? ' is-open' : ''}`, 'aria-label': 'You' },
+    { class: 'panel roster', 'aria-label': 'You' },
+    usernameField(state, actions),
     h(
       'button',
-      { type: 'button', class: 'roster-toggle', 'data-fk': 'roster-toggle', 'aria-expanded': String(open), 'aria-controls': 'roster-body', onclick: actions.toggleRoster },
-      h('span', { class: 'panel-title', text: 'You' }),
+      { type: 'button', class: `roster-toggle${open ? ' is-open' : ''}`, 'data-fk': 'roster-toggle', 'aria-expanded': String(open), 'aria-controls': 'roster-body', onclick: actions.toggleRoster },
+      h('span', { class: 'field-label', text: 'Import roster' }),
       h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }),
     ),
     open
       ? h(
           'div',
           { class: 'roster-body', id: 'roster-body' },
-          usernameField(state, actions),
-          h(
-            'div',
-            { class: 'roster-row' },
-            h('input', { type: 'text', class: 'roster-field', readonly: true, 'data-fk': 'roster-code', 'aria-label': 'Your roster code', value: actions.rosterCode(), onfocus: (e) => e.target.select() }),
-            h('button', { type: 'button', class: `btn btn-green${list.copy === 'copied' ? ' is-done' : ''}`, 'data-fk': 'roster-copy', onclick: actions.copyRoster, text: list.copy === 'copied' ? 'Copied' : list.copy === 'failed' ? 'Copy failed' : 'Copy' }),
-          ),
           h(
             'form',
             { class: 'roster-row', onsubmit: (e) => (e.preventDefault(), actions.importRoster(e.target.elements.roster.value)) },
             h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': 'roster-import', 'aria-label': 'Paste a roster code', placeholder: 'Paste a roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': list.error ? 'true' : null, 'aria-describedby': list.error ? 'roster-error' : null, value: list.draft }),
             h('button', { type: 'submit', class: 'btn btn-grey', 'data-fk': 'roster-import-btn', text: 'Import' }),
           ),
-          list.error ? h('p', { class: 'roster-error', id: 'roster-error', role: 'alert', text: list.error }) : null,
-          list.notices.map((n) => h('p', { class: 'roster-notice', role: 'status', text: n })),
         )
       : null,
+    h(
+      'div',
+      { class: 'field-msg', 'aria-live': 'polite' },
+      list.error ? h('p', { class: 'roster-error', id: 'roster-error', role: 'alert', text: list.error }) : null,
+      list.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
+    ),
   );
 }
 
@@ -745,6 +753,7 @@ function teamPanel(state, actions) {
   const teams = state.players.teams;
   const team = teams.find((t) => t.id === state.players.active) ?? null;
   const me = actions.mePlayer();
+  const teamBlock = actions.teamShareBlock();
   return h(
     'section',
     { class: 'panel team-panel', 'aria-label': 'Team' },
@@ -752,8 +761,14 @@ function teamPanel(state, actions) {
       'div',
       { class: 'panel-head' },
       h('h2', { class: 'panel-title', text: team ? `Team (${team.members.length}/${MAX_MEMBERS})` : 'Team' }),
-      h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'team-new', onclick: actions.createTeam, text: 'New' }),
+      h(
+        'div',
+        { class: 'head-actions' },
+        copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy team link', doneText: 'Link copied', primary: true, block: teamBlock, onclick: actions.copyLink }),
+        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'team-new', onclick: actions.createTeam, text: 'New' }),
+      ),
     ),
+    copyFeedback(state, teamBlock),
     team
       ? [
           h(
@@ -792,8 +807,14 @@ function teamLinkView(state, actions) {
         'div',
         { class: 'panel-head' },
         h('h2', { class: 'panel-title', text: link.name ? `${link.name} (${link.members.length}/${MAX_MEMBERS})` : `Shared team (${link.members.length}/${MAX_MEMBERS})` }),
-        h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
+        h(
+          'div',
+          { class: 'head-actions' },
+          h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
+          copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: false, block: null, onclick: actions.copyLink, small: false }),
+        ),
       ),
+      copyFeedback(state, null),
       link.members.length
         ? h(
             'ul',

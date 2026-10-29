@@ -136,10 +136,15 @@ h1, h2, h3, .level-num, .btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
 }
 .panel > .panel-title { margin-bottom: 12px; }
+/* Narrow screens: actions take their own row instead of stacking beside a wrapped title. */
+@media (max-width: 520px) {
+  .panel-head > .head-actions { flex-basis: 100%; justify-content: flex-start; }
+}
 .empty { color: var(--text-muted); text-align: center; padding: 24px 8px; font-size: 18px; }
 .loading, .error { margin-top: 24px; text-align: center; }
 .error p + p, .error button { margin-top: 10px; }
@@ -449,10 +454,10 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .own-check { flex: none; align-self: center; width: 26px; font-size: 20px; font-weight: 900; text-align: center; text-shadow: var(--outline); }
 .own-remove { justify-self: start; }
 .own-row.is-selected { border-color: var(--tier-gold); background: linear-gradient(#2e2a1c, #1a170e); box-shadow: inset 4px 0 0 var(--tier-gold); }
-.head-actions { display: flex; gap: 8px; align-items: center; }
+.head-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; align-items: center; }
 .roster-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 0; font: inherit; color: var(--text); background: none; border: 0; cursor: pointer; min-height: 32px; }
-.roster-toggle .panel-title { font-size: 18px; }
-.roster.is-open .own-chevron { transform: rotate(180deg); }
+.roster-toggle .field-label { margin: 0; }
+.roster-toggle.is-open .own-chevron { transform: rotate(180deg); }
 .roster-body { margin-top: 10px; }
 .roster-body .roster-row:last-of-type { margin-bottom: 0; }
 @media (max-width: 719px) {
@@ -516,8 +521,11 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .lock-hint { flex: none; align-self: center; margin-right: 8px; font-size: 12px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border: 2px dashed var(--panel-border); border-radius: 6px; padding: 1px 6px; }
 
 /* You panel, share actions, visitor view */
-.copy-link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.share-hint { flex: 1 1 100%; color: var(--text-muted); font-size: 13px; }
+.share-hint { color: var(--text-muted); font-size: 13px; margin: -4px 0 10px; }
+.panel > .copy-fallback { width: 100%; margin-bottom: 10px; }
+.identity-row { display: flex; align-items: center; gap: 10px; }
+.identity-row .field-label { margin: 0; }
+.identity-name { font-weight: 900; margin-right: auto; overflow-wrap: anywhere; }
 .field-label { display: block; font-size: 13px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
 .username { margin-bottom: 14px; }
 .field-msg { display: grid; gap: 6px; }

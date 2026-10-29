@@ -28,7 +28,7 @@ A selected base class or passive you don't own is flagged "Not owned". With no c
 
 The address bar shows the build code of the selected class at your owned level, such as `/c5-sc1sal2sal3`. A class you own at level 0 shows `/`, and both copy actions are disabled with "Unlock <class> to share".
 
-"Copy my code" copies that build code, short enough for chat. "Copy link" copies the full share URL: the build code with your roster segment, `u` when you have a username, and `s` when you have saved sets for other classes.
+The sharing actions sit in the title row of the loadout panel, for your own build only. "Copy link" copies the full share URL: the build code with your roster segment, `u` when you have a username, and `s` when you have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `c5-sc1sal2sal3-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation only.
 
 ## Passive sets
 
@@ -46,7 +46,7 @@ The roster code encodes your marks as a short string. It has one symbol per clas
 
 Decoding is case-insensitive, ignores spaces, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so codes stay valid when classes are added. `E` and `U` are reserved as version markers. Invalid text shows an inline error and leaves your marks unchanged.
 
-The "You" panel at the top of the class list is collapsed by default. It holds the username field, your roster code with a Copy button, and a field to paste and import a roster code.
+The "You" panel at the top of the class list is a compact identity row. With a username set it shows the name and an "Edit" (pencil) button that swaps in the input with Save and Cancel; Enter saves and Escape cancels. Without a username it shows the input directly with a Save button. Below it, a collapsed "Import roster" section holds a field to paste and import a roster code. Your own roster code is shared through the links and codes copied from the loadout panel.
 
 A username is 3 to 20 letters, digits, or one underscore that is not at either end, compared case-insensitively.
 
@@ -60,7 +60,7 @@ The Team page has a players library and named teams. The library has one paste b
 
 A team has a name and up to 8 members, each a library player; a player can be on many teams, and the active team is remembered. A team card shows the player's name, a class selector limited to classes the player owns, that class's five levels per the player's levels, and the passives the player saved for it, or "No passives saved". Cards never edit passives.
 
-A team link is `/team/ann.c5-sc1sal2sal3~bob.mi3-rec1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy link" in its header copies the active team's link. Opening a team link shows it read-only with "Save team", which creates the team, adds players whose names are not in the library, maps your own name to Me, and opens `/team`. Links never import anything on their own.
+A team link is `/team/ann.c5-sc1sal2sal3~bob.mi3-rec1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy team link" in the team panel header copies the active team's link and is disabled with a hint when there is no team or the team is empty. Opening a team link shows it read-only with "Save team" and a "Copy link" button that copies the opened URL, which creates the team, adds players whose names are not in the library, maps your own name to Me, and opens `/team`. Links never import anything on their own.
 
 ## Local development
 

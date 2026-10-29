@@ -1,6 +1,6 @@
 import { absoluteUrl, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot } from './router.mjs';
 import { render } from './render.mjs';
-import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
+import { createStore, decodeRoster } from './owned.mjs';
 import { createPassiveStore, toSlots } from './passives.mjs';
 import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
 import { createPlayersStore, isValidName, mePlayer, playerByName, sameName, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
@@ -35,7 +35,7 @@ const state = {
   expanded: new Set(),
   // link: an opened team link, null or { name, members, saved }; paste: the library paste form's drafts and feedback.
   team: { link: null, paste: { draft: '', name: '', error: null, message: null, notices: [] } },
-  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], copy: null, nameDraft: null, nameError: null, nameConflict: null },
+  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], nameEditing: false, nameDraft: null, nameError: null, nameConflict: null },
 };
 
 const paint = () => render(root, state, actions);
@@ -58,7 +58,7 @@ function buildPath() {
   return code ? `/${code}` : '/';
 }
 
-// Why Copy my code and Copy link are unavailable, or null when sharing works.
+// Why Copy link and Copy code are unavailable, or null when sharing works.
 function shareBlock() {
   const { base } = state.build;
   if (!base) return 'Pick a class to share';
@@ -151,11 +151,23 @@ const actions = {
     }
     paint();
   },
-  // Opens the You panel on the Classes page with the username field focused.
+  // Opens the You panel's username input on the Classes page and focuses it.
   openUsername() {
-    state.list.rosterOpen = true;
+    state.list.nameEditing = true;
     actions.setView('classes');
-    document.querySelector('[data-fk="username"]')?.focus();
+    focusUsername();
+  },
+  editUsername() {
+    state.list.nameEditing = true;
+    paint();
+    focusUsername();
+  },
+  cancelEditUsername() {
+    state.list.nameEditing = false;
+    state.list.nameDraft = null;
+    state.list.nameError = null;
+    state.list.nameConflict = null;
+    paint();
   },
   pastePlayer(text, nameText) {
     const paste = state.team.paste;
@@ -264,10 +276,8 @@ const actions = {
     paint();
   },
   mePlayer: meRecord,
-  rosterCode: () => encodeRoster(state.data.classes, state.store.owned),
   importRoster(text) {
     const r = decodeRoster(state.data.classes, text);
-    state.list.copy = null;
     if (r.error) {
       state.list.error = r.error;
       state.list.notices = [];
@@ -277,15 +287,6 @@ const actions = {
       state.list.error = null;
       state.list.notices = r.notices;
       state.list.draft = '';
-    }
-    paint();
-  },
-  async copyRoster() {
-    try {
-      await navigator.clipboard.writeText(actions.rosterCode());
-      state.list.copy = 'copied';
-    } catch {
-      state.list.copy = 'failed';
     }
     paint();
   },
@@ -343,7 +344,7 @@ const actions = {
     if (!team) return 'Create a team to share';
     return team.members.length ? null : 'Add players to share';
   },
-  currentCode: () => serializeBuildCode(state.data.classes, myPlayer()),
+  currentCode: () => serializeBuildCode(state.data.classes, myPlayer(), { roster: true }),
   shareBlock,
   copyLink: () => copyText(actions.currentUrl(), 'copied'),
   copyCode: () => copyText(actions.currentCode(), 'code-copied'),
@@ -359,7 +360,10 @@ const actions = {
       const r = state.players.setMe(name);
       if (r.error) state.list.nameError = r.error;
       else if (r.conflict) state.list.nameConflict = name;
-      else state.list.nameDraft = null;
+      else {
+        state.list.nameDraft = null;
+        state.list.nameEditing = false;
+      }
     }
     paint();
   },
@@ -369,11 +373,13 @@ const actions = {
     state.list.nameConflict = null;
     state.list.nameError = null;
     state.list.nameDraft = null;
+    state.list.nameEditing = false;
     paint();
   },
   cancelClaim() {
     state.list.nameConflict = null;
     state.list.nameDraft = null;
+    state.list.nameEditing = false;
     paint();
   },
   setVisitorName(text) {
@@ -398,6 +404,12 @@ const actions = {
     paint();
   },
 };
+
+function focusUsername() {
+  const input = document.querySelector('[data-fk="username"]');
+  input?.focus();
+  input?.select();
+}
 
 // Copies text; 'failed' shows a selectable field with the same text.
 async function copyText(text, done) {
