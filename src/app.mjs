@@ -1,5 +1,6 @@
 import { parsePath, serializePath, absoluteUrl, pushBuild, replaceBuild, currentPath, MAX_SLOTS } from './router.mjs';
 import { render } from './render.mjs';
+import { createStore, encodeRoster, decodeRoster } from './owned.mjs';
 
 const root = document.getElementById('app');
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
@@ -12,6 +13,10 @@ const state = {
   notices: [],
   filter: '',
   copy: null,
+  // Local view state; never part of the share URL.
+  view: new URLSearchParams(window.location.search).get('view') === 'mine' ? 'mine' : 'build',
+  store: createStore({ getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) }),
+  mine: { filter: '', ownedOnly: false, draft: '', error: null, notices: [], copy: null },
 };
 
 const paint = () => render(root, state, actions);
@@ -32,6 +37,55 @@ const actions = {
   retry: () => load(),
   setFilter(value) {
     state.filter = value;
+    paint();
+  },
+  setView(view) {
+    state.view = view;
+    paint();
+  },
+  setOwnedOnly(value) {
+    state.store.setOwnedOnly(value);
+    paint();
+  },
+  toggleLevel(code, level) {
+    state.store.toggleLevel(code, level);
+    paint();
+  },
+  toggleClass(code) {
+    state.store.toggleClass(code);
+    paint();
+  },
+  setMineFilter(value) {
+    state.mine.filter = value;
+    paint();
+  },
+  setMineOwnedOnly(value) {
+    state.mine.ownedOnly = value;
+    paint();
+  },
+  rosterCode: () => encodeRoster(state.data.classes, state.store.owned),
+  importRoster(text) {
+    const r = decodeRoster(state.data.classes, text);
+    state.mine.copy = null;
+    if (r.error) {
+      state.mine.error = r.error;
+      state.mine.notices = [];
+      state.mine.draft = text;
+    } else {
+      state.store.replace(r.owned);
+      state.mine.error = null;
+      state.mine.notices = r.notices;
+      state.mine.draft = '';
+    }
+    paint();
+  },
+  async copyRoster() {
+    try {
+      await navigator.clipboard.writeText(actions.rosterCode());
+      state.mine.copy = 'copied';
+    } catch {
+      state.mine.copy = 'failed';
+    }
     paint();
   },
   dismissNotice(i) {

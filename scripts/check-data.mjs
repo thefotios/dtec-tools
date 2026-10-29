@@ -53,6 +53,13 @@ export function checkData(data, registry) {
       bad(`not in the registry; expected code "${expected}"${c.code === expected ? '' : ` (has "${c.code}")`}`);
     }
   }
+
+  // Roster codes depend on class order: data order must equal the append-only registry order.
+  const dataSlugs = classes.map((c) => c.slug).filter((s) => bySlug.has(s));
+  const registrySlugs = registered.map((r) => r.slug).filter((s) => dataSlugs.includes(s));
+  if (dataSlugs.some((s, i) => s !== registrySlugs[i])) {
+    out.push(`class order: data order must match registry order (${registrySlugs.join(', ')})`);
+  }
   return out;
 }
 

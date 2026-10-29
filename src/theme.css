@@ -81,7 +81,10 @@ h1, h2, h3, .level-num, .btn, .slot-label, .level-button {
   padding: 18px 0 14px;
 }
 .app-header h1 { font-size: 26px; letter-spacing: 0.01em; margin-right: auto; }
-.app-nav:empty { display: none; }
+.app-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.app-nav .btn { padding: 6px 14px; min-height: 40px; font-size: 15px; }
+.app-nav .btn[aria-pressed='true'] { background: linear-gradient(#2a7ae0, #1c58a8); border-color: #7db2f5; }
+.app-nav .btn[aria-pressed='true']::before { content: '\2713'; margin-right: 6px; }
 .copy-fallback {
   flex: 1 1 100%;
   min-width: 0;
@@ -179,7 +182,7 @@ h1, h2, h3, .level-num, .btn, .slot-label, .level-button {
 [data-level='3'] { --lv: var(--level-3); }
 [data-level='4'] { --lv: var(--level-4); }
 [data-level='5'] { --lv: var(--level-5); }
-.level, .row, .level-button, .slot { --lv-deep: color-mix(in srgb, var(--lv, #888) 58%, #000); }
+.level, .row, .level-button, .slot, .own-level { --lv-deep: color-mix(in srgb, var(--lv, #888) 58%, #000); }
 
 /* Picker */
 .picker-title { display: none; }
@@ -376,4 +379,88 @@ h1, h2, h3, .level-num, .btn, .slot-label, .level-button {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* Ownership */
+.owned-mark { margin-left: 6px; color: var(--accent-green); }
+.not-owned {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #6b2a14;
+  border: 2px dashed var(--tier-orange);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  text-shadow: none;
+}
+.mine { display: grid; gap: 14px; max-width: 860px; }
+.roster-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.roster-field {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+.roster-field[aria-invalid='true'] { border-color: var(--accent-red); }
+.roster-error { color: #ff9aa6; border-left: 4px solid var(--accent-red); padding: 4px 10px; }
+.roster-notice { color: var(--text-muted); padding: 4px 10px; }
+.mine-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.mine-controls .picker-filter { flex: 1 1 220px; width: auto; margin: 0; }
+.segment { display: flex; gap: 6px; }
+.segment .btn { min-height: 44px; }
+.segment .btn[aria-pressed='true'] { background: linear-gradient(#2a7ae0, #1c58a8); border-color: #7db2f5; }
+.segment .btn[aria-pressed='true']::before { content: '\2713'; margin-right: 6px; }
+.mine-grid { display: grid; gap: 6px; }
+.mine-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 6px 10px;
+  background: linear-gradient(#1e2028, #121317);
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+}
+.mine-name { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; text-shadow: var(--outline); font-weight: 900; }
+.mine-name input { width: 22px; height: 22px; accent-color: var(--accent-green); flex: none; }
+.own-levels { display: flex; gap: 6px; }
+.own-level {
+  width: 44px;
+  min-height: 44px;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--text);
+  background: #1a1c22;
+  border: 2px solid var(--lv);
+  border-radius: 10px;
+  cursor: pointer;
+  opacity: 0.7;
+  text-shadow: var(--outline);
+}
+.own-level:hover { opacity: 1; }
+.own-level[aria-pressed='true'] {
+  opacity: 1;
+  background: var(--lv-deep);
+  border-color: #fff;
+  box-shadow: inset 0 -4px 0 rgba(255, 255, 255, 0.85);
+}
+.own-level[aria-pressed='true']::before { content: '\2713'; font-size: 12px; margin-right: 2px; vertical-align: 2px; }
+@media (max-width: 719px) {
+  .mine-row { grid-template-columns: 1fr auto; }
+  .own-levels { grid-column: 1 / -1; }
+  .own-level { flex: 1; width: auto; }
+  .roster-row { flex-wrap: wrap; }
+  .roster-field { flex: 1 1 100%; letter-spacing: 0.04em; }
 }

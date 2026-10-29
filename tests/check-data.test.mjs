@@ -118,3 +118,16 @@ test('R3: slugs must be unique lowercase letters', () => {
   d2.classes[1].slug = d2.classes[0].slug;
   assert.ok(checkData(d2, r2).some((m) => m.includes('duplicate')));
 });
+
+test('KTD16: data order must match registry insertion order', () => {
+  const [data, registry] = fresh();
+  [data.classes[0], data.classes[1]] = [data.classes[1], data.classes[0]];
+  assert.ok(checkData(data, registry).some((m) => m.includes('order')));
+});
+
+test('KTD16: appending a registered class at the end keeps the order valid', () => {
+  const [data, registry] = fresh();
+  data.classes.push(entry({ code: 'ca', slug: 'cannoneer', name: 'Cannoneer' }));
+  registry.ca = 'cannoneer';
+  assert.deepEqual(checkData(data, registry), []);
+});
