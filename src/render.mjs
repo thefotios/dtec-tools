@@ -299,7 +299,6 @@ function passivePicker(state, actions, opts) {
           )
         : h('span', { class: 'passive-none', text: 'None' }),
     ),
-    full ? h('p', { class: 'passive-hint', role: 'status', text: 'Passives full. Deselect one first.' }) : null,
     h('input', { type: 'search', class: 'picker-filter', 'data-fk': opts.filterKey, 'aria-label': 'Filter passives by class', placeholder: 'Filter passives', value: opts.filter, oninput: (e) => opts.onFilter(e.target.value) }),
     rows.length
       ? h(
@@ -377,12 +376,27 @@ function levelList(base, owned) {
   );
 }
 
-// The selected class's five levels.
-function basePanel(state, base, owned) {
+// The selected class's five levels; with actions (my own build) its header carries the share buttons.
+function basePanel(state, base, owned, actions = null) {
+  const title = h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned());
+  const shareBlock = actions ? actions.shareBlock() : null;
   return h(
     'section',
     { class: 'panel base-levels', 'aria-label': `${base.name} levels` },
-    h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned()),
+    actions
+      ? h(
+          'div',
+          { class: 'panel-head' },
+          title,
+          h(
+            'div',
+            { class: 'head-actions' },
+            copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: true, block: shareBlock, onclick: actions.copyLink }),
+            copyButton(state, actions, { key: 'copy-code', done: 'code-copied', idle: 'Copy code', doneText: 'Code copied', primary: false, block: shareBlock, onclick: actions.copyCode }),
+          ),
+        )
+      : title,
+    actions ? copyFeedback(state, shareBlock) : null,
     levelList(base, owned),
   );
 }
@@ -457,11 +471,10 @@ function loadout(state, actions) {
   }
   const editing = state.loadoutEditing;
   const owned = state.store.owned;
-  const shareBlock = actions.shareBlock();
   return h(
     'div',
     { class: 'loadout-col' },
-    basePanel(state, base, owned),
+    basePanel(state, base, owned, actions),
     h(
       'section',
       { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
@@ -469,22 +482,14 @@ function loadout(state, actions) {
         'div',
         { class: 'panel-head' },
         h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` }),
-        h(
-          'div',
-          { class: 'head-actions' },
-          copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: true, block: shareBlock, onclick: actions.copyLink }),
-          copyButton(state, actions, { key: 'copy-code', done: 'code-copied', idle: 'Copy code', doneText: 'Code copied', primary: false, block: shareBlock, onclick: actions.copyCode }),
-          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
-        ),
+        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
       ),
-      copyFeedback(state, shareBlock),
       editing
         ? pickerEditor(state, actions)
         : h(
             'div',
             { class: 'loadout-read' },
             slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned))) : h('p', { class: 'empty', text: 'No passives yet. Tap Edit to pick up to 3.' }),
-            slots.length ? h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'passive-clear', onclick: actions.clearSlots }, 'Clear', hidden(' passives')) : null,
           ),
     ),
   );

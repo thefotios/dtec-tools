@@ -281,7 +281,6 @@ h1, h2, h3, .level-num, .btn {
   cursor: pointer;
 }
 .sel-chip-x:hover { background: rgba(0, 0, 0, 0.6); }
-.passive-hint { color: var(--tier-gold); border-left: 4px solid var(--tier-gold); padding: 4px 10px; }
 .passive-picker .picker-filter { margin: 0; }
 .passive-rows { display: grid; gap: 8px; }
 .passive-row { display: grid; gap: 6px; padding: 8px; background: linear-gradient(#1e2028, #121317); border: 2px solid var(--panel-border); border-radius: 12px; }

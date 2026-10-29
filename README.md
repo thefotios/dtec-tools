@@ -28,13 +28,13 @@ A selected base class or passive you don't own is flagged "Not owned". With no c
 
 The address bar shows the build code of the selected class at your owned level, such as `/c5-sc1sal2sal3`. A class you own at level 0 shows `/`, and both copy actions are disabled with "Unlock <class> to share".
 
-The sharing actions sit in the title row of the loadout panel, for your own build only. "Copy link" copies the full share URL: the build code with your roster segment, `u` when you have a username, and `s` when you have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `c5-sc1sal2sal3-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation only.
+The sharing actions sit in the title row of the base class panel (the class's five levels), for your own build only. "Copy link" copies the full share URL: the build code with your roster segment, `u` when you have a username, and `s` when you have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `c5-sc1sal2sal3-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation only.
 
 ## Passive sets
 
 Each base class has its own set of up to 3 passives, saved in the browser. Selecting a class loads that class's saved set, or an empty set if none is saved. The same passive can be in any number of classes' sets, but not twice in one set, and a class is never its own passive. The last selected class is remembered, and opening `/` restores it with its saved set.
 
-The loadout panel is titled "<Class> passives (n/3)". It lists the selected passives as level rows headed by their class, and "Clear" removes the passives.
+The loadout panel is titled "<Class> passives (n/3)". It lists the selected passives as level rows headed by their class. "Clear" in the passive picker (Edit) removes them.
 
 "Edit" in the loadout opens the passive picker and "Done" closes it. The picker has one row per owned class (plus classes of selected passives), with levels 1 to 3 written out like the class list rows. Select up to 3 across the whole list; the base class is not listed. Levels above what you own are shown gray and marked "Locked", and cannot be selected, so you can see what to level next. The "Unlocked only" checkbox in the picker header hides locked levels, and the choice is saved.
 
@@ -46,7 +46,7 @@ The roster code encodes your marks as a short string. It has one symbol per clas
 
 Decoding is case-insensitive, ignores spaces, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so codes stay valid when classes are added. `E` and `U` are reserved as version markers. Invalid text shows an inline error and leaves your marks unchanged.
 
-The "You" panel at the top of the class list is a compact identity row. With a username set it shows the name and an "Edit" (pencil) button that swaps in the input with Save and Cancel; Enter saves and Escape cancels. Without a username it shows the input directly with a Save button. Below it, a collapsed "Import roster" section holds a field to paste and import a roster code. Your own roster code is shared through the links and codes copied from the loadout panel.
+The "You" panel at the top of the class list is a compact identity row. With a username set it shows the name and an "Edit" (pencil) button that swaps in the input with Save and Cancel; Enter saves and Escape cancels. Without a username it shows the input directly with a Save button. Below it, a collapsed "Import roster" section holds a field to paste and import a roster code. Your own roster code is shared through the links and codes copied from the base class panel.
 
 A username is 3 to 20 letters, digits, or one underscore that is not at either end, compared case-insensitively.
 
