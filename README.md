@@ -1,4 +1,4 @@
-# Drill Dashboard
+# DTTEC Tools
 
 Class and passive combo viewer for Drill to Earth's Core. Pick a base class and up to three passives (levels 1 to 3) to see the combined effects. Client-side only: static ES modules, no framework, data in `data/classes.json`, hosted on GitHub Pages.
 
@@ -35,11 +35,13 @@ npm run check   # validate data/classes.json against scripts/codes.lock.json
 npm run build   # static site into dist/ (env BASE_PATH, default /)
 ```
 
-Node only, no dependencies. `BASE_PATH` is the sub-path the site is served under, e.g. `BASE_PATH=/drill-dashboard/ npm run build`.
+Node only, no dependencies. `BASE_PATH` is the sub-path the site is served under, e.g. `BASE_PATH=/dttec-tools/ npm run build`.
 
 ## Deploy
 
-`.github/workflows/pages.yml` runs check, tests and build on every push to `main` and publishes `dist/` to GitHub Pages with `BASE_PATH` set to `/<repo name>/`. One-time setup: repository Settings, Pages, Source: "GitHub Actions".
+Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served at the domain root, with unknown paths answered by `index.html` (status 200) so build and team links open directly. Cloudflare Workers Builds deploys every push to `main`. One-time setup: in the Cloudflare dashboard, Workers & Pages, Create, Import a repository, pick this repo, build command `npm run build`, deploy command `npx wrangler deploy`.
+
+`.github/workflows/ci.yml` runs check, tests and build on pull requests and pushes to `main`.
 
 ## Adding a class
 

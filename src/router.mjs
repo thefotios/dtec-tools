@@ -66,7 +66,7 @@ export function serializePath(state) {
   return run ? `/${base}/${run}` : `/${base}`;
 }
 
-// Strips the base path (e.g. "/drill-dashboard/") from a pathname; result always starts with "/".
+// Strips the base path (e.g. "/dttec-tools/") from a pathname; result always starts with "/".
 export function relativePath(pathname, basePath) {
   const prefix = basePath.replace(/\/+$/, '');
   if (prefix && (pathname === prefix || pathname.startsWith(`${prefix}/`))) {

@@ -144,20 +144,20 @@ test('parseBuild takes pre-split tokens and runs', () => {
 
 test('relativePath strips the base path', () => {
   assert.equal(relativePath('/scout/sal2', '/'), '/scout/sal2');
-  assert.equal(relativePath('/drill-dashboard/scout/sal2', '/drill-dashboard/'), '/scout/sal2');
-  assert.equal(relativePath('/drill-dashboard/', '/drill-dashboard/'), '/');
-  assert.equal(relativePath('/drill-dashboard', '/drill-dashboard/'), '/');
+  assert.equal(relativePath('/dttec-tools/scout/sal2', '/dttec-tools/'), '/scout/sal2');
+  assert.equal(relativePath('/dttec-tools/', '/dttec-tools/'), '/');
+  assert.equal(relativePath('/dttec-tools', '/dttec-tools/'), '/');
 });
 
 test('absoluteUrl resolves canonical path against the base URI', () => {
-  assert.equal(absoluteUrl('https://x.io/drill-dashboard/', '/scout/sal2'), 'https://x.io/drill-dashboard/scout/sal2');
+  assert.equal(absoluteUrl('https://x.io/dttec-tools/', '/scout/sal2'), 'https://x.io/dttec-tools/scout/sal2');
   assert.equal(absoluteUrl('http://localhost:8080/', '/'), 'http://localhost:8080/');
 });
 
 test('history helpers push or replace the base-prefixed canonical path', () => {
   const calls = [];
   const win = {
-    document: { baseURI: 'https://x.io/drill-dashboard/' },
+    document: { baseURI: 'https://x.io/dttec-tools/' },
     history: {
       pushState: (...a) => calls.push(['push', a[2]]),
       replaceState: (...a) => calls.push(['replace', a[2]]),
@@ -167,8 +167,8 @@ test('history helpers push or replace the base-prefixed canonical path', () => {
   pushBuild(win, s);
   replaceBuild(win, s);
   assert.deepEqual(calls, [
-    ['push', '/drill-dashboard/scout/sal2'],
-    ['replace', '/drill-dashboard/scout/sal2'],
+    ['push', '/dttec-tools/scout/sal2'],
+    ['replace', '/dttec-tools/scout/sal2'],
   ]);
 });
 
@@ -187,7 +187,7 @@ test('history helpers push or replace an arbitrary canonical path (team URLs)', 
   const { pushPath, replacePath } = await import('../src/router.mjs');
   const calls = [];
   const win = {
-    document: { baseURI: 'https://x.io/drill-dashboard/' },
+    document: { baseURI: 'https://x.io/dttec-tools/' },
     history: {
       pushState: (...a) => calls.push(['push', a[2]]),
       replaceState: (...a) => calls.push(['replace', a[2]]),
@@ -196,7 +196,7 @@ test('history helpers push or replace an arbitrary canonical path (team URLs)', 
   pushPath(win, '/team/scout.sal2~miner');
   replacePath(win, '/team');
   assert.deepEqual(calls, [
-    ['push', '/drill-dashboard/team/scout.sal2~miner'],
-    ['replace', '/drill-dashboard/team'],
+    ['push', '/dttec-tools/team/scout.sal2~miner'],
+    ['replace', '/dttec-tools/team'],
   ]);
 });
