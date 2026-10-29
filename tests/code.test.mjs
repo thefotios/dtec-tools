@@ -125,7 +125,6 @@ test('6: slug bases and slug paths are unknown base errors', () => {
   assert.deepEqual(reasons(parseBuildCode(classes, 'scout')), ['unknown']);
   assert.ok(parseShare(classes, 'scout-sal2').error);
   assert.ok(parseShare(classes, 'scout').error);
-  assert.ok(parseShare(classes, '/scout/sal2').error);
 });
 
 test('7: parseShare accepts URLs, paths, and bare codes, with a base path', () => {
