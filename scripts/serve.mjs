@@ -50,7 +50,8 @@ const server = createServer(async (req, res) => {
     const rel = decoded.slice(prefix.length).replace(/^\/+/, '');
     const hit = await fileAt(rel === '' || rel.endsWith('/') ? `${rel}index.html` : rel);
     if (hit) return await send(res, 200, hit);
-    if (spaFallback && !extname(rel)) {
+    // App routes may contain dots (`/team/scout.sal2`); only known asset extensions 404.
+    if (spaFallback && !TYPES[extname(rel)]) {
       const index = await fileAt('index.html');
       if (index) return await send(res, 200, index);
     }
