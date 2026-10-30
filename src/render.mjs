@@ -1,30 +1,14 @@
 import { ownedClasses } from './owned.mjs';
 import { nameProblem, playerByName, sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
 import { toSlots, MAX_PASSIVES } from './passives.mjs';
+import { h, hidden } from './dom.mjs';
+import { buildEffects, buildEffectsPanel, ownEffectsDetails, teamEffectsPanel, teamInputs } from './render-effects.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
 
 const TAG_LABEL = { team: 'TEAM', master: 'MASTER' };
 const SVG_NS = 'http://www.w3.org/2000/svg';
-
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v == null) continue;
-    if (k === 'class') el.className = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'text') el.textContent = v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat()) {
-    if (c == null || c === false) continue;
-    el.append(c.nodeType ? c : document.createTextNode(String(c)));
-  }
-  return el;
-}
-
-const hidden = (text) => h('span', { class: 'visually-hidden', text });
 
 function diamond() {
   const svg = document.createElementNS(SVG_NS, 'svg');
@@ -466,6 +450,7 @@ function visitorLoadout(state, actions) {
       h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` })),
       h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, passiveOwned(player)))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
     ),
+    buildEffectsPanel(state, base, player.levels[base.code] ?? 0, slots),
   );
 }
 
@@ -498,6 +483,7 @@ function loadout(state, actions) {
             slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned))) : h('p', { class: 'empty', text: 'No passives yet. Tap Edit to pick up to 3.' }),
           ),
     ),
+    buildEffectsPanel(state, base, owned[base.code] ?? 0, slots),
   );
 }
 
@@ -714,6 +700,7 @@ function playerCard(state, actions, { name, player, base, controls }) {
         ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned)))
         : h('p', { class: 'card-empty', text: 'No passives saved' })
       : null,
+    base ? ownEffectsDetails(state, actions, name, buildEffects(state, base, player.levels[base.code] ?? 0, slots, ['self'])) : null,
     controls?.actions ?? null,
   );
 }
@@ -809,6 +796,7 @@ function teamLinkView(state, actions) {
   const link = state.team.link;
   const classes = state.data.classes;
   const savedTeam = actions.linkSavedTeam();
+  const members = link.members.map(({ name, player }) => ({ name, player, base: classes.find((c) => c.code === player.base) ?? null }));
   return h(
     'main',
     { class: 'team' },
@@ -836,16 +824,23 @@ function teamLinkView(state, actions) {
         ? h(
             'ul',
             { class: 'team-grid' },
-            link.members.map(({ name, player }) => playerCard(state, actions, { name, player, base: classes.find((c) => c.code === player.base) ?? null })),
+            members.map((m) => playerCard(state, actions, m)),
           )
         : h('p', { class: 'empty', text: 'No valid players in this link.' }),
     ),
+    teamEffectsPanel(state, teamInputs(state, members)),
   );
 }
 
 function teamView(state, actions) {
   if (state.team.link) return teamLinkView(state, actions);
-  return h('main', { class: 'team' }, libraryPanel(state, actions), teamPanel(state, actions));
+  const team = state.players.teams.find((t) => t.id === state.players.active) ?? null;
+  const me = actions.mePlayer();
+  const members = (team?.members ?? []).flatMap((m) => {
+    const player = playerByName(state.players, me, m.name);
+    return player ? [{ name: player.name, player, base: memberBase(state, player, m.base) }] : [];
+  });
+  return h('main', { class: 'team' }, libraryPanel(state, actions), teamPanel(state, actions), team ? teamEffectsPanel(state, teamInputs(state, members)) : null);
 }
 
 const HELP_SAMPLE = 'c5-sc1sal2sal3-D5XB8XG5XD';
@@ -887,6 +882,21 @@ function helpView(state) {
         h('li', {}, 'On each team card, the class menu lists the classes that player owns and shows the passives they saved for that class. Passives can\'t be changed here, because re-rolling costs in game.'),
         h('li', {}, 'Copy team link shares the team. Opening a team link lets you tap Save team.'),
       ),
+    ),
+    section(
+      'Combined effects',
+      h('p', {}, 'The Combined effects panel on the Classes page adds up everything your unlocked base levels and chosen passives give. The same stat from different sources adds together, grouped by category with a list of where each part comes from. Level 4 team bonuses also count for you.'),
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, h('strong', { text: 'rounded' }), ': a Recruit level 5 build scales passive values by 1.25 and rounds each one to 1 decimal, so the total may be off by a little.'),
+        h('li', {}, h('strong', { text: 'stacking unconfirmed' }), ': the stat comes from more than one copy of the same class, and it is not known whether those copies add up.'),
+        h('li', {}, h('strong', { text: 'Conditional' }), ': bonuses that only apply in a situation, such as while driving. They are totaled per situation and never added to the main totals.'),
+        h('li', {}, h('strong', { text: 'Nearby' }), ': bonuses that are higher when players are close together. They are listed without a total.'),
+        h('li', {}, h('strong', { text: 'Flags' }), ': on or off abilities with no number.'),
+        h('li', {}, h('strong', { text: 'Uncertain' }), ': effects whose exact behavior is not confirmed yet, listed under the open question and left out of totals.'),
+      ),
+      h('p', {}, 'On the Team page, Team effects adds up each member\'s level 4 team bonuses and nearby effects, and Own effects on a team card shows what that player gets for themselves.'),
     ),
     section(
       'Reading a code',

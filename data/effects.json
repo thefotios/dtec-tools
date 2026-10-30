@@ -1,0 +1,1075 @@
+{
+  "version": 1,
+  "notes": [
+    "Effects are tagged per level in classes.json (levels[].effects); this file holds the taxonomy, condition labels, and open questions.",
+    "Values are the signed number in the stat's unit. pct = percentage points (+50% -> 50); flat = absolute amount (HP, Coins, multiplier); flag = on/off, value omitted.",
+    "Discounts are positive '_discount' stats: '-50% off' -> 50. Higher is better.",
+    "Chances, thresholds, and crit chances are pct stats so additive sources sum (e.g. Jack-o'-Lantern L1 20 + L4 10).",
+    "Non-numeric unlocks (recipes, auto-actions, immunities) are flag stats with no value.",
+    "'when' marks any condition or per-unit scaling (as_driver, in_darkness, per_10_kills, per_consecutive_hit, ...). Only effects with the same stat AND same 'when' (or both without) may be summed.",
+    "'X & Y' text is split into one effect per stat with the same value.",
+    "Uncertain effects carry 'uncertain': '<questionId>' (key into 'questions'); they render in a separate 'Uncertain' group and are excluded from totals.",
+    "Totals must flag any stat whose contributions include more than one source from the same class (see question class-duplicates).",
+    "'Crit Chance is X%' is additive to crit chance (+X).",
+    "Bounties convert to Coins but can only be sold at random Markets (not every fortress); filed under Convert. market_sell_rate: random Markets have a sell table like the fortress with a variable multiplier (0.5x-2x, changes every 5 min, 1x = fortress price); +1x raises the minimum to 1.5x.",
+    "Engineer L5 Flamethrowers & Frosthrowers are turrets; normal turret and crafting rules apply.",
+    "Blessed (Priest L2/L3): the Priest blesses one person at a time with the staff equipped; lasts about 1 minute (when: blessed_by_staff, scope team).",
+    "scope is who benefits: self, nearby (nearby teammates), team (whole team; all L4 TEAM levels). Enemy debuffs/auras the player emits are scope self.",
+    "hp_regen is normalized to % of Max HP per second.",
+    "Assumption: Recruit L5 '+25% stronger passives' is a multiplier applying to both pct and flat values of rolled passives; results round to 1 decimal (method still open: question recruit-rounding).",
+    "Assumption: Crafter L2 Drill Boosts: boost distance +50% is a fact (50km -> 75km); boost amount +50% (200% -> 300%) is assumed.",
+    "Assumption: Engineer L2 turret discount stacks additively with Crafting Shack discounts (Crafter L1/L4) on turrets.",
+    "Assumption: Scope rule: L4 effects are scope team. Where a level gives a bigger bonus to nearby teammates, a separate nearby effect is kept alongside the team one so the UI can call out the higher bonus for close players."
+  ],
+  "categories": [
+    {
+      "id": "gather",
+      "name": "Gather",
+      "subs": [
+        {
+          "id": "mining",
+          "name": "Mining & Veins"
+        },
+        {
+          "id": "enemy_drops",
+          "name": "Enemy Drops"
+        },
+        {
+          "id": "loot",
+          "name": "Loot & Chests"
+        }
+      ]
+    },
+    {
+      "id": "process",
+      "name": "Process",
+      "subs": [
+        {
+          "id": "smelting",
+          "name": "Furnace & Refinery"
+        }
+      ]
+    },
+    {
+      "id": "convert",
+      "name": "Convert",
+      "subs": [
+        {
+          "id": "sell",
+          "name": "Sell for Coins"
+        },
+        {
+          "id": "shred",
+          "name": "Shred for Cogs"
+        },
+        {
+          "id": "exchange",
+          "name": "Markets"
+        },
+        {
+          "id": "bounties",
+          "name": "Bounties"
+        }
+      ]
+    },
+    {
+      "id": "spend",
+      "name": "Spend",
+      "subs": [
+        {
+          "id": "recipes",
+          "name": "Crafting Recipes"
+        },
+        {
+          "id": "discounts",
+          "name": "Discounts"
+        },
+        {
+          "id": "starting",
+          "name": "Starting Resources"
+        }
+      ]
+    },
+    {
+      "id": "combat",
+      "name": "Combat",
+      "subs": [
+        {
+          "id": "general",
+          "name": "General Damage"
+        },
+        {
+          "id": "melee",
+          "name": "Melee"
+        },
+        {
+          "id": "guns",
+          "name": "Guns"
+        },
+        {
+          "id": "explosives",
+          "name": "Explosives"
+        },
+        {
+          "id": "bosses",
+          "name": "Bosses"
+        },
+        {
+          "id": "sentries",
+          "name": "Sentries & Turrets"
+        },
+        {
+          "id": "crowd_control",
+          "name": "Crowd Control"
+        }
+      ]
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "subs": [
+        {
+          "id": "health",
+          "name": "Health"
+        },
+        {
+          "id": "healing",
+          "name": "Healing"
+        },
+        {
+          "id": "defense",
+          "name": "Defense"
+        },
+        {
+          "id": "status",
+          "name": "Status Effects"
+        },
+        {
+          "id": "revive",
+          "name": "Revive"
+        },
+        {
+          "id": "stealth",
+          "name": "Stealth & Vision"
+        },
+        {
+          "id": "consumables",
+          "name": "Consumables"
+        }
+      ]
+    },
+    {
+      "id": "drill",
+      "name": "Drill",
+      "subs": [
+        {
+          "id": "driving",
+          "name": "Driving"
+        },
+        {
+          "id": "wall_damage",
+          "name": "Wall Damage"
+        },
+        {
+          "id": "fuel",
+          "name": "Fuel"
+        },
+        {
+          "id": "boosts",
+          "name": "Drill Boosts"
+        },
+        {
+          "id": "upgrades",
+          "name": "Drill Upgrades"
+        }
+      ]
+    },
+    {
+      "id": "mobility",
+      "name": "Mobility",
+      "subs": [
+        {
+          "id": "movement",
+          "name": "Movement"
+        }
+      ]
+    },
+    {
+      "id": "world",
+      "name": "World",
+      "subs": [
+        {
+          "id": "spawns",
+          "name": "Spawns & Events"
+        },
+        {
+          "id": "dungeons",
+          "name": "Dungeons & Structures"
+        }
+      ]
+    },
+    {
+      "id": "meta",
+      "name": "Meta",
+      "subs": [
+        {
+          "id": "passives",
+          "name": "Passive Modifiers"
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "pickaxe_damage": {
+      "name": "Pickaxe Damage",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "pickaxe_attack_speed": {
+      "name": "Pickaxe Attack Speed",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "vein_instant_break_chance": {
+      "name": "Chance to Instantly Break a Vein",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "gem_vein_jackpot_chance": {
+      "name": "Gem Vein 10-Gem Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "tool_damage_flat": {
+      "name": "Tool Damage (flat)",
+      "unit": "flat",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "vein_multi_drop": {
+      "name": "Veins Drop Multiple Items More Often",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "vein_min_two_drops": {
+      "name": "Veins Always Drop 2+ Items",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "mining"
+    },
+    "pumpkin_drop_chance": {
+      "name": "Trick-or-Treat Pumpkin Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "ammo_drop_chance": {
+      "name": "Pistol/Shotgun/Rifle Ammo Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "special_ammo_drop_chance": {
+      "name": "Special Ammo Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "iron_bar_drop_chance": {
+      "name": "Iron Bar Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "gold_bar_drop_chance": {
+      "name": "Gold Bar Drop Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "golden_pumpkin_every_10th_kill": {
+      "name": "Golden Pumpkin Every 10th Kill",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "all_pumpkins_golden": {
+      "name": "All Pumpkin Drops Golden",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "gun_kills_golden": {
+      "name": "Gun Kills Turn Golden",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "melee_kills_golden": {
+      "name": "Melee Kills Turn Golden",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "enemy_drops"
+    },
+    "chest_rare_luck": {
+      "name": "Legendary & Mythic Luck from Chests",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "shop_rare_luck": {
+      "name": "Legendary & Mythic Luck from Shops",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "mimic_promote_chance": {
+      "name": "Mimic Promote Chance",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "money_bag_share": {
+      "name": "Share of Teammates' Money Bag Coins",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "chest_multi_drop": {
+      "name": "Chests Drop Multiple Items More Often",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "chest_min_two_drops": {
+      "name": "Chests Always Drop 2+ Items",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "mimics_open_normally": {
+      "name": "Mimics Open Like Normal",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "loot_highlight": {
+      "name": "Scrap & Chests Highlighted",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "loot"
+    },
+    "processing_output": {
+      "name": "Furnace & Gem Refinery Output",
+      "unit": "pct",
+      "cat": "process",
+      "sub": "smelting"
+    },
+    "auto_smelt_ore": {
+      "name": "Ores Auto-Smelt into Bars",
+      "unit": "flag",
+      "cat": "process",
+      "sub": "smelting"
+    },
+    "sell_ore_coins": {
+      "name": "Ore Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_gem_coins": {
+      "name": "Gem Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_scrap_coins": {
+      "name": "Scrap (Bar) Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_corpse_coins": {
+      "name": "Corpse Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_goblin_coins": {
+      "name": "Goblin Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_golden_coins": {
+      "name": "Golden Items Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "sell_boss_coins": {
+      "name": "Boss Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "auto_sell_kills": {
+      "name": "Kills Auto-Sell into Money Bags",
+      "unit": "flag",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "shred_cogs": {
+      "name": "Cogs from Shredding Scrap",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "shred"
+    },
+    "shred_also_coins": {
+      "name": "Shredding Also Grants Sell Value in Coins",
+      "unit": "flag",
+      "cat": "convert",
+      "sub": "shred"
+    },
+    "market_sell_rate": {
+      "name": "Random Market Sell Rate (+x multiplier)",
+      "unit": "flat",
+      "cat": "convert",
+      "sub": "exchange"
+    },
+    "bounty_chance": {
+      "name": "Chance Enemy Becomes a Bounty (sold at Markets)",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "bounties"
+    },
+    "bosses_become_bounties": {
+      "name": "Dungeon Bosses Become Bounties (sold at Markets)",
+      "unit": "flag",
+      "cat": "convert",
+      "sub": "bounties"
+    },
+    "recipe_medkit": {
+      "name": "Medkit Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_gas_can": {
+      "name": "Gas Can Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_speed_boots": {
+      "name": "Speed Boots Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_potions": {
+      "name": "Potion Recipes",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_event_clock": {
+      "name": "Event Clock Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_nuke": {
+      "name": "Nuke Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_guns_ammo": {
+      "name": "Guns & Ammo Recipes",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "recipe_cannon": {
+      "name": "Cannon Recipe",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "crafting_levels_unlocked": {
+      "name": "All Crafting Levels Unlocked",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "recipes"
+    },
+    "shack_discount": {
+      "name": "Crafting Shack Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "turret_discount": {
+      "name": "Turret Discount (Crafting Shack)",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "fuel_storage_discount": {
+      "name": "Fuel Storage Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "drive_speed_upgrade_discount": {
+      "name": "Drive Speed Upgrade Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "power_drive_discount": {
+      "name": "Power Drive Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "engine_overdrive_discount": {
+      "name": "Engine Overdrive Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "drill_power_discount": {
+      "name": "Drill Power Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "mega_drill_discount": {
+      "name": "Mega Drill Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "power_slam_discount": {
+      "name": "Power Slam Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "rpm_overclock_discount": {
+      "name": "RPM Overclock Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "ultra_drill_discount": {
+      "name": "Ultra Drill Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "start_coins": {
+      "name": "Starting Coins",
+      "unit": "flat",
+      "cat": "spend",
+      "sub": "starting"
+    },
+    "start_engine_overdrive_3": {
+      "name": "Drill Starts with Engine Overdrive III",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "starting"
+    },
+    "start_goblin_knight": {
+      "name": "Start with a Goblin Knight",
+      "unit": "flag",
+      "cat": "spend",
+      "sub": "starting"
+    },
+    "enemy_damage_taken": {
+      "name": "Enemies Take Extra Damage",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "general"
+    },
+    "weapon_damage_flat": {
+      "name": "Weapon Damage (flat)",
+      "unit": "flat",
+      "cat": "combat",
+      "sub": "general"
+    },
+    "melee_damage": {
+      "name": "Melee Damage",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "melee"
+    },
+    "melee_attack_speed": {
+      "name": "Melee Attack Speed",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "melee"
+    },
+    "melee_crit_chance": {
+      "name": "Melee Crit Chance",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "melee"
+    },
+    "melee_slices_stone": {
+      "name": "Melee Slices Stone Enemies",
+      "unit": "flag",
+      "cat": "combat",
+      "sub": "melee"
+    },
+    "melee_crit_chain": {
+      "name": "Melee Crits Chain",
+      "unit": "flag",
+      "cat": "combat",
+      "sub": "melee"
+    },
+    "gun_damage": {
+      "name": "Gun Damage",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "gun_fire_rate": {
+      "name": "Gun Fire Rate",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "gun_crit_chance": {
+      "name": "Gun Crit Chance",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "ammo_bullets": {
+      "name": "Bullets per Ammo",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "gun_pierce": {
+      "name": "Gunshots Pierce",
+      "unit": "flag",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "gun_explosive_rounds": {
+      "name": "Gunshots Explode on Impact",
+      "unit": "flag",
+      "cat": "combat",
+      "sub": "guns"
+    },
+    "explosive_damage": {
+      "name": "Explosive Damage",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "explosives"
+    },
+    "kill_explode_chance": {
+      "name": "Chance Enemies Explode on Defeat",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "explosives"
+    },
+    "boss_damage": {
+      "name": "Damage to Bosses",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "bosses"
+    },
+    "boss_execute_threshold": {
+      "name": "Boss Execute Threshold (% HP)",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "bosses"
+    },
+    "boss_kill_random_bonus": {
+      "name": "Random Bonus per Boss Defeated",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "bosses"
+    },
+    "sentry_range": {
+      "name": "Sentry Range",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "sentries"
+    },
+    "sentry_damage": {
+      "name": "Sentry Damage",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "sentries"
+    },
+    "turret_crit_chance": {
+      "name": "Turret Crit Chance",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "sentries"
+    },
+    "thrower_no_overheat": {
+      "name": "Flamethrowers & Frosthrowers Never Overheat",
+      "unit": "flag",
+      "cat": "combat",
+      "sub": "sentries"
+    },
+    "stagger_threshold_reduction": {
+      "name": "Stagger Threshold Reduction",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "crowd_control"
+    },
+    "stagger_duration": {
+      "name": "Stagger Duration",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "crowd_control"
+    },
+    "enemy_move_slow": {
+      "name": "Enemy Movement Slow",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "crowd_control"
+    },
+    "enemy_attack_slow": {
+      "name": "Enemy Attack Slow",
+      "unit": "pct",
+      "cat": "combat",
+      "sub": "crowd_control"
+    },
+    "taunt_reflect_multiplier": {
+      "name": "Taunted Enemies Take Nx Their Damage",
+      "unit": "flat",
+      "cat": "combat",
+      "sub": "crowd_control"
+    },
+    "max_health": {
+      "name": "Health",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "health"
+    },
+    "max_hp_flat": {
+      "name": "Max HP (flat)",
+      "unit": "flat",
+      "cat": "survival",
+      "sub": "health"
+    },
+    "healing": {
+      "name": "Healing from All Sources",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "lifesteal": {
+      "name": "Melee Lifesteal",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "lifesteal_healing": {
+      "name": "Lifesteal Healing",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "hp_regen": {
+      "name": "HP Regen (% Max HP per second)",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "soul_orb_heal_bonus": {
+      "name": "Soul Orb Healing",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "soul_orb_heal": {
+      "name": "Soul Orbs on Defeat (HP healed)",
+      "unit": "flat",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "corpse_feeding": {
+      "name": "Feed on Corpses to Heal",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "healing"
+    },
+    "taunt_damage_reduction": {
+      "name": "Damage Reduction from Taunted Enemies",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "defense"
+    },
+    "goblins_passive": {
+      "name": "Goblins Won't Attack You",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "defense"
+    },
+    "status_duration_reduction": {
+      "name": "Status Effects Wear Off Faster",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "status"
+    },
+    "status_immunity": {
+      "name": "Immune to Status Effects (Fire, Ice, Poison)",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "status"
+    },
+    "auto_revive": {
+      "name": "Instant Revive When Defeated",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "revive"
+    },
+    "coin_revive": {
+      "name": "Revive by Paying Coins",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "revive"
+    },
+    "darkness_stealth": {
+      "name": "Undetected in Darkness Unless Attacking",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "stealth"
+    },
+    "darkness_attack_stealth": {
+      "name": "Attacking in Darkness Doesn't Reveal",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "stealth"
+    },
+    "night_vision": {
+      "name": "Night Vision",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "stealth"
+    },
+    "potion_duration": {
+      "name": "Potion Duration",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "potion_effectiveness": {
+      "name": "Potion Effectiveness",
+      "unit": "pct",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "heal_items_share": {
+      "name": "Bandages & Medkits Also Heal Nearby",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "potions_share": {
+      "name": "Potions Also Affect Nearby",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "heal_items_stack": {
+      "name": "Bandages & Medkits Stack in Toolbar",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "drive_speed": {
+      "name": "Drive Speed",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "driving"
+    },
+    "drive_acceleration": {
+      "name": "Drive Acceleration",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "driving"
+    },
+    "drill_wall_damage": {
+      "name": "Drill Wall Damage",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "wall_damage"
+    },
+    "fuel_contribution": {
+      "name": "Fuel Contribution",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "fuel"
+    },
+    "kill_auto_fuel": {
+      "name": "Kills Auto-Deposit Fuel",
+      "unit": "flag",
+      "cat": "drill",
+      "sub": "fuel"
+    },
+    "drill_boost_distance": {
+      "name": "Drill Boost Distance",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "boosts"
+    },
+    "drill_boost_amount": {
+      "name": "Drill Boost Amount",
+      "unit": "pct",
+      "cat": "drill",
+      "sub": "boosts"
+    },
+    "boss_free_drill_upgrade": {
+      "name": "Free Rare+ Drill Upgrade per Boss",
+      "unit": "flag",
+      "cat": "drill",
+      "sub": "upgrades"
+    },
+    "move_speed": {
+      "name": "Movement Speed",
+      "unit": "pct",
+      "cat": "mobility",
+      "sub": "movement"
+    },
+    "money_fog_spawn_chance": {
+      "name": "Money Fog Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "bounty_camp_spawn_chance": {
+      "name": "Bounty Camp Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "church_spawn_chance": {
+      "name": "Church Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "mineshaft_spawn_chance": {
+      "name": "Mineshaft Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "dungeon_rewind": {
+      "name": "Pocket Watch Rewinds Cleared Dungeons",
+      "unit": "flag",
+      "cat": "world",
+      "sub": "dungeons"
+    },
+    "mansion_doors_unlocked": {
+      "name": "Vampire Mansion Doors Unlocked",
+      "unit": "flag",
+      "cat": "world",
+      "sub": "dungeons"
+    },
+    "goblin_rings_surrender": {
+      "name": "Goblin Rings Surrender",
+      "unit": "flag",
+      "cat": "world",
+      "sub": "dungeons"
+    },
+    "passive_strength": {
+      "name": "Rolled Passive Strength",
+      "unit": "pct",
+      "cat": "meta",
+      "sub": "passives"
+    },
+    "reaper_faster_scaling": {
+      "name": "Reaper L2/L3 Scale Every 5 Kills",
+      "unit": "flag",
+      "cat": "meta",
+      "sub": "passives"
+    }
+  },
+  "whens": {
+    "as_driver": "While driving",
+    "as_driver_fuel_below_10": "While driving with fuel below 10%",
+    "power_burst": "During a Power Burst",
+    "per_consecutive_hit": "Per consecutive hit",
+    "in_dungeon": "In dungeons",
+    "ramp_30s_until_hit": "Builds over 30s until hit",
+    "in_glow_ring": "Inside the glow ring",
+    "below_50_hp": "Below 50% HP",
+    "per_corpse_fed": "Per corpse fed",
+    "in_darkness": "In darkness",
+    "per_10_kills": "Per 10 kills",
+    "hit_by_turret": "When hit by a turret",
+    "per_boss_defeated": "Per boss defeated",
+    "boss_defeated": "When a boss is defeated",
+    "per_goblin_recruit": "Per goblin recruit",
+    "blessed_by_staff": "While blessed by a Priest"
+  },
+  "questions": {
+    "recruit-rounding": {
+      "q": "How does Recruit L5 (+25% stronger passives) round the scaled values (nearest, up, down)?",
+      "classes": [
+        "rec L5"
+      ]
+    },
+    "class-duplicates": {
+      "q": "How do multiple sources of the same class stack: (a) passives of the same class at two levels in one set (e.g. Salvager 2 + Salvager 3), (b) two teammates with the same base class (do L4 team bonuses stack)?",
+      "classes": []
+    },
+    "driver-stacking": {
+      "q": "Do the driver-only drill bonuses (Racer/Driller L1/L3) stack additively with the Driller L4 unconditional team wall damage for the driver?",
+      "classes": [
+        "ra L1",
+        "ra L3",
+        "dr L1",
+        "dr L3"
+      ]
+    },
+    "consecutive-hit-scaling": {
+      "q": "What are the cap and reset rule of the per-consecutive-hit scaling (Mercenary Rush L3, Brawler L3)?",
+      "classes": [
+        "mer L3",
+        "br L3"
+      ]
+    },
+    "power-burst": {
+      "q": "What triggers Racer L5 Power Burst, how long does it last, and does it require being the Driver?",
+      "classes": [
+        "ra L5"
+      ]
+    },
+    "team-bonus-needs-source": {
+      "q": "Do team L4 bonuses that modify a mechanic (Vampire lifesteal healing, Reaper soul orb healing) apply to teammates who lack the base mechanic?",
+      "classes": [
+        "v L4",
+        "rea L4"
+      ]
+    },
+    "mimic-promote": {
+      "q": "What does Looter L5 'Mimic Promote Chance' promote a Mimic into (rarity upgrade?), and how does the chance apply?",
+      "classes": [
+        "l L5"
+      ]
+    },
+    "pirate-golden": {
+      "q": "Does Pirate L2 'Anything Golden' mean golden mutated mobs (e.g. Golden Goblin) only, or also Gold Bars and Golden Pumpkins?",
+      "classes": [
+        "pi L2"
+      ]
+    }
+  }
+}

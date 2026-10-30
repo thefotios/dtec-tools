@@ -35,21 +35,61 @@
       ],
       "levels": [
         {
-          "text": "+50% Pickaxe Damage"
+          "text": "+50% Pickaxe Damage",
+          "effects": [
+            {
+              "stat": "pickaxe_damage",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+50% Pickaxe Attack Speed"
+          "text": "+50% Pickaxe Attack Speed",
+          "effects": [
+            {
+              "stat": "pickaxe_attack_speed",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Ores and Gems sell for +25% Coins"
+          "text": "Ores and Gems sell for +25% Coins",
+          "effects": [
+            {
+              "stat": "sell_ore_coins",
+              "value": 25,
+              "scope": "self"
+            },
+            {
+              "stat": "sell_gem_coins",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+25% Pickaxe Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "pickaxe_damage",
+              "value": 25,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Pickaxe hits have a 10% chance to instantly break a vein",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "vein_instant_break_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 04.png"
@@ -66,21 +106,66 @@
       ],
       "levels": [
         {
-          "text": "+20% Gun & Melee Damage"
+          "text": "+20% Gun & Melee Damage",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 20,
+              "scope": "self"
+            },
+            {
+              "stat": "melee_damage",
+              "value": 20,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+50% Health"
+          "text": "+50% Health",
+          "effects": [
+            {
+              "stat": "max_health",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Scrap sells for +25% Coins"
+          "text": "Scrap sells for +25% Coins",
+          "effects": [
+            {
+              "stat": "sell_scrap_coins",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+10% Gun & Melee Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 10,
+              "scope": "team"
+            },
+            {
+              "stat": "melee_damage",
+              "value": 10,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Passives rolled from other classes are +25% stronger",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "passive_strength",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 05.png"
@@ -98,21 +183,53 @@
       ],
       "levels": [
         {
-          "text": "+100% Healing from all sources"
+          "text": "+100% Healing from all sources",
+          "effects": [
+            {
+              "stat": "healing",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Medkits can be crafted in the Crafting Shack"
+          "text": "Medkits can be crafted in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "recipe_medkit",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Bandages & Medkits you use also heal nearby teammates"
+          "text": "Bandages & Medkits you use also heal nearby teammates",
+          "effects": [
+            {
+              "stat": "heal_items_share",
+              "scope": "nearby"
+            }
+          ]
         },
         {
           "text": "+50% Healing from all sources",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "healing",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Bandages & Medkits can stack in your toolbar",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "heal_items_stack",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 11.png"
@@ -130,21 +247,54 @@
       ],
       "levels": [
         {
-          "text": "+50% Fuel Contribution"
+          "text": "+50% Fuel Contribution",
+          "effects": [
+            {
+              "stat": "fuel_contribution",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Fuel Storage is -50% off"
+          "text": "Fuel Storage is -50% off",
+          "effects": [
+            {
+              "stat": "fuel_storage_discount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gas Cans can be crafted in the Crafting Shack"
+          "text": "Gas Cans can be crafted in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "recipe_gas_can",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+25% Fuel Contribution",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "fuel_contribution",
+              "value": 25,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Defeating enemies automatically deposits Fuel into the Drill",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "kill_auto_fuel",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 08.png"
@@ -160,21 +310,74 @@
       ],
       "levels": [
         {
-          "text": "+30% Melee Attack Speed & Gun Fire Rate"
+          "text": "+30% Melee Attack Speed & Gun Fire Rate",
+          "effects": [
+            {
+              "stat": "melee_attack_speed",
+              "value": 30,
+              "scope": "self"
+            },
+            {
+              "stat": "gun_fire_rate",
+              "value": 30,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Corpses sell for +50% Coins"
+          "text": "Corpses sell for +50% Coins",
+          "effects": [
+            {
+              "stat": "sell_corpse_coins",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Consecutive hits grant +1% Melee Attack Speed & Gun Fire Rate"
+          "text": "Consecutive hits grant +1% Melee Attack Speed & Gun Fire Rate",
+          "effects": [
+            {
+              "stat": "melee_attack_speed",
+              "value": 1,
+              "scope": "self",
+              "when": "per_consecutive_hit",
+              "uncertain": "consecutive-hit-scaling"
+            },
+            {
+              "stat": "gun_fire_rate",
+              "value": 1,
+              "scope": "self",
+              "when": "per_consecutive_hit",
+              "uncertain": "consecutive-hit-scaling"
+            }
+          ]
         },
         {
           "text": "+15% Melee Attack Speed & Gun Fire Rate",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "melee_attack_speed",
+              "value": 15,
+              "scope": "team"
+            },
+            {
+              "stat": "gun_fire_rate",
+              "value": 15,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Defeating enemies automatically sells them into Money Bags",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "auto_sell_kills",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 06.png"
@@ -190,21 +393,99 @@
       ],
       "levels": [
         {
-          "text": "+50% Drive Speed & Acceleration as the Driver"
+          "text": "+50% Drive Speed & Acceleration as the Driver",
+          "effects": [
+            {
+              "stat": "drive_speed",
+              "value": 50,
+              "scope": "self",
+              "when": "as_driver",
+              "uncertain": "driver-stacking"
+            },
+            {
+              "stat": "drive_acceleration",
+              "value": 50,
+              "scope": "self",
+              "when": "as_driver",
+              "uncertain": "driver-stacking"
+            }
+          ]
         },
         {
-          "text": "Drive Speed, Power Drive & Engine Overdrive are -50% off"
+          "text": "Drive Speed, Power Drive & Engine Overdrive are -50% off",
+          "effects": [
+            {
+              "stat": "drive_speed_upgrade_discount",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "power_drive_discount",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "engine_overdrive_discount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "When Fuel is less than 10%, gain +100% Drive Speed & Acceleration as the Driver"
+          "text": "When Fuel is less than 10%, gain +100% Drive Speed & Acceleration as the Driver",
+          "effects": [
+            {
+              "stat": "drive_speed",
+              "value": 100,
+              "scope": "self",
+              "when": "as_driver_fuel_below_10",
+              "uncertain": "driver-stacking"
+            },
+            {
+              "stat": "drive_acceleration",
+              "value": 100,
+              "scope": "self",
+              "when": "as_driver_fuel_below_10",
+              "uncertain": "driver-stacking"
+            }
+          ]
         },
         {
           "text": "Drill starts with Engine Overdrive III",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "start_engine_overdrive_3",
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Power Burst grants +100% Wall Damage, Speed & Acceleration",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "drill_wall_damage",
+              "value": 100,
+              "scope": "self",
+              "when": "power_burst",
+              "uncertain": "power-burst"
+            },
+            {
+              "stat": "drive_speed",
+              "value": 100,
+              "scope": "self",
+              "when": "power_burst",
+              "uncertain": "power-burst"
+            },
+            {
+              "stat": "drive_acceleration",
+              "value": 100,
+              "scope": "self",
+              "when": "power_burst",
+              "uncertain": "power-burst"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 07.png"
@@ -222,21 +503,56 @@
       ],
       "levels": [
         {
-          "text": "+20% Movement Speed"
+          "text": "+20% Movement Speed",
+          "effects": [
+            {
+              "stat": "move_speed",
+              "value": 20,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Scrap and Chests are highlighted while inside Dungeons"
+          "text": "Scrap and Chests are highlighted while inside Dungeons",
+          "effects": [
+            {
+              "stat": "loot_highlight",
+              "scope": "self",
+              "when": "in_dungeon"
+            }
+          ]
         },
         {
-          "text": "Speed Boots can be crafted in the Crafting Shack"
+          "text": "Speed Boots can be crafted in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "recipe_speed_boots",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+10% Movement Speed",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "move_speed",
+              "value": 10,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Gradually gain up to +100% Movement Speed over 30 seconds, resetting on enemy hit",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "move_speed",
+              "value": 100,
+              "scope": "self",
+              "when": "ramp_30s_until_hit"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 10.png"
@@ -254,21 +570,54 @@
       ],
       "levels": [
         {
-          "text": "+100% Potion Duration"
+          "text": "+100% Potion Duration",
+          "effects": [
+            {
+              "stat": "potion_duration",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Potions can be crafted in the Crafting Shack"
+          "text": "Potions can be crafted in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "recipe_potions",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Potions you use also affect nearby teammates"
+          "text": "Potions you use also affect nearby teammates",
+          "effects": [
+            {
+              "stat": "potions_share",
+              "scope": "nearby"
+            }
+          ]
         },
         {
           "text": "+50% Potion Duration",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "potion_duration",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "+100% Potion Effectiveness",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "potion_effectiveness",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 09.png"
@@ -285,21 +634,58 @@
       ],
       "levels": [
         {
-          "text": "+100% Melee Damage"
+          "text": "+100% Melee Damage",
+          "effects": [
+            {
+              "stat": "melee_damage",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies Stagger from 50% less Melee Damage"
+          "text": "Enemies Stagger from 50% less Melee Damage",
+          "effects": [
+            {
+              "stat": "stagger_threshold_reduction",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Consecutive hits grant +5% Melee Damage"
+          "text": "Consecutive hits grant +5% Melee Damage",
+          "effects": [
+            {
+              "stat": "melee_damage",
+              "value": 5,
+              "scope": "self",
+              "when": "per_consecutive_hit",
+              "uncertain": "consecutive-hit-scaling"
+            }
+          ]
         },
         {
           "text": "+50% Melee Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "melee_damage",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Stagger lasts twice as long",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "stagger_duration",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 15.png"
@@ -316,21 +702,75 @@
       ],
       "levels": [
         {
-          "text": "+50% Wall Damage as the Driver"
+          "text": "+50% Wall Damage as the Driver",
+          "effects": [
+            {
+              "stat": "drill_wall_damage",
+              "value": 50,
+              "scope": "self",
+              "when": "as_driver",
+              "uncertain": "driver-stacking"
+            }
+          ]
         },
         {
-          "text": "Drill Power, Mega Drill & Power Slam are -50% off"
+          "text": "Drill Power, Mega Drill & Power Slam are -50% off",
+          "effects": [
+            {
+              "stat": "drill_power_discount",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "mega_drill_discount",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "power_slam_discount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "When Fuel is less than 10%, gain +100% Wall Damage as the Driver"
+          "text": "When Fuel is less than 10%, gain +100% Wall Damage as the Driver",
+          "effects": [
+            {
+              "stat": "drill_wall_damage",
+              "value": 100,
+              "scope": "self",
+              "when": "as_driver_fuel_below_10",
+              "uncertain": "driver-stacking"
+            }
+          ]
         },
         {
           "text": "Drill deals +25% Wall Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "drill_wall_damage",
+              "value": 25,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "RPM Overclock & Ultra Drill are -50% off",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "rpm_overclock_discount",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "ultra_drill_discount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 29.png"
@@ -347,21 +787,56 @@
       ],
       "levels": [
         {
-          "text": "+100% Gun Damage"
+          "text": "+100% Gun Damage",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies have a 10% chance to drop Pistol/Shotgun/Rifle Ammo"
+          "text": "Enemies have a 10% chance to drop Pistol/Shotgun/Rifle Ammo",
+          "effects": [
+            {
+              "stat": "ammo_drop_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+100% Gun Fire Rate"
+          "text": "+100% Gun Fire Rate",
+          "effects": [
+            {
+              "stat": "gun_fire_rate",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+50% Gun Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Gun Crit Chance is 10%",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "gun_crit_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 14.png"
@@ -377,21 +852,55 @@
       ],
       "levels": [
         {
-          "text": "Enemies have a 20% chance to drop a Trick-or-Treat Pumpkin"
+          "text": "Enemies have a 20% chance to drop a Trick-or-Treat Pumpkin",
+          "effects": [
+            {
+              "stat": "pumpkin_drop_chance",
+              "value": 20,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies inside your glow ring take +30% Damage"
+          "text": "Enemies inside your glow ring take +30% Damage",
+          "effects": [
+            {
+              "stat": "enemy_damage_taken",
+              "value": 30,
+              "scope": "self",
+              "when": "in_glow_ring"
+            }
+          ]
         },
         {
-          "text": "Every 10th enemy you defeat drops a Golden Pumpkin with every Trick & Treat"
+          "text": "Every 10th enemy you defeat drops a Golden Pumpkin with every Trick & Treat",
+          "effects": [
+            {
+              "stat": "golden_pumpkin_every_10th_kill",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Enemies have an additional 10% chance to drop a Trick-or-Treat Pumpkin",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "pumpkin_drop_chance",
+              "value": 10,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "All of your Pumpkin drops are Golden",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "all_pumpkins_golden",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 13.png"
@@ -408,21 +917,56 @@
       ],
       "levels": [
         {
-          "text": "+100% Health"
+          "text": "+100% Health",
+          "effects": [
+            {
+              "stat": "max_health",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Taunted enemies deal 25% less Damage to you"
+          "text": "Taunted enemies deal 25% less Damage to you",
+          "effects": [
+            {
+              "stat": "taunt_damage_reduction",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+150% Health"
+          "text": "+150% Health",
+          "effects": [
+            {
+              "stat": "max_health",
+              "value": 150,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+50% Health",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "max_health",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Taunted enemies take 5x the Damage they deal to you",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "taunt_reflect_multiplier",
+              "value": 5,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 26.png"
@@ -439,21 +983,59 @@
       ],
       "levels": [
         {
-          "text": "Status Effects on you wear off 50% faster"
+          "text": "Status Effects on you wear off 50% faster",
+          "effects": [
+            {
+              "stat": "status_duration_reduction",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Nearby enemies move & attack 25% slower"
+          "text": "Nearby enemies move & attack 25% slower",
+          "effects": [
+            {
+              "stat": "enemy_move_slow",
+              "value": 25,
+              "scope": "self"
+            },
+            {
+              "stat": "enemy_attack_slow",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Pocket Watch can Rewind cleared Dungeons, fully resetting them"
+          "text": "Pocket Watch can Rewind cleared Dungeons, fully resetting them",
+          "effects": [
+            {
+              "stat": "dungeon_rewind",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Status Effects on players wear off 25% faster",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "status_duration_reduction",
+              "value": 25,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Event Clock can be crafted in the Crafting Shack",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "recipe_event_clock",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 28.png"
@@ -470,21 +1052,62 @@
       ],
       "levels": [
         {
-          "text": "Heal 2% of the Melee Damage you deal"
+          "text": "Heal 2% of the Melee Damage you deal",
+          "effects": [
+            {
+              "stat": "lifesteal",
+              "value": 2,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "When below 50% Health, gain +200% Healing from all sources"
+          "text": "When below 50% Health, gain +200% Healing from all sources",
+          "effects": [
+            {
+              "stat": "healing",
+              "value": 200,
+              "scope": "self",
+              "when": "below_50_hp"
+            }
+          ]
         },
         {
-          "text": "Feed on Corpses to heal and gain +1 Max HP"
+          "text": "Feed on Corpses to heal and gain +1 Max HP",
+          "effects": [
+            {
+              "stat": "corpse_feeding",
+              "scope": "self"
+            },
+            {
+              "stat": "max_hp_flat",
+              "value": 1,
+              "scope": "self",
+              "when": "per_corpse_fed"
+            }
+          ]
         },
         {
           "text": "+200% Lifesteal Healing",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "lifesteal_healing",
+              "value": 200,
+              "scope": "team",
+              "uncertain": "team-bonus-needs-source"
+            }
+          ]
         },
         {
           "text": "Unlock all Doors in Vampire Mansions",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "mansion_doors_unlocked",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 27.png"
@@ -503,21 +1126,60 @@
       ],
       "levels": [
         {
-          "text": "Crafting Shack prices are -10% off"
+          "text": "Crafting Shack prices are -10% off",
+          "effects": [
+            {
+              "stat": "shack_discount",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Drill Boosts grant +50% Distance, Speed & Wall Damage"
+          "text": "Drill Boosts grant +50% Distance, Speed & Wall Damage",
+          "effects": [
+            {
+              "stat": "drill_boost_distance",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "drill_boost_amount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Your Furnace & Gem Refinery produce double"
+          "text": "Your Furnace & Gem Refinery produce double",
+          "effects": [
+            {
+              "stat": "processing_output",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Crafting Shack prices are -5% off",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "shack_discount",
+              "value": 5,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Start each run with all Crafting Levels unlocked",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "crafting_levels_unlocked",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 01.png"
@@ -534,21 +1196,55 @@
       ],
       "levels": [
         {
-          "text": "+100% Explosive Damage"
+          "text": "+100% Explosive Damage",
+          "effects": [
+            {
+              "stat": "explosive_damage",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies have a 10% chance to drop Special Ammo"
+          "text": "Enemies have a 10% chance to drop Special Ammo",
+          "effects": [
+            {
+              "stat": "special_ammo_drop_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies have a 25% chance to explode when defeated"
+          "text": "Enemies have a 25% chance to explode when defeated",
+          "effects": [
+            {
+              "stat": "kill_explode_chance",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+50% Explosive Damage",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "explosive_damage",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Nuke can be crafted in the Crafting Shack",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "recipe_nuke",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 17.png"
@@ -564,21 +1260,59 @@
       ],
       "levels": [
         {
-          "text": "Chests drop multiple items more often (Max 4)"
+          "text": "Chests drop multiple items more often (Max 4)",
+          "effects": [
+            {
+              "stat": "chest_multi_drop",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Chests always drop 2+ items"
+          "text": "Chests always drop 2+ items",
+          "effects": [
+            {
+              "stat": "chest_min_two_drops",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+100% Legendary & Mythic Luck from Chests"
+          "text": "+100% Legendary & Mythic Luck from Chests",
+          "effects": [
+            {
+              "stat": "chest_rare_luck",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+100% Money Fog Spawn Chance",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "money_fog_spawn_chance",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Mimics open like normal & have a 20% chance to Promote",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "mimics_open_normally",
+              "scope": "self"
+            },
+            {
+              "stat": "mimic_promote_chance",
+              "value": 20,
+              "scope": "self",
+              "uncertain": "mimic-promote"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 18.png"
@@ -594,21 +1328,69 @@
       ],
       "levels": [
         {
-          "text": "+30% Melee Damage & Movement Speed in Darkness"
+          "text": "+30% Melee Damage & Movement Speed in Darkness",
+          "effects": [
+            {
+              "stat": "melee_damage",
+              "value": 30,
+              "scope": "self",
+              "when": "in_darkness"
+            },
+            {
+              "stat": "move_speed",
+              "value": 30,
+              "scope": "self",
+              "when": "in_darkness"
+            }
+          ]
         },
         {
-          "text": "Enemies can't detect you in Darkness unless you attack"
+          "text": "Enemies can't detect you in Darkness unless you attack",
+          "effects": [
+            {
+              "stat": "darkness_stealth",
+              "scope": "self",
+              "when": "in_darkness"
+            }
+          ]
         },
         {
-          "text": "Regenerate 1% Max HP every Second in Darkness"
+          "text": "Regenerate 1% Max HP every Second in Darkness",
+          "effects": [
+            {
+              "stat": "hp_regen",
+              "value": 1,
+              "scope": "self",
+              "when": "in_darkness"
+            }
+          ]
         },
         {
           "text": "Night Vision & +15% Movement Speed in Darkness",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "night_vision",
+              "scope": "team"
+            },
+            {
+              "stat": "move_speed",
+              "value": 15,
+              "scope": "team",
+              "when": "in_darkness"
+            }
+          ]
         },
         {
           "text": "Attacking in Darkness no longer reveals you",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "darkness_attack_stealth",
+              "scope": "self",
+              "when": "in_darkness"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 16.png"
@@ -625,21 +1407,55 @@
       ],
       "levels": [
         {
-          "text": "Start with 1,000 Coins"
+          "text": "Start with 1,000 Coins",
+          "effects": [
+            {
+              "stat": "start_coins",
+              "value": 1000,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gain 25% of Coins collected by teammates from Money Bags"
+          "text": "Gain 25% of Coins collected by teammates from Money Bags",
+          "effects": [
+            {
+              "stat": "money_bag_share",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gems sell for +50% Coins"
+          "text": "Gems sell for +50% Coins",
+          "effects": [
+            {
+              "stat": "sell_gem_coins",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+100% Legendary & Mythic Luck from Shops",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "shop_rare_luck",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Revive yourself or teammates by paying Coins",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "coin_revive",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 20.png"
@@ -656,21 +1472,64 @@
       ],
       "levels": [
         {
-          "text": "Enemies drop Soul Orbs on defeat (Heal 5 HP)"
+          "text": "Enemies drop Soul Orbs on defeat (Heal 5 HP)",
+          "effects": [
+            {
+              "stat": "soul_orb_heal",
+              "value": 5,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gain +5 Max HP for every 10 enemies defeated"
+          "text": "Gain +5 Max HP for every 10 enemies defeated",
+          "effects": [
+            {
+              "stat": "max_hp_flat",
+              "value": 5,
+              "scope": "self",
+              "when": "per_10_kills"
+            }
+          ]
         },
         {
-          "text": "Gain +1 Weapon & Tool Damage for every 10 enemies defeated"
+          "text": "Gain +1 Weapon & Tool Damage for every 10 enemies defeated",
+          "effects": [
+            {
+              "stat": "weapon_damage_flat",
+              "value": 1,
+              "scope": "self",
+              "when": "per_10_kills"
+            },
+            {
+              "stat": "tool_damage_flat",
+              "value": 1,
+              "scope": "self",
+              "when": "per_10_kills"
+            }
+          ]
         },
         {
           "text": "Soul Orbs heal +100%",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "soul_orb_heal_bonus",
+              "value": 100,
+              "scope": "team",
+              "uncertain": "team-bonus-needs-source"
+            }
+          ]
         },
         {
           "text": "Levels 2 and 3 scale every 5 enemies defeated instead of every 10",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "reaper_faster_scaling",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 30.png"
@@ -687,21 +1546,55 @@
       ],
       "levels": [
         {
-          "text": "Enemies have a 10% chance to drop Iron Bars"
+          "text": "Enemies have a 10% chance to drop Iron Bars",
+          "effects": [
+            {
+              "stat": "iron_bar_drop_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Shredding Scrap grants +50% more Cogs"
+          "text": "Shredding Scrap grants +50% more Cogs",
+          "effects": [
+            {
+              "stat": "shred_cogs",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Scrap sells for +100% Coins"
+          "text": "Scrap sells for +100% Coins",
+          "effects": [
+            {
+              "stat": "sell_scrap_coins",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Enemies have a 5% chance to drop Iron Bars",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "iron_bar_drop_chance",
+              "value": 5,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Shredding Scrap also grants its sell value in Coins",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "shred_also_coins",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 02.png"
@@ -718,21 +1611,60 @@
       ],
       "levels": [
         {
-          "text": "Enemies have a 15% chance to become Bounties when defeated"
+          "text": "Enemies have a 15% chance to become Bounties when defeated",
+          "effects": [
+            {
+              "stat": "bounty_chance",
+              "value": 15,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+50% Gun & Melee Damage"
+          "text": "+50% Gun & Melee Damage",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "melee_damage",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+1x Market Exchange Rate"
+          "text": "+1x Market Exchange Rate",
+          "effects": [
+            {
+              "stat": "market_sell_rate",
+              "value": 1,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+100% Bounty Camp Spawn Chance",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "bounty_camp_spawn_chance",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Dungeon Bosses you defeat become Bounties",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "bosses_become_bounties",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 23.png"
@@ -751,21 +1683,61 @@
       ],
       "levels": [
         {
-          "text": "+50% Sentry Range & Damage"
+          "text": "+50% Sentry Range & Damage",
+          "effects": [
+            {
+              "stat": "sentry_range",
+              "value": 50,
+              "scope": "self"
+            },
+            {
+              "stat": "sentry_damage",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Turrets are -25% off in the Crafting Shack"
+          "text": "Turrets are -25% off in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "turret_discount",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Turret Crit Chance is 15%"
+          "text": "Turret Crit Chance is 15%",
+          "effects": [
+            {
+              "stat": "turret_crit_chance",
+              "value": 15,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Enemies hit by Turrets take +5% Damage from all sources",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "enemy_damage_taken",
+              "value": 5,
+              "scope": "team",
+              "when": "hit_by_turret"
+            }
+          ]
         },
         {
           "text": "Your Flamethrowers & Frosthrowers never overheat",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "thrower_no_overheat",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 25.png"
@@ -782,21 +1754,57 @@
       ],
       "levels": [
         {
-          "text": "+200% Damage to Bosses"
+          "text": "+200% Damage to Bosses",
+          "effects": [
+            {
+              "stat": "boss_damage",
+              "value": 200,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Defeating a Boss grants a random +10% bonus: Max HP, Melee or Gun Damage"
+          "text": "Defeating a Boss grants a random +10% bonus: Max HP, Melee or Gun Damage",
+          "effects": [
+            {
+              "stat": "boss_kill_random_bonus",
+              "value": 10,
+              "scope": "self",
+              "when": "per_boss_defeated"
+            }
+          ]
         },
         {
-          "text": "Hitting a Boss below 25% Health instantly defeats it"
+          "text": "Hitting a Boss below 25% Health instantly defeats it",
+          "effects": [
+            {
+              "stat": "boss_execute_threshold",
+              "value": 25,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Defeating a Boss grants everyone a free Rare+ Drill Upgrade — choose from 3 options",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "boss_free_drill_upgrade",
+              "scope": "team",
+              "when": "boss_defeated"
+            }
+          ]
         },
         {
           "text": "Bosses sell for +400% Coins",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "sell_boss_coins",
+              "value": 400,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 32.png"
@@ -813,21 +1821,60 @@
       ],
       "levels": [
         {
-          "text": "Goblins sell for +200% Coins"
+          "text": "Goblins sell for +200% Coins",
+          "effects": [
+            {
+              "stat": "sell_goblin_coins",
+              "value": 200,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gain +5% Gun & Melee Damage per active Goblin Recruit"
+          "text": "Gain +5% Gun & Melee Damage per active Goblin Recruit",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 5,
+              "scope": "self",
+              "when": "per_goblin_recruit"
+            },
+            {
+              "stat": "melee_damage",
+              "value": 5,
+              "scope": "self",
+              "when": "per_goblin_recruit"
+            }
+          ]
         },
         {
-          "text": "Goblin Rings surrender when you enter, granting their rewards"
+          "text": "Goblin Rings surrender when you enter, granting their rewards",
+          "effects": [
+            {
+              "stat": "goblin_rings_surrender",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Every player starts with a Goblin Knight",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "start_goblin_knight",
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Goblins won't attack you",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "goblins_passive",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 24.png"
@@ -844,21 +1891,52 @@
       ],
       "levels": [
         {
-          "text": "Guns & Ammo can be crafted in the Crafting Shack"
+          "text": "Guns & Ammo can be crafted in the Crafting Shack",
+          "effects": [
+            {
+              "stat": "recipe_guns_ammo",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Gunshots pierce through Corpses and multiple enemies, including Stone enemies"
+          "text": "Gunshots pierce through Corpses and multiple enemies, including Stone enemies",
+          "effects": [
+            {
+              "stat": "gun_pierce",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Enemies defeated with Guns turn Golden"
+          "text": "Enemies defeated with Guns turn Golden",
+          "effects": [
+            {
+              "stat": "gun_kills_golden",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Ammo grants +100% more bullets",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "ammo_bullets",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Gunshots explode on impact",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "gun_explosive_rounds",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 31.png"
@@ -877,21 +1955,55 @@
       ],
       "levels": [
         {
-          "text": "Enemies have a 10% chance to drop Gold Bars"
+          "text": "Enemies have a 10% chance to drop Gold Bars",
+          "effects": [
+            {
+              "stat": "gold_bar_drop_chance",
+              "value": 10,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Anything Golden sells for +200% Coins"
+          "text": "Anything Golden sells for +200% Coins",
+          "effects": [
+            {
+              "stat": "sell_golden_coins",
+              "value": 200,
+              "scope": "self",
+              "uncertain": "pirate-golden"
+            }
+          ]
         },
         {
-          "text": "Enemies defeated with Melee turn Golden"
+          "text": "Enemies defeated with Melee turn Golden",
+          "effects": [
+            {
+              "stat": "melee_kills_golden",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Enemies have a 5% chance to drop Gold Bars",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "gold_bar_drop_chance",
+              "value": 5,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Cannon can be crafted in the Crafting Shack",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "recipe_cannon",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 22.png"
@@ -908,21 +2020,55 @@
       ],
       "levels": [
         {
-          "text": "Regenerate 1% Max HP every 2 Seconds"
+          "text": "Regenerate 1% Max HP every 2 Seconds",
+          "effects": [
+            {
+              "stat": "hp_regen",
+              "value": 0.5,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Blessed teammates instantly revive when defeated"
+          "text": "Blessed teammates instantly revive when defeated",
+          "effects": [
+            {
+              "stat": "auto_revive",
+              "scope": "team",
+              "when": "blessed_by_staff"
+            }
+          ]
         },
         {
-          "text": "Blessed teammates are immune to all Status Effects (Fire, Ice, Poison)"
+          "text": "Blessed teammates are immune to all Status Effects (Fire, Ice, Poison)",
+          "effects": [
+            {
+              "stat": "status_immunity",
+              "scope": "team",
+              "when": "blessed_by_staff"
+            }
+          ]
         },
         {
           "text": "+100% Church Spawn Chance",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "church_spawn_chance",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Immune to all Status Effects (Fire, Ice, Poison)",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "status_immunity",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 35.png"
@@ -940,21 +2086,53 @@
       ],
       "levels": [
         {
-          "text": "Ore and Gem Veins drop multiple items more often (Max 4)"
+          "text": "Ore and Gem Veins drop multiple items more often (Max 4)",
+          "effects": [
+            {
+              "stat": "vein_multi_drop",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Ores are automatically smelted into Bars when mined"
+          "text": "Ores are automatically smelted into Bars when mined",
+          "effects": [
+            {
+              "stat": "auto_smelt_ore",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Ore and Gem Veins always drop 2+ items"
+          "text": "Ore and Gem Veins always drop 2+ items",
+          "effects": [
+            {
+              "stat": "vein_min_two_drops",
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "+100% Mineshaft Spawn Chance",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "mineshaft_spawn_chance",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Gem Veins have a 5% chance to drop 10 Gems",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "gem_vein_jackpot_chance",
+              "value": 5,
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 33.png"
@@ -971,21 +2149,54 @@
       ],
       "levels": [
         {
-          "text": "Melee Crit Chance is 20%"
+          "text": "Melee Crit Chance is 20%",
+          "effects": [
+            {
+              "stat": "melee_crit_chance",
+              "value": 20,
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "Melee Attacks slice through Stone enemies"
+          "text": "Melee Attacks slice through Stone enemies",
+          "effects": [
+            {
+              "stat": "melee_slices_stone",
+              "scope": "self"
+            }
+          ]
         },
         {
-          "text": "+100% Melee Attack Speed"
+          "text": "+100% Melee Attack Speed",
+          "effects": [
+            {
+              "stat": "melee_attack_speed",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
         },
         {
           "text": "Melee Crit Chance is 10%",
-          "tag": "team"
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "melee_crit_chance",
+              "value": 10,
+              "scope": "team"
+            }
+          ]
         },
         {
           "text": "Melee Crits chain to a nearby enemy",
-          "tag": "master"
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "melee_crit_chain",
+              "scope": "self"
+            }
+          ]
         }
       ],
       "source": "screenshot 2026-10-29 34.png"

@@ -3,12 +3,27 @@ import { pathToFileURL } from 'node:url';
 import { newCode } from './codes.mjs';
 
 const LETTERS = /^[a-z]+$/;
+const SCOPES = ['self', 'nearby', 'team'];
+const UNITS = ['pct', 'flat', 'flag'];
 const TAGS = [undefined, undefined, undefined, 'team', 'master'];
 const isStr = (v) => typeof v === 'string' && v !== '';
 
 // Returns a list of violation messages; empty when data and registry agree.
-export function checkData(data, registry) {
+export function checkData(data, registry, taxonomy) {
   const out = [];
+  const { categories, stats, whens, questions } = taxonomy;
+  const subsByCat = new Map(categories.map((c) => [c.id, new Set(c.subs.map((s) => s.id))]));
+  for (const [qid, q] of Object.entries(questions)) {
+    if (!isStr(q?.q)) out.push(`taxonomy: question ${qid} needs a non-empty string q`);
+  }
+  for (const [wid, label] of Object.entries(whens)) {
+    if (!isStr(label)) out.push(`taxonomy: when ${wid} needs a non-empty string label`);
+  }
+  for (const [sid, s] of Object.entries(stats)) {
+    if (!isStr(s?.name)) out.push(`taxonomy: stat ${sid} needs a non-empty string name`);
+    if (!UNITS.includes(s?.unit)) out.push(`taxonomy: stat ${sid} unit ${s?.unit} must be pct, flat or flag`);
+    if (!subsByCat.get(s?.cat)?.has(s?.sub)) out.push(`taxonomy: stat ${sid} has cat/sub ${s?.cat}/${s?.sub} missing from categories`);
+  }
   const { tiers, classes } = data;
   const seenCodes = new Set();
   const seenSlugs = new Set();
@@ -28,6 +43,19 @@ export function checkData(data, registry) {
       c.levels.forEach((l, i) => {
         if (!isStr(l?.text)) bad(`level ${i + 1} needs text`);
         if (l?.tag !== TAGS[i]) bad(`level ${i + 1} tag must be ${TAGS[i] ?? 'absent'}`);
+        if (!Array.isArray(l?.effects) || l.effects.length === 0) return bad(`level ${i + 1} has no effects`);
+        l.effects.forEach((e, k) => {
+          const at = (msg) => bad(`level ${i + 1} effect ${k + 1} ${msg}`);
+          const st = Object.hasOwn(stats, e?.stat) ? stats[e.stat] : undefined;
+          if (!st) at(`stat ${e?.stat} is not in the taxonomy`);
+          else if (st.unit === 'flag') {
+            if (e.value !== undefined) at(`flag stat ${e.stat} must not carry a value`);
+          } else if (typeof e.value !== 'number' || !Number.isFinite(e.value)) at(`${st.unit} stat ${e.stat} needs a numeric value`);
+          if (!SCOPES.includes(e?.scope)) at(`scope ${e?.scope} must be self, nearby or team`);
+          else if (i === 3 && e.scope === 'self') at('is level 4 (team) and cannot be self-scoped');
+          if (e?.uncertain !== undefined && !Object.hasOwn(questions, e.uncertain)) at(`uncertain ${e.uncertain} is not a question`);
+          if (e?.when !== undefined && !Object.hasOwn(whens, e.when)) at(`when ${e.when} is not in whens`);
+        });
       });
 
     if (isStr(c.code)) {
@@ -67,7 +95,11 @@ const here = (p) => new URL(p, import.meta.url);
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const dataPath = process.argv[2] ?? here('../data/classes.json');
-  const violations = checkData(JSON.parse(readFileSync(dataPath)), JSON.parse(readFileSync(here('./codes.lock.json'))));
+  const violations = checkData(
+    JSON.parse(readFileSync(dataPath)),
+    JSON.parse(readFileSync(here('./codes.lock.json'))),
+    JSON.parse(readFileSync(here('../data/effects.json'))),
+  );
   for (const v of violations) console.error(v);
   if (violations.length) process.exit(1);
   console.log('data ok');

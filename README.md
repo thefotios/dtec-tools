@@ -1,6 +1,6 @@
 # DTEC Tools
 
-Class and passive combo viewer for Drill to Earth's Core. Pick a base class and up to three passives (levels 1 to 3) to see the combined effects. Client-side only: static ES modules, no framework, data in `data/classes.json`, hosted on GitHub Pages.
+Class and passive combo viewer for Drill to Earth's Core. Pick a base class and up to three passives (levels 1 to 3) to see the combined effects. Client-side only: static ES modules, no framework, data in `data/classes.json` and `data/effects.json`, hosted on Cloudflare Workers.
 
 ## URL format
 
@@ -29,6 +29,8 @@ A selected base class or passive you don't own is flagged "Not owned". With no c
 The address bar shows the build code of the selected class at your owned level, such as `/c5-sc1sal2sal3`. A class you own at level 0 shows `/`, and both copy actions are disabled with "Unlock <class> to share".
 
 The sharing actions sit in the title row of the base class panel (the class's five levels), for your own build only. "Copy link" copies the full share URL: the build code with your roster segment, `u` when you have a username, and `s` when you have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `c5-sc1sal2sal3-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation only.
+
+The Combined effects panel follows the passives panel and sums the stat effects of the unlocked base levels and the chosen passives: each stat shows a total with its sources, grouped by category. Effects that apply only in a situation are listed under Conditional, boolean effects under Flags, bonuses that grow with proximity under Nearby, and effects tied to an open game question under Uncertain. A row marked "rounded" includes values scaled by Recruit level 5 and rounded to 1 decimal, and "stacking unconfirmed" marks a stat fed by more than one copy of the same class. The panel also appears on opened builds.
 
 ## Passive sets
 
@@ -62,6 +64,8 @@ A team has a name and up to 8 members, each a library player; a player can be on
 
 A team link is `/team/ann.c5-sc1sal2sal3~bob.mi3-rec1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy team link" in the team panel header copies the active team's link and is disabled with a hint when there is no team or the team is empty. Opening a team link shows it read-only with "Save team" and a "Copy link" button that copies the opened URL, which creates the team, adds players whose names are not in the library, maps your own name to Me, and opens `/team` in place of the link. A link whose name and member names match a saved team shows "Saved" and an "Open team" button instead. A repeated member name (case-insensitive) is dropped with a notice. Links never import anything on their own.
 
+The Team effects panel below the team panel (and the opened team link) adds up every member's level 4 team bonuses and nearby effects for the selected classes. Each team card has an "Own effects" disclosure listing that player's self effects from their levels and saved passives.
+
 ## Help
 
 The Help page at `/help` is reached from the "Help" button in the header and from the "New here? See Help" link in the first-run empty states on the Classes and Team pages. It explains getting started, sharing a build, players and teams, how to read a code (with a table of class codes generated from `data/classes.json`), and where your data is stored. It is handled before build-code parsing, so `help` is never read as a class code.
@@ -86,7 +90,7 @@ Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served
 ## Adding a class
 
 1. Copy an existing entry and append it at the END of `classes` in `data/classes.json`. Never reorder or insert: file order drives roster codes and canonical passive order, and the check fails if it differs from the order of `scripts/codes.lock.json`.
-2. Fill every field: `code`, `slug` (lowercase letters only), `name`, `tier` (a key of `tiers`), `event`, `gear`, five `levels` (level 4 has `"tag": "team"`, level 5 has `"tag": "master"`, levels 1 to 3 have no tag), `source`. Use any placeholder for `code` for now.
+2. Fill every field: `code`, `slug` (lowercase letters only), `name`, `tier` (a key of `tiers`), `event`, `gear`, five `levels` (level 4 has `"tag": "team"`, level 5 has `"tag": "master"`, levels 1 to 3 have no tag), `source`. Every level also needs a non-empty `effects` array of `{stat, value?, scope, when?, uncertain?}`: `stat` is a stat id from `data/effects.json`, `value` is a number and is omitted for flag stats, `scope` is `self`, `nearby` or `team` (level 4 effects are `team` or `nearby`, never `self`), `when` is an id from `whens` for conditional effects, and `uncertain` is an id from `questions` for effects whose behavior is unconfirmed. Use any placeholder for `code` for now.
 3. Run `npm run check`. It fails with the expected code: `cannoneer: not in the registry; expected code "ca"`, with ` (has "...")` appended when your code differs.
 4. Set `code` on the entry to the expected value.
 5. Append `"<code>": "<slug>"` to the END of `scripts/codes.lock.json`, e.g. `"ca": "cannoneer"`.

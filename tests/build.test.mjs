@@ -30,6 +30,7 @@ test('BASE_PATH build: index and 404 identical with prefixed base href', () => {
     assert.match(index, /<base href="\/dtec-tools\/">/);
     assert.ok(existsSync(join(out, 'src/app.mjs')));
     assert.ok(existsSync(join(out, 'data/classes.json')));
+    assert.ok(existsSync(join(out, 'data/effects.json')));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

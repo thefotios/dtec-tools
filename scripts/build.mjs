@@ -10,8 +10,9 @@ const dataDir = resolve(process.env.DATA_DIR ?? join(repoRoot, 'data'));
 const base = `/${(process.env.BASE_PATH ?? '/').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 
 const data = JSON.parse(readFileSync(join(dataDir, 'classes.json'), 'utf8'));
+const taxonomy = JSON.parse(readFileSync(join(dataDir, 'effects.json'), 'utf8'));
 const registry = JSON.parse(readFileSync(join(repoRoot, 'scripts/codes.lock.json'), 'utf8'));
-const violations = checkData(data, registry);
+const violations = checkData(data, registry, taxonomy);
 if (violations.length) {
   for (const v of violations) console.error(v);
   process.exit(1);

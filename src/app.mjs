@@ -9,6 +9,7 @@ import { parseTeamLink, serializeTeamLink } from './team.mjs';
 const root = document.getElementById('app');
 const storage = { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) };
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
+const effectsUrl = () => new URL('data/effects.json', document.baseURI).href;
 
 const state = {
   status: 'loading',
@@ -35,6 +36,8 @@ const state = {
   store: createStore(storage),
   // Rows expanded by hand in edit mode.
   expanded: new Set(),
+  // Team cards whose "Own effects" disclosure is open (member names); transient, not persisted.
+  openEffects: new Set(),
   // link: an opened team link, null or { name, members, saved }; paste: the library paste form's drafts and feedback.
   team: { link: null, paste: { draft: '', name: '', error: null, message: null, notices: [] } },
   list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], nameEditing: false, nameDraft: null, nameError: null, nameConflict: null },
@@ -159,6 +162,10 @@ function setSlots(slots) {
 
 const actions = {
   retry: () => load(),
+  setEffectsOpen(key, open) {
+    if (open) state.openEffects.add(key);
+    else state.openEffects.delete(key);
+  },
   // Team has its own URL; leaving it returns to the single-build URL.
   setView(view) {
     const was = state.view;
@@ -496,10 +503,14 @@ async function load() {
   paint();
   const url = dataUrl();
   try {
-    const res = await fetch(url, { cache: 'no-cache' });
+    const [res, effectsRes] = await Promise.all([fetch(url, { cache: 'no-cache' }), fetch(effectsUrl(), { cache: 'no-cache' })]);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!effectsRes.ok) throw new Error(`effects.json: HTTP ${effectsRes.status}`);
     const data = await res.json();
+    const effects = await effectsRes.json();
     if (!Array.isArray(data.classes) || !data.tiers) throw new Error('unexpected data shape');
+    if (!effects.categories || !effects.stats || !effects.whens || !effects.questions) throw new Error('unexpected effects shape');
+    data.effects = effects;
     state.data = data;
     state.players = createPlayersStore(storage, data.classes);
     state.passives = createPassiveStore(storage, data.classes);
