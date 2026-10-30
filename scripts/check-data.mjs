@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { newCode } from './codes.mjs';
 
@@ -91,15 +92,20 @@ export function checkData(data, registry, taxonomy) {
   return out;
 }
 
+// Every class needs icons/<code>.png; kept apart from checkData so that stays pure.
+export function checkIcons(data, iconsDir) {
+  return data.classes.filter((c) => !existsSync(join(iconsDir, `${c.code}.png`))).map((c) => `${c.slug ?? c.code}: missing icons/${c.code}.png`);
+}
+
 const here = (p) => new URL(p, import.meta.url);
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const dataPath = process.argv[2] ?? here('../data/classes.json');
-  const violations = checkData(
-    JSON.parse(readFileSync(dataPath)),
-    JSON.parse(readFileSync(here('./codes.lock.json'))),
-    JSON.parse(readFileSync(here('../data/effects.json'))),
-  );
+  const data = JSON.parse(readFileSync(dataPath));
+  const violations = [
+    ...checkData(data, JSON.parse(readFileSync(here('./codes.lock.json'))), JSON.parse(readFileSync(here('../data/effects.json')))),
+    ...checkIcons(data, here('../icons').pathname),
+  ];
   for (const v of violations) console.error(v);
   if (violations.length) process.exit(1);
   console.log('data ok');

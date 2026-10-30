@@ -2,6 +2,7 @@ import { ownedClasses } from './owned.mjs';
 import { nameProblem, playerByName, sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
 import { toSlots, MAX_PASSIVES } from './passives.mjs';
 import { h, hidden } from './dom.mjs';
+import { classIcon } from './icons.mjs';
 import { buildEffects, buildEffectsPanel, ownEffectsDetails, teamEffectsPanel, teamInputs } from './render-effects.mjs';
 
 // Renders from state only; all data text goes through textContent.
@@ -131,6 +132,7 @@ function ownRow(state, actions, cls) {
       h(
         'button',
         { type: 'button', class: 'own-toggle', 'data-fk': k, 'aria-expanded': editing ? String(open) : null, 'aria-controls': editing ? `${k}-levels` : null, 'aria-pressed': editing ? null : String(selected), onclick: () => actions.selectClass(cls.slug) },
+        classIcon(cls),
         h('span', { class: 'class-name' }, cls.name, selected && !max ? notOwned() : null),
         diamonds(cls, state.data.tiers),
         editing ? h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }) : null,
@@ -213,7 +215,7 @@ function passivePicker(state, actions, opts) {
       h(
         'div',
         { class: 'own-head' },
-        h('span', { class: 'own-toggle passive-own-name' }, h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
+        h('span', { class: 'own-toggle passive-own-name' }, classIcon(c, { size: 24 }), h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
         max ? h('span', { class: 'own-pill is-owned', 'data-level': max }, `L${max}`, hidden(` owned, level ${max}`)) : notOwned(),
       ),
       h(
@@ -298,7 +300,7 @@ function passivePicker(state, actions, opts) {
             opts.levelRows ? levelRow(c) : h(
               'li',
               { class: 'passive-row', 'data-class': c.slug },
-              h('div', { class: 'passive-name' }, h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
+              h('div', { class: 'passive-name' }, classIcon(c, { size: 24 }), h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
               h('div', { class: 'passive-cells' }, visibleLevels(c).map((n) => cell(c, n))),
             ),
           ),
@@ -339,7 +341,7 @@ function passiveRow(slot, owned) {
     h(
       'span',
       { class: 'level-text' },
-      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
+      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
     ),
   );
 }
@@ -368,7 +370,7 @@ function levelList(base, owned) {
 
 // The selected class's five levels; with actions (my own build) its header carries the share buttons.
 function basePanel(state, base, owned, actions = null) {
-  const title = h('h2', { class: 'panel-title' }, h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned());
+  const title = h('h2', { class: 'panel-title' }, classIcon(base), h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned());
   const shareBlock = actions ? actions.shareBlock() : null;
   return h(
     'section',
@@ -630,7 +632,7 @@ function libraryRow(state, actions, player, { me }) {
     'li',
     { class: `player-row${me ? ' is-me' : ''}`, 'data-player': player.name },
     h('span', { class: 'player-name', text: me ? `${player.name} (you)` : player.name }),
-    h('span', { class: 'player-base', text: base ? `${base.name} L${player.levels[base.code]}` : 'No classes' }),
+    h('span', { class: 'player-base' }, base ? [classIcon(base, { size: 24 }), `${base.name} L${player.levels[base.code]}`] : 'No classes'),
     h('span', { class: 'player-marker', text: marker }),
     h('span', { class: 'player-sets', text: `${sets} ${sets === 1 ? 'set' : 'sets'}` }),
     me ? null : h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `player-${player.name.toLowerCase()}-remove`, onclick: () => actions.removePlayer(player.name) }, 'Remove', hidden(` ${player.name} from library`)),
@@ -693,7 +695,7 @@ function playerCard(state, actions, { name, player, base, controls }) {
     'li',
     { class: 'team-card', 'data-player': name },
     h('h3', { class: 'card-name', text: name }),
-    controls?.select ?? (base ? h('p', { class: 'card-base' }, h('span', { class: 'card-base-name', text: base.name }), diamonds(base, state.data.tiers)) : null),
+    controls?.select ?? (base ? h('p', { class: 'card-base' }, classIcon(base), h('span', { class: 'card-base-name', text: base.name }), diamonds(base, state.data.tiers)) : null),
     base ? levelList(base, player.levels) : h('p', { class: 'card-empty', text: 'No classes owned' }),
     base
       ? slots.length
@@ -717,9 +719,14 @@ function teamCard(state, actions, member, me) {
     base,
     controls: {
       select: h(
+        'div',
+        { class: 'card-base' },
+        base ? classIcon(base) : null,
+        h(
         'select',
         { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${player.name} class`, onchange: (e) => actions.setMemberBase(player.name, e.target.value) },
         owned.map((c) => h('option', { value: c.code, selected: base?.code === c.code, text: `${c.name} (L${player.levels[c.code]})` })),
+        ),
       ),
       actions: h('div', { class: 'card-actions' }, h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(player.name) }, 'Remove from team', hidden(` ${player.name}`))),
     },

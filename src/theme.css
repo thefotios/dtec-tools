@@ -565,3 +565,23 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .code-table { border-collapse: collapse; width: 100%; max-width: 100%; }
 .code-table th, .code-table td { text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--panel-border); }
 .help-pointer { color: var(--text-muted); text-align: center; padding: 0 8px 12px; }
+
+/* Class icons: white glyph inside a ring; fixed box so lazy loading never shifts layout. */
+.class-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--tier-white);
+  background: var(--bg);
+  overflow: hidden;
+  vertical-align: middle;
+}
+.class-icon.is-small { width: 24px; height: 24px; }
+.class-icon img { display: block; width: 88%; height: 88%; object-fit: contain; }
+.card-base > .slot-select { flex: 1; min-width: 0; width: auto; }
+.player-base { display: inline-flex; align-items: center; gap: 6px; }

@@ -66,7 +66,7 @@ test('output has no scripts, tests, docs, or codes.lock.json; stale files are cl
     writeFileSync(join(out, 'stale.txt'), 'x');
     assert.equal(run(out).status, 0);
     assert.ok(!existsSync(join(out, 'stale.txt')));
-    assert.deepEqual(readdirSync(out).sort(), ['404.html', 'data', 'index.html', 'src']);
+    assert.deepEqual(readdirSync(out).sort(), ['404.html', 'data', 'icons', 'index.html', 'src']);
     assert.ok(!readdirSync(join(out, 'data')).includes('codes.lock.json'));
   } finally {
     rmSync(root, { recursive: true, force: true });

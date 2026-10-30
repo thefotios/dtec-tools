@@ -20,7 +20,7 @@ $table
 
 The Classes page has two columns: your classes on the left, the selected class's loadout on the right. On a phone the loadout follows the class list, and a "Loadout" button in the list header jumps to it.
 
-The class list shows the classes you own in tier order, each with a pill showing the level (`L3`). Tapping a class selects it as the base class. Its five levels head the loadout column, unlocked levels in color and locked ones dimmed and marked "Locked". Marks persist in the browser.
+The class list shows the classes you own in tier order, each with a pill showing the level (`L3`). Tapping a class selects it as the base class. Its five levels head the loadout column, unlocked levels in color and locked ones dimmed and marked "Locked". Marks persist in the browser. Each class name is accompanied by its icon (`icons/<code>.png`, the single-circle base icon) in the class list, the loadout title, passive rows, team cards, and the Players library.
 
 "Edit" in the class list is the only place to change what you own. It shows every class, with a "+" pill that buys level 1 of an unowned class. Tapping a row only expands it and never changes the selected class. Tapping a level unlocks every level up to it (levels are cumulative), and tapping your current top level steps back one level. "Remove class" returns a class to unowned. "Done" returns to the owned list. Edit mode is not saved and is not part of any URL. The filter box applies in both modes.
 
@@ -94,6 +94,7 @@ Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served
 3. Run `npm run check`. It fails with the expected code: `cannoneer: not in the registry; expected code "ca"`, with ` (has "...")` appended when your code differs.
 4. Set `code` on the entry to the expected value.
 5. Append `"<code>": "<slug>"` to the END of `scripts/codes.lock.json`, e.g. `"ca": "cannoneer"`.
-6. Run `npm run check` again. It prints `data ok`. Run `npm test`.
+6. Add `icons/<code>.png`: 72x72, white glyph on a transparent background, the inner glyph of the class's single-circle base icon. `npm run check` and `npm run build` fail while a class has no icon.
+7. Run `npm run check` again. It prints `data ok`. Run `npm test`.
 
 The code is the shortest prefix of the slug that is not an existing code and is a prefix of no other slug; if none qualifies, it is the full slug. Examples: `cannoneer` gets `ca` (`c` is taken by Crafter); `prince` beside `princess` gets `prince`, since `prince` is a prefix of `princess` and no shorter prefix is free. Registered codes never change, even when later classes would have produced a shorter one. Merging to `main` deploys.

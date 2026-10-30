@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkData } from '../scripts/check-data.mjs';
+import { checkData, checkIcons } from '../scripts/check-data.mjs';
 
 const cli = new URL('../scripts/check-data.mjs', import.meta.url).pathname;
 const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url)));
@@ -178,3 +178,11 @@ test('taxonomy: question without q is a violation', () => taxonomyCase((t) => (t
 test("taxonomy: unit 'percent' is a violation", () => taxonomyCase((t) => (t.stats[firstStat(t)].unit = 'percent'), /unit percent must be pct, flat or flag/));
 test('taxonomy: stat without name is a violation', () => taxonomyCase((t) => delete t.stats[firstStat(t)].name, /stat .* non-empty string name/));
 test('taxonomy: empty when label is a violation', () => taxonomyCase((t) => (t.whens[firstKey(t.whens)] = ''), /when .* non-empty string label/));
+
+test('checkIcons passes for shipped icons and names a class missing its icon', () => {
+  const iconsDir = new URL('../icons', import.meta.url).pathname;
+  const [data] = fresh();
+  assert.deepEqual(checkIcons(data, iconsDir), []);
+  data.classes.push(entry({ code: 'zz', slug: 'zzz' }));
+  assert.deepEqual(checkIcons(data, iconsDir), ['zzz: missing icons/zz.png']);
+});
