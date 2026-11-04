@@ -86,6 +86,13 @@ export function playerByName(store, me, name) {
   return store.get(name);
 }
 
+// Who a parsed link belongs to: 'me' (my name, or a nameless bare code), 'library' (a saved player), else 'visitor'. Me wins over the library.
+export function linkOwner(store, player, bare) {
+  if (!player.name) return bare ? 'me' : 'visitor';
+  if (store.me && sameName(player.name, store.me)) return 'me';
+  return store.get(player.name) ? 'library' : 'visitor';
+}
+
 function load(storage, classes) {
   const empty = { me: '', players: [], teams: [], active: null };
   try {

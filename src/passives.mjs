@@ -24,7 +24,19 @@ export function normalizeSet(classes, baseSlug, entries) {
 }
 
 export const toSlots = (classes, entries) => entries.map((e) => ({ cls: classes.find((c) => c.code === e.code), level: e.level }));
+// The player's saved passive slots for a base class code.
+export const savedSlots = (classes, player, baseCode) => toSlots(classes, player.sets[baseCode] ?? []);
 export const fromSlots = (slots) => slots.map((s) => ({ code: s.cls.code, level: s.level }));
+
+// Set difference by class code and level; order and slot position are ignored. added is in current, removed is in saved.
+export function diffSets(saved, current) {
+  const key = (s) => `${s.cls.code}${s.level}`;
+  const have = new Set(saved.map(key));
+  const want = new Set(current.map(key));
+  const added = current.filter((s) => !have.has(key(s)));
+  const removed = saved.filter((s) => !want.has(key(s)));
+  return { added, removed, changed: added.length > 0 || removed.length > 0 };
+}
 
 function load(storage, classes) {
   const empty = { sets: {}, last: null, unlockedOnly: false };

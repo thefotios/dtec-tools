@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isValidName, nameProblem, NAME_RULE, SELF_NAME, ownedBase, mePlayer, playerByName, createPlayersStore } from '../src/players.mjs';
+import { isValidName, nameProblem, NAME_RULE, SELF_NAME, ownedBase, mePlayer, playerByName, linkOwner, createPlayersStore } from '../src/players.mjs';
 import { createPassiveStore } from '../src/passives.mjs';
 import { createStore } from '../src/owned.mjs';
 
@@ -264,4 +264,32 @@ test('nameProblem: format first, then my own name in any case, else null', () =>
   assert.equal(nameProblem('FOTIOS', 'fotios'), SELF_NAME);
   assert.equal(nameProblem('bob', 'fotios'), null);
   assert.equal(nameProblem('fotios', ''), null);
+});
+
+test('linkOwner: my name in any case is me; a nameless bare code is me', () => {
+  const s = make();
+  s.setMe('Fotios');
+  assert.equal(linkOwner(s, { name: 'fotios' }, false), 'me');
+  assert.equal(linkOwner(s, { name: '' }, true), 'me');
+});
+
+test('linkOwner: a saved name in any case is library, also with a roster and sets', () => {
+  const s = make();
+  s.setMe('fotios');
+  s.upsert(rec('Bob'));
+  assert.equal(linkOwner(s, { name: 'BOB' }, true), 'library');
+  assert.equal(linkOwner(s, { name: 'bob' }, false), 'library');
+});
+
+test('linkOwner: an unknown name or a nameless link with a roster is a visitor', () => {
+  const s = make();
+  s.setMe('fotios');
+  s.upsert(rec('bob'));
+  assert.equal(linkOwner(s, { name: 'carol' }, false), 'visitor');
+  assert.equal(linkOwner(s, { name: '' }, false), 'visitor');
+});
+
+test('linkOwner: me wins over a saved player of the same name', () => {
+  const s = make(memory({ [KEY]: JSON.stringify({ v: 1, me: 'bob', players: [{ ...rec('bob'), id: 'x' }], teams: [], active: null }) }));
+  assert.equal(linkOwner(s, { name: 'Bob' }, false), 'me');
 });

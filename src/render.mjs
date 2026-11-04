@@ -1,6 +1,7 @@
 import { ownedClasses } from './owned.mjs';
 import { nameProblem, playerByName, sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
-import { toSlots, MAX_PASSIVES } from './passives.mjs';
+import { savedSlots, diffSets, MAX_PASSIVES } from './passives.mjs';
+import { sameSlot } from './router.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffects, buildEffectsPanel, ownEffectsDetails, teamEffectsPanel, teamInputs } from './render-effects.mjs';
@@ -82,6 +83,9 @@ function navButton(state, actions, view, text) {
 }
 
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
+const newTag = () => h('span', { class: 'level-tag state-tag tag-new', text: 'NEW' });
+const noClassesText = (player) => `${player.name || 'This player'} has no classes.`;
+const originalTag = () => h('span', { class: 'level-tag state-tag tag-original', text: 'ORIGINAL' });
 
 
 function copyButton(state, actions, { key, done, idle, doneText, primary, block, onclick, small = true }) {
@@ -115,10 +119,13 @@ function header(state, actions) {
   );
 }
 
+// The class levels the Classes page shows: the viewed player's, else mine.
+const levelsOf = (state) => (state.viewing ? state.viewing.player.levels : state.store.owned);
+
 // One class in the list. Outside edit mode rows stay closed and tapping a row selects it as the base; in edit mode rows expand independently.
 function ownRow(state, actions, cls) {
   const { store } = state;
-  const max = store.owned[cls.code] ?? 0;
+  const max = levelsOf(state)[cls.code] ?? 0;
   const editing = state.list.editing;
   const selected = state.build.base?.slug === cls.slug;
   const open = editing && state.expanded.has(cls.slug);
@@ -171,7 +178,7 @@ function ownRow(state, actions, cls) {
 
 // Every passive at once: one row per class (tier order), one toggle cell per level.
 // The base class is never listed: a class cannot be its own passive.
-// opts: { noTitle (omit the heading), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+// opts: { noTitle (omit the heading), levels (owned levels by class code; levelRows only), unknownRoster (omit the "Not owned" pill: no roster to judge by), original(code, level) (saved passive that is not selected: tagged ORIGINAL), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
@@ -186,6 +193,7 @@ function passivePicker(state, actions, opts) {
     ? ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && (opts.has(c.code, 1) || hasPicked(c)) && levelRowsVisible(c).length)
     : ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
   const k = opts.keyPrefix;
+  const original = (c, n) => !picked(c, n) && Boolean(opts.original?.(c.code, n));
   const cell = (c, n) => {
     const on = picked(c, n);
     const blocked = full && !on;
@@ -198,17 +206,18 @@ function passivePicker(state, actions, opts) {
         'data-level': n,
         'aria-pressed': String(on),
         'aria-disabled': blocked ? 'true' : null,
-        'aria-label': `${c.name} level ${n}`,
+        'aria-label': `${c.name} level ${n}${original(c, n) ? ', original' : ''}`,
         onclick: () => (blocked ? null : opts.onToggle(c, n)),
       },
       h('span', { class: 'cell-badge' }, on ? h('span', { class: 'cell-check', 'aria-hidden': 'true', text: '\u2713' }) : null, h('span', { class: 'level-num', text: String(n) })),
       h('span', { class: 'level-text', text: c.levels[n - 1].text }),
+      original(c, n) ? originalTag() : null,
       opts.flag(c.code, n) ? notOwned() : null,
     );
   };
   // Ownership-style row: all levels written out; locked levels (above the owned max) are gray and not selectable.
   const levelRow = (c) => {
-    const max = state.store.owned[c.code] ?? 0;
+    const max = opts.levels[c.code] ?? 0;
     return h(
       'li',
       { class: 'own-row passive-own', 'data-class': c.slug },
@@ -216,7 +225,7 @@ function passivePicker(state, actions, opts) {
         'div',
         { class: 'own-head' },
         h('span', { class: 'own-toggle passive-own-name' }, classIcon(c, { size: 24 }), h('span', { class: 'class-name', text: c.name }), diamonds(c, tiers)),
-        max ? h('span', { class: 'own-pill is-owned', 'data-level': max }, `L${max}`, hidden(` owned, level ${max}`)) : notOwned(),
+        max ? h('span', { class: 'own-pill is-owned', 'data-level': max }, `L${max}`, hidden(` owned, level ${max}`)) : opts.unknownRoster ? null : notOwned(),
       ),
       h(
         'div',
@@ -240,11 +249,12 @@ function passivePicker(state, actions, opts) {
                   'data-fk': `${k}-${c.slug}-${n}`,
                   'aria-pressed': String(on),
                   'aria-disabled': blocked ? 'true' : null,
-                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}`,
+                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}${original(c, n) ? ', original' : ''}`,
                   onclick: () => (blocked ? null : opts.onToggle(c, n)),
                 },
                 levelChip(c.levels[n - 1], n - 1),
                 h('span', { class: 'level-text', text: c.levels[n - 1].text }),
+                original(c, n) ? originalTag() : null,
                 locked ? (on ? notOwned() : h('span', { class: 'lock-hint', title: `Own ${c.name} at level ${n} to unlock`, text: 'Locked' })) : null,
                 h('span', { class: 'own-check', 'aria-hidden': 'true', text: on ? '\u2713' : '' }),
               ),
@@ -309,18 +319,26 @@ function passivePicker(state, actions, opts) {
   );
 }
 
-function pickerEditor(state, actions) {
-  const { store } = state;
+// diff is the viewed player's saved-vs-current passive diff, null for me.
+function pickerEditor(state, actions, diff) {
+  const { store, viewing } = state;
+  const levels = levelsOf(state);
+  const roster = viewing ? passiveOwned(viewing.player, viewing.hasRoster) : levels;
+  // A viewed player known only by their base has no roster: every other class's levels 1-3 count as unlocked.
+  const has = viewing ? (code, n) => (roster ? (roster[code] ?? 0) >= n : n <= 3) : (code, n) => store.has(code, n);
   return passivePicker(state, actions, {
     noTitle: true,
     base: state.build.base,
     slots: state.build.slots,
-    has: (code, n) => store.has(code, n),
+    levels,
+    unknownRoster: Boolean(viewing && !roster),
+    has,
+    original: diff ? (code, n) => diff.removed.some((s) => s.cls.code === code && s.level === n) : null,
     ownedOnly: true,
     levelRows: true,
     unlockedOnly: state.passives.unlockedOnly,
     onUnlockedOnly: actions.setUnlockedOnly,
-    flag: (code, n) => !store.has(code, n),
+    flag: (code, n) => !has(code, n),
     emptyText: 'No owned passives to pick. Mark classes in the class list.',
     filter: state.passiveFilter,
     filterKey: 'passive-filter',
@@ -332,16 +350,41 @@ function pickerEditor(state, actions) {
 }
 
 // A selected passive written out like a level row, headed by its class.
-function passiveRow(slot, owned) {
+// opts.tag marks a changed passive (NEW); opts.key makes the row focusable by a restore action.
+function passiveRow(slot, owned, opts = {}) {
   const { cls, level } = slot;
   return h(
     'li',
-    { class: 'level passive-read', 'data-level': level },
+    { class: 'level passive-read', 'data-level': level, 'data-fk': opts.key ?? null, tabindex: opts.key ? '-1' : null },
     levelChip(cls.levels[level - 1], level - 1),
     h(
       'span',
       { class: 'level-text' },
-      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
+      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned(), opts.tag ?? null), h('span', { text: cls.levels[level - 1].text })),
+    ),
+  );
+}
+
+// A saved passive removed in the experiment: a dimmed button that puts it back while a slot is free.
+function ghostRow(slot, full, actions) {
+  const { cls, level } = slot;
+  return h(
+    'li',
+    { class: 'passive-ghost-item' },
+    h(
+      'button',
+      {
+        type: 'button',
+        class: `level passive-read passive-ghost${full ? ' is-disabled' : ''}`,
+        'data-level': level,
+        'data-fk': `ghost-${cls.slug}-${level}`,
+        'aria-disabled': full ? 'true' : null,
+        'aria-describedby': full ? 'ghost-hint' : null,
+        'aria-label': `Restore ${cls.name} level ${level}, original, removed`,
+        onclick: () => (full ? null : actions.restoreSlot(cls.slug, level)),
+      },
+      levelChip(cls.levels[level - 1], level - 1),
+      h('span', { class: 'level-text' }, h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, originalTag()), h('span', { text: cls.levels[level - 1].text }))),
     ),
   );
 }
@@ -393,11 +436,11 @@ function basePanel(state, base, owned, actions = null) {
   );
 }
 
-// A player record with only its base level has no roster to judge passives against.
-const passiveOwned = (player) => (Object.keys(player.levels).length > 1 ? player.levels : null);
+// A player record with only its base level has no roster to judge passives against, unless a shared link spelled the roster out.
+const passiveOwned = (player, explicit = false) => (explicit || Object.keys(player.levels).length > 1 ? player.levels : null);
 
 function visitorNameError(state) {
-  const v = state.visitor;
+  const v = state.viewing.link;
   const name = v.nameDraft.trim();
   if (!name) return 'Enter a name to save this build';
   return nameProblem(name, state.players.me);
@@ -405,7 +448,7 @@ function visitorNameError(state) {
 
 // Banner, name field, and save button for another player's opened link.
 function visitorBanner(state, actions) {
-  const v = state.visitor;
+  const v = state.viewing.link;
   const error = visitorNameError(state);
   const name = v.nameDraft.trim();
   const isSaved = v.saved && sameName(name, v.savedName);
@@ -414,7 +457,7 @@ function visitorBanner(state, actions) {
   return h(
     'section',
     { class: 'panel visitor-banner', 'aria-label': 'Shared build' },
-    h('h2', { class: 'panel-title', text: v.player.name ? `${v.player.name}'s build` : 'Shared build' }),
+    h('h2', { class: 'panel-title', text: v.incoming.name ? `${v.incoming.name}'s build` : 'Shared build' }),
     h(
       'form',
       { class: 'visitor-form', onsubmit: (e) => (e.preventDefault(), isSaved ? null : actions.saveVisitor()) },
@@ -437,36 +480,25 @@ function visitorBanner(state, actions) {
   );
 }
 
-function visitorLoadout(state, actions) {
-  const { player } = state.visitor;
-  const base = state.data.classes.find((c) => c.code === player.base);
-  const slots = toSlots(state.data.classes, player.sets[player.base] ?? []);
-  return h(
-    'div',
-    { class: 'loadout-col' },
-    visitorBanner(state, actions),
-    basePanel(state, base, player.levels),
-    h(
-      'section',
-      { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' },
-      h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` })),
-      h('div', { class: 'loadout-read' }, slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, passiveOwned(player)))) : h('p', { class: 'empty', text: 'No passives in this build.' })),
-    ),
-    buildEffectsPanel(state, base, player.levels[base.code] ?? 0, slots),
-  );
-}
-
 function loadout(state, actions) {
-  if (state.visitor) return visitorLoadout(state, actions);
+  const { viewing } = state;
   const { base, slots } = state.build;
+  const banner = viewing?.link ? visitorBanner(state, actions) : null;
   if (!base) {
-    return h('section', { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' }, h('p', { class: 'empty', text: 'Pick a class to see its loadout.' }));
+    const empty = h('section', { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' }, h('p', { class: 'empty', text: viewing ? noClassesText(viewing.player) : 'Pick a class to see its loadout.' }));
+    return banner ? h('div', { class: 'loadout-col' }, banner, empty) : empty;
   }
   const editing = state.loadoutEditing;
-  const owned = state.store.owned;
+  const owned = levelsOf(state);
+  const passiveOwners = viewing ? passiveOwned(viewing.player, viewing.hasRoster) : owned;
+  // Experiment diff against the viewed player's saved set; me has none.
+  const diff = viewing ? diffSets(savedSlots(state.data.classes, viewing.player, base.code), slots) : null;
+  const isNew = (sl) => diff?.added.some((a) => sameSlot(a, sl));
+  const full = slots.length >= MAX_PASSIVES;
   return h(
     'div',
     { class: 'loadout-col' },
+    banner,
     basePanel(state, base, owned, actions),
     h(
       'section',
@@ -475,17 +507,58 @@ function loadout(state, actions) {
         'div',
         { class: 'panel-head' },
         h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` }),
-        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
+        h(
+          'div',
+          { class: 'head-actions' },
+          diff?.changed ? h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'loadout-revert', onclick: actions.revertSlots }, 'Revert', hidden(' passives to saved')) : null,
+          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
+        ),
       ),
       editing
-        ? pickerEditor(state, actions)
+        ? pickerEditor(state, actions, diff)
         : h(
             'div',
             { class: 'loadout-read' },
-            slots.length ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned))) : h('p', { class: 'empty', text: 'No passives yet. Tap Edit to pick up to 3.' }),
+            slots.length || diff?.removed.length
+              ? h(
+                  'ol',
+                  { class: 'levels' },
+                  slots.map((sl) => passiveRow(sl, passiveOwners, viewing ? { key: `passive-row-${sl.cls.slug}-${sl.level}`, tag: isNew(sl) ? newTag() : null } : {})),
+                  diff?.removed.map((sl) => ghostRow(sl, full, actions)),
+                )
+              : h('p', { class: 'empty', text: viewing ? 'No passives in this build.' : 'No passives yet. Tap Edit to pick up to 3.' }),
+            diff?.removed.length && full ? h('p', { id: 'ghost-hint', class: 'ghost-hint', text: 'Remove a passive to restore' }) : null,
           ),
     ),
-    buildEffectsPanel(state, base, owned[base.code] ?? 0, slots),
+    buildEffectsPanel(state, base, owned[base.code] ?? 0, slots, { experiment: Boolean(diff?.changed) }),
+  );
+}
+
+// Viewing select: Me first, then saved players A to Z, with a temporary entry for an unsaved opened link right after Me.
+// The link entry's value starts with a unit separator control character, which no player name can contain.
+// Option value for the shared-link entry, which has no player name to select by.
+const LINK_OPTION = '\u001flink';
+
+function viewingField(state, actions) {
+  const { viewing } = state;
+  const link = viewing?.source === 'link' ? viewing.link : null;
+  const current = !viewing ? '' : link ? LINK_OPTION : viewing.player.name;
+  const selected = (v) => (v === current ? true : null);
+  const players = [...state.players.players].sort((a, b) => a.name.localeCompare(b.name));
+  return h(
+    'div',
+    { class: 'viewing' },
+    h('label', { class: 'field-label', for: 'viewing', text: 'Viewing' }),
+    h(
+      'select',
+      { id: 'viewing', class: 'slot-select', 'data-fk': 'viewing', onchange: (e) => actions.viewPlayer(e.target.value === LINK_OPTION ? '' : e.target.value) },
+      h('option', { value: '', selected: selected(''), text: 'Me' }),
+      link ? h('option', { value: LINK_OPTION, selected: selected(LINK_OPTION), text: link.incoming.name || 'Shared link' }) : null,
+      players.map((p) => h('option', { value: p.name, selected: selected(p.name), text: p.name })),
+    ),
+    viewing?.source === 'library'
+      ? h('button', { type: 'button', class: 'btn btn-red btn-small viewing-remove', 'data-fk': 'viewing-remove', onclick: actions.removeViewed }, 'Remove', hidden(` ${viewing.player.name} from library`))
+      : null,
   );
 }
 
@@ -549,13 +622,14 @@ function rosterSection(state, actions) {
     'section',
     { class: 'panel roster', 'aria-label': 'You' },
     usernameField(state, actions),
-    h(
+    viewingField(state, actions),
+    state.viewing ? null : h(
       'button',
       { type: 'button', class: `roster-toggle${open ? ' is-open' : ''}`, 'data-fk': 'roster-toggle', 'aria-expanded': String(open), 'aria-controls': 'roster-body', onclick: actions.toggleRoster },
       h('span', { class: 'field-label', text: 'Import roster' }),
       h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }),
     ),
-    open
+    open && !state.viewing
       ? h(
           'div',
           { class: 'roster-body', id: 'roster-body' },
@@ -580,7 +654,7 @@ function classesView(state, actions) {
   const { classes } = state.data;
   const { list, store, build } = state;
   const f = list.filter.trim().toLowerCase();
-  const visible = list.editing ? classes : ownedClasses(classes, store.owned, build.base ? [build.base.slug] : []);
+  const visible = list.editing ? classes : ownedClasses(classes, levelsOf(state), build.base ? [build.base.slug] : []);
   const rows = visible.filter((c) => c.name.toLowerCase().includes(f)).sort((a, b) => a.tier - b.tier);
   return h(
     'main',
@@ -599,8 +673,8 @@ function classesView(state, actions) {
           h(
             'div',
             { class: 'head-actions' },
-            build.base || state.visitor ? h('button', { type: 'button', class: 'btn btn-green btn-small jump-loadout', 'data-fk': 'jump-loadout', onclick: actions.jumpToLoadout, text: 'Loadout' }) : null,
-            h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'list-edit', 'aria-pressed': String(list.editing), onclick: () => actions.setEditing(!list.editing), text: list.editing ? 'Done' : 'Edit' }),
+            build.base ? h('button', { type: 'button', class: 'btn btn-green btn-small jump-loadout', 'data-fk': 'jump-loadout', onclick: actions.jumpToLoadout, text: 'Loadout' }) : null,
+            state.viewing ? null : h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'list-edit', 'aria-pressed': String(list.editing), onclick: () => actions.setEditing(!list.editing), text: list.editing ? 'Done' : 'Edit' }),
           ),
         ),
         h(
@@ -610,8 +684,8 @@ function classesView(state, actions) {
         ),
         rows.length
           ? h('ul', { class: 'own-list' }, rows.map((c) => ownRow(state, actions, c)))
-          : h('p', { class: 'empty', text: !list.editing && !store.hasAny() ? "You haven't marked any classes yet. Tap Edit to add some." : 'No classes match' }),
-        !rows.length && !list.editing && !store.hasAny() ? helpLink(actions) : null,
+          : h('p', { class: 'empty', text: state.viewing && !f ? noClassesText(state.viewing.player) : !list.editing && !store.hasAny() ? "You haven't marked any classes yet. Tap Edit to add some." : 'No classes match' }),
+        !rows.length && !state.viewing && !list.editing && !store.hasAny() ? helpLink(actions) : null,
       ),
     ),
     loadout(state, actions),
@@ -689,7 +763,7 @@ function libraryPanel(state, actions) {
 
 // One player card: name, class, that class's five levels per the player's levels, and read-only passives.
 function playerCard(state, actions, { name, player, base, controls }) {
-  const slots = base ? toSlots(state.data.classes, player.sets[base.code] ?? []) : [];
+  const slots = base ? savedSlots(state.data.classes, player, base.code) : [];
   const owned = passiveOwned(player);
   return h(
     'li',
@@ -888,6 +962,8 @@ function helpView(state) {
         h('li', {}, 'Make named teams of up to 8 players.'),
         h('li', {}, 'On each team card, the class menu lists the classes that player owns and shows the passives they saved for that class. Passives can\'t be changed here, because re-rolling costs in game.'),
         h('li', {}, 'Copy team link shares the team. Opening a team link lets you tap Save team.'),
+        h('li', {}, 'On the Classes page, the Viewing select in the You panel shows a saved player\'s classes and passives read-only. Remove deletes that player from your library and teams.'),
+        h('li', {}, 'While viewing a player, you can try other passives. New picks are tagged NEW and the saved ones stay as ORIGINAL rows; Revert restores them. Experiments are never saved, and the Team page keeps the saved passives.'),
       ),
     ),
     section(

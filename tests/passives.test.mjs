@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createPassiveStore, normalizeSet, toSlots, fromSlots } from '../src/passives.mjs';
+import { createPassiveStore, normalizeSet, toSlots, fromSlots, diffSets } from '../src/passives.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const KEY = 'class-combo-viewer:passives';
@@ -160,4 +160,40 @@ test('all returns saved sets keyed by class code and omits empty sets', () => {
   const all = s.all();
   assert.deepEqual(Object.keys(all), [cls('scout').code]);
   assert.deepEqual(all[cls('scout').code], fromSlots(s.get('scout')));
+});
+
+test('diffSets: a removed passive is removed and the sets differ', () => {
+  const d = diffSets([slot('salvager', 2), slot('scout', 1), slot('miner', 3)], [slot('scout', 1), slot('miner', 3)]);
+  assert.deepEqual(summary(d.removed), ['salvager2']);
+  assert.deepEqual(d.added, []);
+  assert.equal(d.changed, true);
+});
+
+test('diffSets: same passives in a different order do not differ', () => {
+  const d = diffSets([slot('salvager', 2), slot('scout', 1), slot('miner', 3)], [slot('miner', 3), slot('salvager', 2), slot('scout', 1)]);
+  assert.deepEqual(d, { added: [], removed: [], changed: false });
+});
+
+test('diffSets: a swapped passive is one added and one removed', () => {
+  const d = diffSets([slot('salvager', 2), slot('scout', 1), slot('miner', 3)], [slot('salvager', 2), slot('scout', 1), slot('pirate', 2)]);
+  assert.deepEqual(summary(d.added), ['pirate2']);
+  assert.deepEqual(summary(d.removed), ['miner3']);
+  assert.equal(d.changed, true);
+});
+
+test('diffSets: nothing saved, one current is added', () => {
+  const d = diffSets([], [slot('scout', 1)]);
+  assert.deepEqual(summary(d.added), ['scout1']);
+  assert.deepEqual(d.removed, []);
+  assert.equal(d.changed, true);
+});
+
+test('diffSets: both empty do not differ', () => {
+  assert.deepEqual(diffSets([], []), { added: [], removed: [], changed: false });
+});
+
+test('diffSets: the same class at another level differs', () => {
+  const d = diffSets([slot('scout', 1)], [slot('scout', 2)]);
+  assert.deepEqual(summary(d.added), ['scout2']);
+  assert.deepEqual(summary(d.removed), ['scout1']);
 });

@@ -1,5 +1,5 @@
 import { h } from './dom.mjs';
-import { toSlots } from './passives.mjs';
+import { savedSlots } from './passives.mjs';
 import { sourcesForBuild, teamSources, aggregate, isRecruitMaster } from './effects.mjs';
 
 // Combined effects: shared by the Classes panel, the Team panel and each team card's "Own effects" disclosure.
@@ -46,11 +46,11 @@ function effectGroups(m) {
 }
 
 // section.panel.effects: model is aggregate() output; empty is the text shown when every group is empty.
-function effectsPanel(title, model, { note = null, empty = 'No effects yet', key = null } = {}) {
+function effectsPanel(title, model, { note = null, empty = 'No effects yet', key = null, label = null } = {}) {
   return h(
     'section',
     { class: 'panel effects', 'aria-label': title, 'data-fk': key },
-    h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: title })),
+    h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: title }), label ? h('span', { class: 'level-tag state-tag tag-experiment', text: label }) : null),
     note ? h('p', { class: 'effect-note', text: note }) : null,
     model && !effectsEmpty(model) ? effectGroups(model) : h('p', { class: 'empty', text: empty }),
   );
@@ -73,15 +73,16 @@ export function buildEffects(state, base, level, slots, scopes) {
   return aggregate(state.data.effects, sources, { scopes });
 }
 
-export function buildEffectsPanel(state, base, level, slots) {
+// experiment labels a panel computed from passives that differ from the saved set.
+export function buildEffectsPanel(state, base, level, slots, { experiment = false } = {}) {
   const model = buildEffects(state, base, level, slots, ['self', 'team', 'nearby']);
-  return effectsPanel('Combined effects', model, { note: isRecruitMaster(base, level) ? RECRUIT_NOTE : null, key: 'effects-panel' });
+  return effectsPanel('Combined effects', model, { note: isRecruitMaster(base, level) ? RECRUIT_NOTE : null, key: 'effects-panel', label: experiment ? 'Experiment' : null });
 }
 
 // Member inputs for teamSources; members without a base class are skipped.
 export function teamInputs(state, members) {
   return members
-    .map(({ name, player, base }) => (base ? { player: name, base, level: player.levels[base.code] ?? 0, slots: toSlots(state.data.classes, player.sets[base.code] ?? []) } : null))
+    .map(({ name, player, base }) => (base ? { player: name, base, level: player.levels[base.code] ?? 0, slots: savedSlots(state.data.classes, player, base.code) } : null))
     .filter(Boolean);
 }
 
