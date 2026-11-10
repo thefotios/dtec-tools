@@ -4,7 +4,8 @@ import { savedSlots, diffSets, MAX_PASSIVES } from './passives.mjs';
 import { sameSlot } from './router.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
-import { buildEffects, buildEffectsPanel, ownEffectsDetails, teamEffectsPanel, teamInputs } from './render-effects.mjs';
+import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
+import { importSection } from './render-import.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -77,6 +78,13 @@ function helpLink(actions) {
   return h('p', { class: 'help-pointer' }, 'New here? ', h('a', { class: 'visitor-team-link', 'data-fk': 'help-link', href: new URL('help', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('help')), text: 'See Help' }));
 }
 
+// "No saved players yet" sentence pointing at the Builds page import.
+const noPlayersHint = (actions) => [
+  'No saved players yet. Import a link or code on the ',
+  h('a', { class: 'visitor-team-link', 'data-fk': 'open-import', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.openImport()), text: 'Builds page' }),
+  '.',
+];
+
 function navButton(state, actions, view, text) {
   const current = state.view === view;
   return h('button', { type: 'button', class: `btn ${current ? 'btn-green' : 'btn-grey'}`, 'data-fk': `nav-${view}`, 'aria-current': current ? 'page' : null, onclick: () => actions.setView(view), text });
@@ -112,14 +120,14 @@ function header(state, actions) {
     h(
       'nav',
       { class: 'app-nav', 'aria-label': 'Sections' },
-      navButton(state, actions, 'classes', 'Classes'),
+      navButton(state, actions, 'builds', 'Builds'),
       navButton(state, actions, 'team', 'Team'),
       navButton(state, actions, 'help', 'Help'),
     ),
   );
 }
 
-// The class levels the Classes page shows: the viewed player's, else mine.
+// The class levels the Builds page shows: the viewed player's, else mine.
 const levelsOf = (state) => (state.viewing ? state.viewing.player.levels : state.store.owned);
 
 // One class in the list. Outside edit mode rows stay closed and tapping a row selects it as the base; in edit mode rows expand independently.
@@ -616,38 +624,7 @@ function usernameField(state, actions) {
 }
 
 function rosterSection(state, actions) {
-  const { list } = state;
-  const open = list.rosterOpen;
-  return h(
-    'section',
-    { class: 'panel roster', 'aria-label': 'You' },
-    usernameField(state, actions),
-    viewingField(state, actions),
-    state.viewing ? null : h(
-      'button',
-      { type: 'button', class: `roster-toggle${open ? ' is-open' : ''}`, 'data-fk': 'roster-toggle', 'aria-expanded': String(open), 'aria-controls': 'roster-body', onclick: actions.toggleRoster },
-      h('span', { class: 'field-label', text: 'Import roster' }),
-      h('span', { class: 'own-chevron', 'aria-hidden': 'true', text: '\u25be' }),
-    ),
-    open && !state.viewing
-      ? h(
-          'div',
-          { class: 'roster-body', id: 'roster-body' },
-          h(
-            'form',
-            { class: 'roster-row', onsubmit: (e) => (e.preventDefault(), actions.importRoster(e.target.elements.roster.value)) },
-            h('input', { type: 'text', name: 'roster', class: 'roster-field', 'data-fk': 'roster-import', 'aria-label': 'Paste a roster code', placeholder: 'Paste a roster code', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': list.error ? 'true' : null, 'aria-describedby': list.error ? 'roster-error' : null, value: list.draft, oninput: (e) => actions.setRosterDraft(e.target.value) }),
-            h('button', { type: 'submit', class: 'btn btn-grey', 'data-fk': 'roster-import-btn', text: 'Import' }),
-          ),
-        )
-      : null,
-    h(
-      'div',
-      { class: 'field-msg', 'aria-live': 'polite' },
-      list.error ? h('p', { class: 'roster-error', id: 'roster-error', role: 'alert', text: list.error }) : null,
-      list.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
-    ),
-  );
+  return h('section', { class: 'panel roster', 'aria-label': 'You' }, usernameField(state, actions), viewingField(state, actions), importSection(state, actions));
 }
 
 function classesView(state, actions) {
@@ -692,7 +669,7 @@ function classesView(state, actions) {
   );
 }
 
-// Pieces shared by library rows and team cards.
+// Pieces shared by library rows and the team matrix.
 function memberBase(state, player, stored) {
   const code = ownedBase(state.data.classes, player, stored);
   return state.data.classes.find((c) => c.code === code) ?? null;
@@ -724,90 +701,55 @@ function meRow(state, actions) {
 }
 
 function libraryPanel(state, actions) {
-  const { paste } = state.team;
   const players = state.players.players;
   return h(
     'section',
     { class: 'panel library', 'aria-label': 'Players' },
     h('h2', { class: 'panel-title', text: 'Players' }),
     h(
-      'form',
-      { class: 'paste-form', onsubmit: (e) => (e.preventDefault(), actions.pastePlayer(e.target.elements.text.value, e.target.elements.name.value)) },
-      h('label', { class: 'field-label', for: 'paste-text', text: 'Player link or code' }),
-      h('input', { type: 'text', id: 'paste-text', name: 'text', class: 'roster-field', 'data-fk': 'paste-text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Paste a link, path, or code', 'aria-invalid': paste.error ? 'true' : null, 'aria-describedby': 'paste-msg', value: paste.draft, oninput: (e) => actions.setPasteDraft(e.target.value) }),
-      h('label', { class: 'field-label', for: 'paste-name', text: 'Player name' }),
-      h(
-        'div',
-        { class: 'roster-row' },
-        h('input', { type: 'text', id: 'paste-name', name: 'name', class: 'roster-field', 'data-fk': 'paste-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: "Defaults to the link's username", value: paste.name, oninput: (e) => actions.setPasteName(e.target.value) }),
-        h('button', { type: 'submit', class: 'btn btn-green', 'data-fk': 'paste-add', text: 'Add player' }),
-      ),
-      h(
-        'div',
-        { id: 'paste-msg', class: 'field-msg', 'aria-live': 'polite' },
-        paste.error ? h('p', { class: 'roster-error', role: 'alert', text: paste.error }) : null,
-        paste.message ? h('p', { class: 'visitor-saved', text: paste.message }) : null,
-        paste.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
-      ),
-    ),
-    h(
       'ul',
       { class: 'player-list' },
       meRow(state, actions),
       players.map((p) => libraryRow(state, actions, p, { me: false })),
     ),
-    players.length ? null : h('p', { class: 'empty', text: 'Paste a link to add players' }),
+    players.length
+      ? null
+      : h(
+          'p',
+          { class: 'empty' },
+          noPlayersHint(actions),
+        ),
     players.length ? null : helpLink(actions),
   );
 }
 
-// One player card: name, class, that class's five levels per the player's levels, and read-only passives.
-function playerCard(state, actions, { name, player, base, controls }) {
-  const slots = base ? savedSlots(state.data.classes, player, base.code) : [];
-  const owned = passiveOwned(player);
-  return h(
-    'li',
-    { class: 'team-card', 'data-player': name },
-    h('h3', { class: 'card-name', text: name }),
-    controls?.select ?? (base ? h('p', { class: 'card-base' }, classIcon(base), h('span', { class: 'card-base-name', text: base.name }), diamonds(base, state.data.tiers)) : null),
-    base ? levelList(base, player.levels) : h('p', { class: 'card-empty', text: 'No classes owned' }),
-    base
-      ? slots.length
-        ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, owned)))
-        : h('p', { class: 'card-empty', text: 'No passives saved' })
-      : null,
-    base ? ownEffectsDetails(state, actions, name, buildEffects(state, base, player.levels[base.code] ?? 0, slots, ['self'])) : null,
-    controls?.actions ?? null,
-  );
-}
-
-function teamCard(state, actions, member, me) {
-  const player = playerByName(state.players, me, member.name);
-  if (!player) return null;
-  const base = memberBase(state, player, member.base);
+// Team matrix header: name, class select and remove for my team; name and class text for a link.
+function memberHeader(state, actions, { name, player, base }, { readOnly }) {
+  const isMe = Boolean(state.players.me) && sameName(state.players.me, name);
+  const title = h('span', { class: 'member-name', text: isMe ? `${name} (you)` : name });
+  if (readOnly) return [title, base ? h('span', { class: 'member-base' }, classIcon(base, { size: 24 }), h('span', { text: base.name }), diamonds(base, state.data.tiers)) : h('span', { class: 'card-empty', text: 'No classes owned' })];
+  const k = `member-${name.toLowerCase()}`;
   const owned = state.data.classes.filter((c) => (player.levels[c.code] ?? 0) > 0);
-  const k = `member-${member.name.toLowerCase()}`;
-  return playerCard(state, actions, {
-    name: player.name,
-    player,
-    base,
-    controls: {
-      select: h(
-        'div',
-        { class: 'card-base' },
-        base ? classIcon(base) : null,
-        h(
-        'select',
-        { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${player.name} class`, onchange: (e) => actions.setMemberBase(player.name, e.target.value) },
-        owned.map((c) => h('option', { value: c.code, selected: base?.code === c.code, text: `${c.name} (L${player.levels[c.code]})` })),
-        ),
-      ),
-      actions: h('div', { class: 'card-actions' }, h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(player.name) }, 'Remove from team', hidden(` ${player.name}`))),
-    },
-  });
+  return [
+    title,
+    owned.length
+      ? h(
+          'span',
+          { class: 'member-base' },
+          base ? classIcon(base, { size: 24 }) : null,
+          h(
+            'select',
+            { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${name} class`, onchange: (e) => actions.setMemberBase(name, e.target.value) },
+            owned.map((c) => h('option', { value: c.code, selected: base?.code === c.code, text: `${c.name} (L${player.levels[c.code]})` })),
+          ),
+        )
+      : h('span', { class: 'card-empty', text: 'No classes owned' }),
+    h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(name) }, 'Remove', hidden(` ${name} from team`)),
+  ];
 }
 
-function addPlayerSelect(state, actions, team, mePlayer) {
+// The "+" header cell: a native select listing me (with an owned class) and saved players not on the team.
+function teamAddSelect(state, actions, team, mePlayer) {
   const onTeam = new Set(team.members.map((m) => m.name.toLowerCase()));
   const candidates = [
     ...(state.players.me && Object.keys(mePlayer.levels).length ? [mePlayer] : []),
@@ -815,68 +757,95 @@ function addPlayerSelect(state, actions, team, mePlayer) {
   ].filter((p) => !onTeam.has(p.name.toLowerCase()));
   const full = team.members.length >= MAX_MEMBERS;
   const disabled = full || !candidates.length;
-  return h(
-    'div',
-    { class: 'team-add' },
-    h('label', { class: 'field-label', for: 'team-add', text: 'Add player' }),
-    h(
+  const reason = full ? 'Team is full (8)' : 'All players added';
+  return {
+    nobody: !candidates.length,
+    el: h(
       'select',
-      { id: 'team-add', class: 'slot-select', 'data-fk': 'team-add', disabled, onchange: (e) => actions.addMember(e.target.value) },
-      h('option', { value: '', text: full ? 'Team is full (8)' : candidates.length ? 'Choose a player' : 'All players added' }),
+      { class: 'slot-select matrix-add-select', 'data-fk': 'team-add', 'aria-label': 'Add player', title: disabled ? reason : 'Add player', disabled, onchange: (e) => actions.addMember(e.target.value) },
+      h('option', { value: '', text: disabled ? reason : '+' }),
       disabled ? null : candidates.map((p) => h('option', { value: p.name, text: p.name })),
     ),
-  );
+  };
 }
 
-function teamPanel(state, actions) {
-  const teams = state.players.teams;
-  const team = teams.find((t) => t.id === state.players.active) ?? null;
+function teamPanel(state, actions, members) {
+  const team = state.players.team;
   const me = actions.mePlayer();
   const teamBlock = actions.teamShareBlock();
+  const add = teamAddSelect(state, actions, team, me);
+  const empty = h(
+    'p',
+    { class: 'empty' },
+    add.nobody
+      ? noPlayersHint(actions)
+      : 'Add players with the + column to see who contributes which effects',
+  );
   return h(
     'section',
     { class: 'panel team-panel', 'aria-label': 'Team' },
     h(
       'div',
       { class: 'panel-head' },
-      h('h2', { class: 'panel-title', text: team ? `Team (${team.members.length}/${MAX_MEMBERS})` : 'Team' }),
+      h('h2', { class: 'panel-title', text: `Team (${team.members.length}/${MAX_MEMBERS})` }),
       h(
         'div',
         { class: 'head-actions' },
         copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy team link', doneText: 'Link copied', primary: true, block: teamBlock, onclick: actions.copyLink }),
-        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'team-new', onclick: actions.createTeam, text: 'New' }),
       ),
     ),
     copyFeedback(state, teamBlock),
-    team
-      ? [
-          h(
-            'div',
-            { class: 'team-controls' },
-            h('label', { class: 'field-label', for: 'team-select', text: 'Team' }),
-            h('select', { id: 'team-select', class: 'slot-select', 'data-fk': 'team-select', onchange: (e) => actions.setActiveTeam(e.target.value) }, teams.map((t) => h('option', { value: t.id, selected: t.id === team.id, text: t.name || 'Unnamed team' }))),
-            h('label', { class: 'field-label', for: 'team-name', text: 'Team name' }),
-            h(
-              'div',
-              { class: 'roster-row' },
-              h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, oninput: (e) => actions.setTeamNameDraft(e.target.value), onchange: (e) => actions.renameTeam(e.target.value) }),
-              h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'team-delete', onclick: actions.deleteTeam }, 'Delete', hidden(' team')),
-            ),
-            addPlayerSelect(state, actions, team, me),
-          ),
-          team.members.length
-            ? h('ul', { class: 'team-grid' }, team.members.map((m) => teamCard(state, actions, m, me)))
-            : h('p', { class: 'empty', text: 'Add players from your library' }),
-        ]
-      : [h('p', { class: 'empty', text: 'Create a team to start' }), helpLink(actions)],
+    h(
+      'div',
+      { class: 'team-controls' },
+      h('label', { class: 'field-label', for: 'team-name', text: 'Team name' }),
+      h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, oninput: (e) => actions.setTeamNameDraft(e.target.value), onchange: (e) => actions.renameTeam(e.target.value) }),
+    ),
+    teamMatrix(state, teamInputs(state, members), members.map((m) => memberHeader(state, actions, m, { readOnly: false })), { add: add.el, empty }),
   );
 }
 
-// An opened team link: read-only cards and a Save team action. Nothing is imported until saved.
+// What replacing my team does, in words: it replaces a non-empty team, and updates every linked player (other than me) already saved.
+function replaceText(state, link) {
+  const me = state.players.me;
+  const updates = link.members.some(({ name }) => !(me && sameName(name, me)) && state.players.get(name));
+  const replaces = state.players.team.members.length > 0;
+  const tail = 'saved players with the classes, levels and passives in this link';
+  return `This ${replaces ? `replaces your team${updates ? ` and updates ${tail}` : ''}` : `updates ${tail}`}. Continue?`;
+}
+
+// The "Replace my team" action and its inline confirm; an equal link shows "This is your team" instead.
+function replaceControls(state, actions, mine) {
+  const link = state.team.link;
+  if (mine) {
+    return h(
+      'div',
+      { class: 'claim-prompt', role: 'status' },
+      h('p', { class: 'field-msg', text: 'This is your team' }),
+      h('div', { class: 'roster-row' }, h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'open-my-team', onclick: actions.openMyTeam, text: 'Open my team' })),
+    );
+  }
+  if (link.confirming) {
+    return h(
+      'div',
+      { class: 'claim-prompt', role: 'alert' },
+      h('p', { class: 'roster-error', text: replaceText(state, link) }),
+      h(
+        'div',
+        { class: 'roster-row' },
+        h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'replace-yes', onclick: actions.confirmReplaceTeam, text: 'Yes' }),
+        h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'replace-no', onclick: actions.cancelReplaceTeam, text: 'No' }),
+      ),
+    );
+  }
+  return null;
+}
+
+// An opened team link: the read-only matrix and a Replace my team action. Nothing is imported until confirmed.
 function teamLinkView(state, actions) {
   const link = state.team.link;
   const classes = state.data.classes;
-  const savedTeam = actions.linkSavedTeam();
+  const same = actions.linkIsMyTeam();
   const members = link.members.map(({ name, player }) => ({ name, player, base: classes.find((c) => c.code === player.base) ?? null }));
   return h(
     'main',
@@ -891,37 +860,28 @@ function teamLinkView(state, actions) {
         h(
           'div',
           { class: 'head-actions' },
-          savedTeam
-            ? [
-                h('button', { type: 'button', class: 'btn btn-grey', 'data-fk': 'team-saved', disabled: true, text: 'Saved' }),
-                h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-open', onclick: () => actions.openTeam(savedTeam.id), text: 'Open team' }),
-              ]
-            : h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'team-save', disabled: !link.members.length, onclick: actions.saveTeamLink, text: 'Save team' }),
+          same ? null : h('button', { type: 'button', class: 'btn btn-green', 'data-fk': 'replace-team', disabled: !link.members.length, onclick: actions.replaceTeamFromLink, text: 'Replace my team' }),
           copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: false, block: null, onclick: actions.copyLink, small: false }),
         ),
       ),
       copyFeedback(state, null),
+      replaceControls(state, actions, same),
       link.members.length
-        ? h(
-            'ul',
-            { class: 'team-grid' },
-            members.map((m) => playerCard(state, actions, m)),
-          )
+        ? teamMatrix(state, teamInputs(state, members), members.map((m) => memberHeader(state, actions, m, { readOnly: true })))
         : h('p', { class: 'empty', text: 'No valid players in this link.' }),
     ),
-    teamEffectsPanel(state, teamInputs(state, members)),
   );
 }
 
 function teamView(state, actions) {
   if (state.team.link) return teamLinkView(state, actions);
-  const team = state.players.teams.find((t) => t.id === state.players.active) ?? null;
+  const team = state.players.team;
   const me = actions.mePlayer();
-  const members = (team?.members ?? []).flatMap((m) => {
+  const members = team.members.flatMap((m) => {
     const player = playerByName(state.players, me, m.name);
     return player ? [{ name: player.name, player, base: memberBase(state, player, m.base) }] : [];
   });
-  return h('main', { class: 'team' }, libraryPanel(state, actions), teamPanel(state, actions), team ? teamEffectsPanel(state, teamInputs(state, members)) : null);
+  return h('main', { class: 'team' }, teamPanel(state, actions, members), libraryPanel(state, actions));
 }
 
 const HELP_SAMPLE = 'c5-sc1sal2sal3-D5XB8XG5XD';
@@ -937,7 +897,7 @@ function helpView(state) {
       h(
         'ol',
         { class: 'help-list' },
-        h('li', {}, 'Open Classes and tap Edit. Mark the classes you own and unlock their levels. Levels are cumulative: unlocking level 3 unlocks levels 1 and 2.'),
+        h('li', {}, 'Open Builds and tap Edit in the Classes list. Mark the classes you own and unlock their levels. Levels are cumulative: unlocking level 3 unlocks levels 1 and 2.'),
         h('li', {}, 'Tap Done, then tap a class to make it your base class.'),
         h('li', {}, 'In the base class passives panel, tap Edit and pick up to 3 passives (levels 1 to 3). You can only pick levels you have unlocked, and a class can never be its own passive. Each class keeps its own set of passives.'),
       ),
@@ -952,23 +912,37 @@ function helpView(state) {
         h('li', {}, h('strong', { text: 'Copy code' }), ' is a short code that fits in Roblox chat, such as ', code(HELP_SAMPLE), '.'),
       ),
       h('p', {}, 'Opening someone else\'s link shows their build read-only. Tap Save to players to keep them.'),
+      h('p', {}, 'To bring your own build onto another device, paste your link or code into Import link or code on Builds. It restores your classes and passives.'),
     ),
     section(
-      'Players and teams',
+      'Importing',
+      h('p', {}, 'The Import link or code box in the You panel on Builds takes a share link, a build code, a bare roster code or a team link. Here is what each one does:'),
       h(
         'ul',
         { class: 'help-list' },
-        h('li', {}, 'On the Team page, paste links or codes to build your players list. Pasting the same player again updates them.'),
-        h('li', {}, 'Make named teams of up to 8 players.'),
-        h('li', {}, 'On each team card, the class menu lists the classes that player owns and shows the passives they saved for that class. Passives can\'t be changed here, because re-rolling costs in game.'),
-        h('li', {}, 'Copy team link shares the team. Opening a team link lets you tap Save team.'),
-        h('li', {}, 'On the Classes page, the Viewing select in the You panel shows a saved player\'s classes and passives read-only. Remove deletes that player from your library and teams.'),
+        h('li', {}, 'Your own link or code updates your build. If that would replace classes or passives you already have, you confirm first. A full link replaces all your passive sets; a code replaces only the passives of its base class unless it carries the other sets.'),
+        h('li', {}, 'Another player\'s link or code is saved to your players at once, with a View button. Pasting the same player again updates them.'),
+        h('li', {}, 'A code with no name asks Whose build is this? Choose Mine to update your build (this also sets your username if you have none), or Save as to keep it under a name.'),
+        h('li', {}, 'A bare roster code, the letters after the last dash, replaces only the classes you own.'),
+        h('li', {}, 'A team link opens that team on the Team page. Nothing is saved until you tap Replace my team.'),
+      ),
+    ),
+    section(
+      'Players and team',
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, 'The Team page holds one team of up to 8 players, with a name you can edit. Below it, the Players list shows you and every saved player; Remove deletes a player from your library and the team.'),
+        h('li', {}, 'In the team table, each player is a column. The class select in the column header lists the classes that player owns, and Remove takes them off the team. The + column adds a player; with a saved player it uses their saved class.'),
+        h('li', {}, 'Passives can\'t be changed on the Team page, because re-rolling costs in game. Each column uses the passives that player saved for the selected class.'),
+        h('li', {}, 'Copy team link shares the team. Opening a team link shows its table read-only. Tap Replace my team to use it (you confirm first when your team has players), or This is your team when it already matches. Replacing also updates your saved players\' class, level and passives for that class.'),
+        h('li', {}, 'On Builds, the Viewing select in the You panel shows a saved player\'s classes and passives read-only.'),
         h('li', {}, 'While viewing a player, you can try other passives. New picks are tagged NEW and the saved ones stay as ORIGINAL rows; Revert restores them. Experiments are never saved, and the Team page keeps the saved passives.'),
       ),
     ),
     section(
       'Combined effects',
-      h('p', {}, 'The Combined effects panel on the Classes page adds up everything your unlocked base levels and chosen passives give. The same stat from different sources adds together, grouped by category with a list of where each part comes from. Level 4 team bonuses also count for you.'),
+      h('p', {}, 'The Combined effects panel on the Builds page adds up everything your unlocked base levels and chosen passives give. The same stat from different sources adds together, grouped by category with a list of where each part comes from. Level 4 team bonuses also count for you.'),
       h(
         'ul',
         { class: 'help-list' },
@@ -979,7 +953,16 @@ function helpView(state) {
         h('li', {}, h('strong', { text: 'Flags' }), ': on or off abilities with no number.'),
         h('li', {}, h('strong', { text: 'Uncertain' }), ': effects whose exact behavior is not confirmed yet, listed under the open question and left out of totals.'),
       ),
-      h('p', {}, 'On the Team page, Team effects adds up each member\'s level 4 team bonuses and nearby effects, and Own effects on a team card shows what that player gets for themselves.'),
+      h('p', {}, 'The team table on the Team page uses the same grouping with one column per player, so you can see who contributes what.'),
+      h(
+        'ul',
+        { class: 'help-list' },
+        h('li', {}, 'Each row is an effect with a tag: self applies to that player only, team is a level 4 bonus for the whole team, nearby applies when players are close together.'),
+        h('li', {}, 'A player\'s column shows what their selected class gives for that effect. An empty cell means they do not contribute.'),
+        h('li', {}, 'The Team total column adds up the team rows that have a number. Self, nearby and uncertain rows have no total.'),
+        h('li', {}, 'A row marked ×N is shared by N players, which shows where skills overlap.'),
+        h('li', {}, 'Recruit at level 5 scales passive values by 1.25; a note under the table says when that applies.'),
+      ),
     ),
     section(
       'Reading a code',
@@ -999,7 +982,7 @@ function helpView(state) {
         h('tbody', {}, state.data.classes.map((c) => h('tr', {}, h('td', {}, code(c.code)), h('td', { text: c.name })))),
       ),
     ),
-    section('Your data', h('p', {}, 'Everything is stored in this browser only. Nothing is uploaded, and clearing site data removes it. Nothing syncs between devices: on a new device, paste the roster part of your code (the letters after the last dash) into Import roster, then pick your passives again.')),
+    section('Your data', h('p', {}, 'Everything is stored in this browser only. Nothing is uploaded, and clearing site data removes it. Nothing syncs between devices: on a new device, paste your own link or code into Import link or code on Builds to restore your classes and passives.')),
   );
 }
 

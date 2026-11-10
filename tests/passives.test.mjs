@@ -197,3 +197,43 @@ test('diffSets: the same class at another level differs', () => {
   assert.deepEqual(summary(d.added), ['scout2']);
   assert.deepEqual(summary(d.removed), ['scout1']);
 });
+
+test('replaceAll normalizes each set, drops unknown codes, clears absent classes, and writes once', () => {
+  const storage = memory();
+  const store = createPassiveStore(storage, classes);
+  store.set('miner', [slot('scout', 1)]);
+  store.set('crafter', [slot('salvager', 2)]);
+  let writes = 0;
+  const setItem = storage.setItem;
+  storage.setItem = (k, v) => {
+    writes++;
+    setItem(k, v);
+  };
+  store.replaceAll({
+    mi: [{ code: 'sal', level: 3 }, { code: 'sc', level: 1 }, { code: 'sc', level: 1 }, { code: 'mi', level: 1 }, { code: 'zzz', level: 1 }, { code: 'sc', level: 9 }],
+    nope: [{ code: 'sc', level: 1 }],
+    sc: [],
+  });
+  assert.equal(writes, 1);
+  assert.deepEqual(store.all(), { mi: [{ code: 'sc', level: 1 }, { code: 'sal', level: 3 }] });
+  assert.deepEqual(summary(store.get('crafter')), []);
+  assert.deepEqual(JSON.parse(storage.data.get(KEY)).sets, { miner: [{ code: 'sc', level: 1 }, { code: 'sal', level: 3 }] });
+  assert.equal(JSON.parse(storage.data.get(KEY)).v, 1);
+});
+
+test('replaceAll keeps the last base and unlockedOnly, and an empty map clears every set', () => {
+  const store = createPassiveStore(memory(), classes);
+  store.setLast('miner');
+  store.setUnlockedOnly(true);
+  store.set('miner', [slot('scout', 1)]);
+  store.replaceAll({});
+  assert.deepEqual(store.all(), {});
+  assert.equal(store.last, 'miner');
+  assert.equal(store.unlockedOnly, true);
+});
+
+test('replaceAll survives a blocked write', () => {
+  const store = createPassiveStore(throwing('write'), classes);
+  store.replaceAll({ mi: [{ code: 'sc', level: 2 }] });
+  assert.deepEqual(summary(store.get('miner')), ['scout2']);
+});

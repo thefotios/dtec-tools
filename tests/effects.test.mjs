@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sourcesForBuild, teamSources, aggregate } from '../src/effects.mjs';
+import { sourcesForBuild, teamSources, aggregate, effectMatrix } from '../src/effects.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const taxonomy = JSON.parse(readFileSync(new URL('../data/effects.json', import.meta.url)));
@@ -166,4 +166,133 @@ test('category, sub and stat order follow the taxonomy; conditional groups follo
   const whens = Object.keys(taxonomy.whens);
   const gw = aggregate(taxonomy, build('mercenary', 1).concat(build('nightcrawler', 2)), { scopes: ALL }).conditional.map((c) => whens.indexOf(c.when));
   assert.deepEqual(gw, [...gw].sort((a, b) => a - b));
+});
+
+const mx = {
+  categories: [{ id: 'c', name: 'Combat', subs: [{ id: 's1', name: 'Damage' }, { id: 's2', name: 'Defense' }] }],
+  stats: {
+    dmg: { name: 'Damage', unit: 'pct', cat: 'c', sub: 's1' },
+    hp: { name: 'HP', unit: 'flat', cat: 'c', sub: 's2' },
+    fly: { name: 'Fly', unit: 'flag', cat: 'c', sub: 's2' },
+  },
+  whens: { night: 'At night' },
+  questions: { q1: { q: 'Does it stack?' } },
+};
+const fx = (stat, value, scope, extra = {}) => ({ stat, value, scope, ...extra });
+const mxClass = (code, ...effects) => ({ code, name: code, levels: [{ effects }] });
+const mxMember = (player, cls, level = 1, slots = []) => ({ player, base: cls, level, slots });
+const flatRows = (m) => m.groups.flatMap((g) => g.rows);
+const find = (m, stat, scope) => flatRows(m).find((r) => r.stat === stat && r.scope === scope);
+
+test('effectMatrix: two members with a team value give filled cells, a total, shared, and null for a third member', () => {
+  const a = mxClass('a', fx('dmg', 5, 'team'));
+  const b = mxClass('b', fx('dmg', 10, 'team'));
+  const c = mxClass('c', fx('hp', 3, 'self'));
+  const m = effectMatrix(mx, [mxMember('Ann', a), mxMember('Bob', b), mxMember('Cy', c)]);
+  assert.deepEqual(m.members, ['Ann', 'Bob', 'Cy']);
+  const r = find(m, 'dmg', 'team');
+  assert.deepEqual(r.cells, [{ value: 5 }, { value: 10 }, null]);
+  assert.equal(r.total, 15);
+  assert.equal(r.shared, true);
+  assert.equal(r.name, 'Damage');
+  assert.equal(r.unit, 'pct');
+  const hp = find(m, 'hp', 'self');
+  assert.deepEqual(hp.cells, [null, null, { value: 3 }]);
+  assert.equal(hp.shared, false);
+});
+
+test('effectMatrix: a stat with self and team effects yields two rows, self first and without a total', () => {
+  const a = mxClass('a', fx('dmg', 5, 'team'), fx('dmg', 7, 'self'));
+  const m = effectMatrix(mx, [mxMember('Ann', a)]);
+  const rows = flatRows(m).filter((r) => r.stat === 'dmg');
+  assert.deepEqual(rows.map((r) => [r.scope, r.total]), [['self', null], ['team', 5]]);
+});
+
+test('effectMatrix: groups follow taxonomy order, rows follow stat order, with titles and subs', () => {
+  const a = mxClass('a', fx('hp', 1, 'team'), fx('dmg', 1, 'team'), fx('fly', true, 'self'), fx('dmg', 1, 'nearby'), fx('dmg', 1, 'self', { uncertain: 'q1' }), fx('dmg', 2, 'self', { when: 'night' }));
+  const m = effectMatrix(mx, [mxMember('Ann', a)]);
+  assert.deepEqual(m.groups.map((g) => [g.section, g.title, g.sub ?? null]), [
+    ['category', 'Combat', 'Damage'],
+    ['category', 'Combat', 'Defense'],
+    ['conditional', 'At night', null],
+    ['flags', 'Flags', null],
+    ['nearby', 'Nearby', null],
+    ['uncertain', 'Does it stack?', null],
+  ]);
+  assert.deepEqual(m.groups[0].rows.map((r) => r.stat), ['dmg']);
+  assert.deepEqual(m.groups[1].rows.map((r) => r.stat), ['hp']);
+});
+
+test('effectMatrix: a when on a non-conditional row carries its label; conditional rows have none', () => {
+  const a = mxClass('a', fx('dmg', 1, 'self', { uncertain: 'q1' }), fx('dmg', 2, 'self', { uncertain: 'q1', when: 'night' }), fx('dmg', 3, 'self', { when: 'night' }));
+  const m = effectMatrix(mx, [mxMember('Ann', a)]);
+  const unc = m.groups.find((g) => g.section === 'uncertain').rows;
+  assert.deepEqual(unc.map((r) => r.whenLabel ?? null), [null, 'At night']);
+  const cond = m.groups.find((g) => g.section === 'conditional').rows;
+  assert.deepEqual(cond.map((r) => r.whenLabel ?? null), [null]);
+});
+
+test('effectMatrix: a flag yields a flag cell and no numeric total; a team flag totals true; a conditional team flag too', () => {
+  const a = mxClass('a', fx('fly', true, 'self'), fx('fly', true, 'team'), fx('fly', true, 'team', { when: 'night' }));
+  const b = mxClass('b', fx('fly', true, 'team'));
+  const m = effectMatrix(mx, [mxMember('Ann', a), mxMember('Bob', b)]);
+  const flags = m.groups.find((g) => g.section === 'flags');
+  assert.deepEqual(flags.rows.map((r) => [r.scope, r.cells, r.total]), [
+    ['self', [{ flag: true }, null], null],
+    ['team', [{ flag: true }, { flag: true }], true],
+  ]);
+  const cond = m.groups.find((g) => g.section === 'conditional');
+  assert.deepEqual(cond.rows.map((r) => [r.scope, r.cells, r.total]), [['team', [{ flag: true }, null], true]]);
+});
+
+test('effectMatrix: nearby and uncertain rows have no total; conditional numeric team rows sum', () => {
+  const a = mxClass('a', fx('dmg', 4, 'nearby'), fx('dmg', 6, 'team', { uncertain: 'q1' }), fx('dmg', 2, 'team', { when: 'night' }));
+  const b = mxClass('b', fx('dmg', 3, 'team', { when: 'night' }));
+  const m = effectMatrix(mx, [mxMember('Ann', a), mxMember('Bob', b)]);
+  assert.equal(m.groups.find((g) => g.section === 'nearby').rows[0].total, null);
+  assert.equal(m.groups.find((g) => g.section === 'uncertain').rows[0].total, null);
+  assert.equal(m.groups.find((g) => g.section === 'conditional').rows[0].total, 5);
+});
+
+test('effectMatrix: a member without a base gets null cells and the other columns keep their positions', () => {
+  const a = mxClass('a', fx('dmg', 5, 'team'));
+  const m = effectMatrix(mx, [{ player: 'Ann', base: null, level: 0, slots: [] }, mxMember('Bob', a)]);
+  assert.deepEqual(m.members, ['Ann', 'Bob']);
+  assert.deepEqual(find(m, 'dmg', 'team').cells, [null, { value: 5 }]);
+  assert.equal(find(m, 'dmg', 'team').total, 5);
+  assert.equal(find(m, 'dmg', 'team').shared, false);
+});
+
+test('effectMatrix: no members, or none contributing, gives no groups', () => {
+  assert.deepEqual(effectMatrix(mx, []), { members: [], groups: [] });
+  assert.deepEqual(effectMatrix(mx, [{ player: 'Ann', base: null, level: 0, slots: [] }]), { members: ['Ann'], groups: [] });
+});
+
+test('effectMatrix: Recruit L5 marks a row rounded only when a value was actually rounded', () => {
+  const rec = { code: 'rec', name: 'Recruit', levels: [{ effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }] };
+  const odd = mxClass('x', fx('dmg', 7, 'team')); // 8.75 rounds to 8.8
+  const even = mxClass('y', fx('hp', 8, 'team')); // 10 exact
+  const m = effectMatrix(mx, [mxMember('Ann', rec, 5, [{ cls: odd, level: 1 }, { cls: even, level: 1 }]), mxMember('Bob', mxClass('z'), 1)]);
+  const dmg = find(m, 'dmg', 'team');
+  assert.equal(dmg.cells[0].value, 8.8);
+  assert.equal(dmg.rounded, true);
+  assert.equal(find(m, 'hp', 'team').cells[0].value, 10);
+  assert.equal(find(m, 'hp', 'team').rounded, false);
+});
+
+test('effectMatrix: two passive levels of one class on one member mark the row sameClass and sum into the cell', () => {
+  const x = { code: 'x', name: 'X', levels: [{ effects: [fx('dmg', 5, 'team')] }, { effects: [fx('dmg', 10, 'team')] }] };
+  const base = mxClass('b');
+  const m = effectMatrix(mx, [mxMember('Ann', base, 1, [{ cls: x, level: 1 }, { cls: x, level: 2 }])]);
+  const r = find(m, 'dmg', 'team');
+  assert.equal(r.sameClass, true);
+  assert.deepEqual(r.cells, [{ value: 15 }]);
+  const single = effectMatrix(mx, [mxMember('Ann', base, 1, [{ cls: x, level: 1 }])]);
+  assert.equal(find(single, 'dmg', 'team').sameClass, false);
+});
+
+test('effectMatrix: unknown stats are skipped and the input is not required to be in any stat order', () => {
+  const a = mxClass('a', fx('nope', 1, 'team'), fx('hp', 1, 'self'), fx('dmg', 1, 'self'));
+  const m = effectMatrix(mx, [mxMember('Ann', a)]);
+  assert.deepEqual(flatRows(m).map((r) => r.stat), ['dmg', 'hp']);
 });

@@ -9,6 +9,7 @@ import {
   parseSets,
   serializeSets,
   parseShare,
+  parseImport,
   serializeShare,
 } from '../src/code.mjs';
 
@@ -220,4 +221,76 @@ test('11: team links and empty text are errors', () => {
   assert.ok(parseShare(classes, '').error);
   assert.ok(parseShare(classes, '   ').error);
   assert.ok(parseShare(classes, '/').error);
+});
+
+test('parseShare on a team path keeps its error and adds the team marker with the base-relative path and query', () => {
+  const r = parseShare(classes, 'https://x.test/team/bob.c5-sal2~amy.mi1?n=A');
+  assert.equal(r.error, 'Open a team link to save its players');
+  assert.equal(r.team, true);
+  assert.equal(r.path, '/team/bob.c5-sal2~amy.mi1?n=A');
+  assert.equal(parseShare(classes, 'c5').team, undefined);
+  assert.equal(parseShare(classes, '').team, undefined);
+});
+
+test('parseImport: a full link with u and s is a build with both flags and isLink', () => {
+  const r = parseImport(classes, '  https://example.com/dtec-tools/c5-sal2-15XG5XD?u=Ann&s=mi-rec1\n', '/dtec-tools/');
+  assert.equal(r.kind, 'build');
+  assert.equal(r.isLink, true);
+  assert.equal(r.hasRoster, true);
+  assert.equal(r.hasSets, true);
+  assert.equal(r.player.name, 'Ann');
+  assert.deepEqual(r.player.sets, { c: e(['sal', 2]), mi: e(['rec', 1]) });
+});
+
+test('parseImport: a Copy code text is a nameless build with a roster; a path and a bare build are not links', () => {
+  const code = serializeBuildCode(classes, { base: 'mi', levels: { mi: 1, rec: 2, sc: 3 }, sets: { mi: e(['rec', 2]) } }, { roster: true });
+  const r = parseImport(classes, code);
+  assert.equal(r.kind, 'build');
+  assert.equal(r.player.name, '');
+  assert.equal(r.hasRoster, true);
+  assert.equal(r.isLink, false);
+  assert.equal(parseImport(classes, '/c5-sal2?u=bob').isLink, false);
+  const bare = parseImport(classes, 'mi3');
+  assert.deepEqual([bare.kind, bare.hasRoster, bare.hasSets, bare.isLink, bare.player.base, bare.player.levels], ['build', false, false, false, 'mi', { mi: 3 }]);
+});
+
+test('parseImport: a bare roster code is a roster; spaces, lower case and aliases decode', () => {
+  const r = parseImport(classes, 'BCDFG');
+  assert.deepEqual([r.kind, r.owned], ['roster', { mi: 1, rec: 2, h: 3, mec: 4, mer: 5 }]);
+  assert.deepEqual(parseImport(classes, ' b c  dfg ').owned, r.owned);
+  assert.deepEqual(parseImport(classes, 'bcdfg').owned, r.owned);
+  assert.deepEqual(parseImport(classes, 'XXBcl').owned, parseImport(classes, 'XXBC1').owned);
+});
+
+test('parseImport: roster notices are carried as notice objects', () => {
+  const r = parseImport(classes, `${'B'.repeat(classes.length + 2)}`);
+  assert.equal(r.kind, 'roster');
+  assert.equal(r.notices.length, 1);
+  assert.equal(r.notices[0].reason, 'extra');
+  assert.match(r.notices[0].message, /extra/);
+});
+
+test('parseImport: team URL and path give kind team with the base-relative path and query', () => {
+  assert.deepEqual(parseImport(classes, 'https://x.test/team/bob.c5-sal2~amy.mi1?n=A'), { kind: 'team', path: '/team/bob.c5-sal2~amy.mi1?n=A' });
+  assert.deepEqual(parseImport(classes, '/team/bob.c5'), { kind: 'team', path: '/team/bob.c5' });
+  assert.deepEqual(parseImport(classes, ' https://x.test/dtec-tools/team/bob.c5?n=A ', '/dtec-tools/'), { kind: 'team', path: '/team/bob.c5?n=A' });
+  assert.deepEqual(parseImport(classes, 'https://x.test/team'), { kind: 'team', path: '/team' });
+});
+
+test('parseImport: a team path in any case yields a lower-case team segment, keeping the rest and the query', () => {
+  assert.deepEqual(parseImport(classes, 'https://x.test/Team/Bob.c5-sal2?n=A'), { kind: 'team', path: '/team/Bob.c5-sal2?n=A' });
+  assert.deepEqual(parseImport(classes, 'TEAM/bob.c5'), { kind: 'team', path: '/team/bob.c5' });
+  assert.deepEqual(parseImport(classes, 'https://x.test/Team'), { kind: 'team', path: '/team' });
+});
+
+test('parseImport: empty text, share garbage and roster-alphabet garbage return the documented errors', () => {
+  assert.deepEqual(parseImport(classes, ''), { error: 'Paste a link or code' });
+  assert.deepEqual(parseImport(classes, '   \n '), { error: 'Paste a link or code' });
+  const share = parseImport(classes, 'hello world');
+  assert.equal(share.error, parseShare(classes, 'hello world').error);
+  const roster = parseImport(classes, 'BC3');
+  assert.equal(roster.error, 'Run count "3" has no level symbol in roster code');
+  assert.equal(parseImport(classes, 'EBC').error, parseShare(classes, 'EBC').error);
+  assert.ok(parseImport(classes, 'https://x.test/scout-sal2').error);
+  assert.equal(parseImport(classes, 'hello world').kind, undefined);
 });

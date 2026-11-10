@@ -1,8 +1,8 @@
-import { h } from './dom.mjs';
+import { h, hidden } from './dom.mjs';
 import { savedSlots } from './passives.mjs';
-import { sourcesForBuild, teamSources, aggregate, isRecruitMaster } from './effects.mjs';
+import { sourcesForBuild, aggregate, isRecruitMaster, effectMatrix, SCOPES } from './effects.mjs';
 
-// Combined effects: shared by the Classes panel, the Team panel and each team card's "Own effects" disclosure.
+// Combined effects panel (Builds page) and the team effect matrix (Team page).
 export const RECRUIT_NOTE = 'Passives scaled ×1.25 (Recruit L5); values rounded to 1 decimal';
 
 export function formatEffect(row) {
@@ -56,38 +56,84 @@ function effectsPanel(title, model, { note = null, empty = 'No effects yet', key
   );
 }
 
-// Collapsed per-card disclosure; open state lives in state.openEffects because every paint rebuilds the DOM.
-export function ownEffectsDetails(state, actions, name, model) {
-  const key = name.toLowerCase();
-  return h(
-    'details',
-    { class: 'own-effects', open: state.openEffects.has(key), ontoggle: (e) => actions.setEffectsOpen(key, e.target.open) },
-    h('summary', { 'data-fk': `member-${key}-effects`, text: 'Own effects' }),
-    effectsEmpty(model) ? h('p', { class: 'card-empty', text: 'No own effects' }) : effectGroups(model),
-  );
-}
-
 // A build's effects for one base at an owned level with its passive slots.
-export function buildEffects(state, base, level, slots, scopes) {
+function buildEffects(state, base, level, slots, scopes) {
   const sources = sourcesForBuild(base, level, slots);
   return aggregate(state.data.effects, sources, { scopes });
 }
 
 // experiment labels a panel computed from passives that differ from the saved set.
 export function buildEffectsPanel(state, base, level, slots, { experiment = false } = {}) {
-  const model = buildEffects(state, base, level, slots, ['self', 'team', 'nearby']);
+  const model = buildEffects(state, base, level, slots, SCOPES);
   return effectsPanel('Combined effects', model, { note: isRecruitMaster(base, level) ? RECRUIT_NOTE : null, key: 'effects-panel', label: experiment ? 'Experiment' : null });
 }
 
-// Member inputs for teamSources; members without a base class are skipped.
+// Member inputs for effectMatrix, one per header column in member order; a member without a base class gets an empty column.
 export function teamInputs(state, members) {
-  return members
-    .map(({ name, player, base }) => (base ? { player: name, base, level: player.levels[base.code] ?? 0, slots: savedSlots(state.data.classes, player, base.code) } : null))
-    .filter(Boolean);
+  return members.map(({ name, player, base }) =>
+    base ? { player: name, base, level: player.levels[base.code] ?? 0, slots: savedSlots(state.data.classes, player, base.code) } : { player: name, base: null, level: 0, slots: [] },
+  );
 }
 
-export function teamEffectsPanel(state, inputs) {
-  if (!inputs.length) return effectsPanel('Team effects', null, { empty: 'Add players to see team effects', key: 'team-effects' });
-  const model = aggregate(state.data.effects, teamSources(inputs), { scopes: ['team', 'nearby'] });
-  return effectsPanel('Team effects', model, { empty: 'No team effects', key: 'team-effects' });
+const check = () => [h('span', { 'aria-hidden': 'true', text: '\u2713' }), hidden('yes')];
+
+function matrixCell(row, cell) {
+  if (!cell) return h('td', { class: 'matrix-cell' });
+  return h('td', { class: 'matrix-cell' }, cell.flag ? check() : formatEffect({ unit: row.unit, total: cell.value }));
+}
+
+function matrixRow(row, hasAdd) {
+  return h(
+    'tr',
+    { class: `matrix-row${row.shared ? ' is-shared' : ''}`, 'data-stat': row.stat, 'data-scope': row.scope },
+    h(
+      'th',
+      { scope: 'row', class: 'matrix-stat' },
+      h('span', { class: 'effect-name', text: row.name }),
+      row.whenLabel ? h('span', { class: 'effect-when', text: row.whenLabel }) : null,
+      h('span', { class: `scope-tag scope-${row.scope}`, text: row.scope }),
+      row.shared ? [h('span', { class: 'shared-mark', 'aria-hidden': 'true', text: `\u00d7${row.sharedBy}` }), hidden(`shared by ${row.sharedBy} players`)] : null,
+      row.rounded ? h('span', { class: 'effect-mark', text: 'rounded' }) : null,
+      row.sameClass ? h('span', { class: 'effect-warn', text: 'stacking unconfirmed' }) : null,
+    ),
+    row.cells.map((c) => matrixCell(row, c)),
+    hasAdd ? h('td', { class: 'matrix-add-cell' }) : null,
+    h('td', { class: 'matrix-cell matrix-total' }, row.total === true ? check() : row.total == null ? null : formatEffect({ unit: row.unit, total: row.total })),
+  );
+}
+
+// The team as a table: stat, one column per input, an optional "+" add cell, Team total.
+// headers[i] is the header content of inputs[i]; empty is shown when there are no members.
+export function teamMatrix(state, inputs, headers, { add = null, empty = null } = {}) {
+  const wrap = (...body) => h('div', { class: 'matrix-scroll' }, h('table', { class: 'matrix' }, ...body));
+  if (!inputs.length) {
+    return [wrap(h('thead', {}, h('tr', {}, add ? h('th', { scope: 'col', class: 'matrix-add' }, add) : null))), empty];
+  }
+  const model = effectMatrix(state.data.effects, inputs);
+  const cols = inputs.length + (add ? 1 : 0) + 2;
+  const head = h(
+    'thead',
+    {},
+    h(
+      'tr',
+      {},
+      h('th', { scope: 'col', class: 'matrix-stat', text: 'Effect' }),
+      headers.map((cell) => h('th', { scope: 'col', class: 'matrix-member' }, cell)),
+      add ? h('th', { scope: 'col', class: 'matrix-add' }, add) : null,
+      h('th', { scope: 'col', class: 'matrix-total', text: 'Team total' }),
+    ),
+  );
+  const bodies = model.groups.map((g) =>
+    h(
+      'tbody',
+      { class: `matrix-group matrix-${g.section}` },
+      h('tr', { class: 'matrix-group-row' }, h('th', { scope: 'rowgroup', colspan: String(cols) }, h('span', { class: 'matrix-group-title', text: g.sub ? `${g.title} \u00b7 ${g.sub}` : g.title }))),
+      g.rows.map((r) => matrixRow(r, Boolean(add))),
+    ),
+  );
+  const recruit = inputs.some((i) => isRecruitMaster(i.base, i.level));
+  return [
+    wrap(head, bodies.length ? bodies : h('tbody', {}, h('tr', {}, h('td', { class: 'matrix-empty', colspan: String(cols), text: 'No effects from the selected classes' })))),
+    recruit ? h('p', { class: 'effect-note', text: RECRUIT_NOTE }) : null,
+  ];
 }

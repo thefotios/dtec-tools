@@ -1,5 +1,5 @@
 import { parseBuildCode, serializeBuildCode } from './code.mjs';
-import { isValidName, cleanTeamName, MAX_MEMBERS } from './players.mjs';
+import { isValidName, sameName, cleanTeamName, MAX_MEMBERS } from './players.mjs';
 
 function teamNotice(token, reason, message) {
   return { token, reason, message };
@@ -56,4 +56,15 @@ export function serializeTeamLink(classes, team, resolvePlayer) {
   }
   const name = cleanTeamName(team.name);
   return { path: parts.length ? `/team/${parts.join('~')}` : '/team', search: name ? `?n=${encodeURIComponent(name)}` : '' };
+}
+
+// Whether `mine` ({ name, members: [{ name, base }] }, players via resolvePlayer) and a parsed team link serialize to the same
+// path and query, so name, order, each member's class, level, and passives for that class must all match.
+export function sameTeam(classes, mine, linked, resolvePlayer) {
+  // Names are case-insensitive: a linked member takes my spelling of the same name at its position.
+  const named = linked.members.map((m, i) => ({ name: sameName(m.name, mine.members?.[i]?.name ?? '') ? mine.members[i].name : m.name, player: m.player }));
+  const byName = new Map(named.map((m) => [m.name, m.player]));
+  const theirs = serializeTeamLink(classes, { name: linked.name, members: named.map((m) => ({ name: m.name, base: m.player.base })) }, (n) => byName.get(n) ?? null);
+  const ours = serializeTeamLink(classes, mine, resolvePlayer);
+  return ours.path === theirs.path && ours.search === theirs.search;
 }

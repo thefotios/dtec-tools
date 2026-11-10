@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseTeamLink, serializeTeamLink } from '../src/team.mjs';
+import { parseTeamLink, serializeTeamLink, sameTeam } from '../src/team.mjs';
 import { MAX_MEMBERS, MAX_TEAM_NAME } from '../src/players.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
@@ -76,4 +76,46 @@ test('team link: a stored base the player no longer owns falls back to the playe
   assert.equal(serializeTeamLink(classes, team, () => player).path, '/team/bob.mi2-sal1');
   const owned = { ...player, levels: { mi: 2, c: 4 } };
   assert.equal(serializeTeamLink(classes, team, () => owned).path, '/team/bob.c4-sal2');
+});
+
+const library = {
+  bob: { name: 'bob', base: 'c', levels: { c: 5, mi: 2 }, sets: { c: [{ code: 'sal', level: 2 }], mi: [{ code: 'sc', level: 1 }] } },
+  ann: { name: 'ann', base: 'mi', levels: { mi: 3 }, sets: {} },
+};
+const resolve = (name) => library[name] ?? null;
+const mine = (extra = {}) => ({ name: 'Raid A', members: [{ name: 'bob', base: 'c' }, { name: 'ann', base: 'mi' }], ...extra });
+const linkFor = (team, lib = resolve) => {
+  const { path, search } = serializeTeamLink(classes, team, lib);
+  return parseTeamLink(classes, path.replace(/^\/team/, ''), search);
+};
+
+test('sameTeam: a team equals the parsed form of its own serialized link', () => {
+  assert.equal(sameTeam(classes, mine(), linkFor(mine()), resolve), true);
+  assert.equal(sameTeam(classes, { name: '', members: [] }, linkFor({ name: '', members: [] }), resolve), true);
+});
+
+test('sameTeam: differs when the name, a member, the order, or a member base differs', () => {
+  assert.equal(sameTeam(classes, mine(), linkFor(mine({ name: 'Raid B' })), resolve), false);
+  assert.equal(sameTeam(classes, mine(), linkFor(mine({ members: [mine().members[0]] })), resolve), false);
+  assert.equal(sameTeam(classes, mine(), linkFor(mine({ members: [...mine().members].reverse() })), resolve), false);
+  assert.equal(sameTeam(classes, mine(), linkFor(mine({ members: [{ name: 'bob', base: 'mi' }, mine().members[1]] })), resolve), false);
+});
+
+test('sameTeam: differs when a member level or passives for that class differ', () => {
+  const changed = (patch) => (name) => (name === 'bob' ? { ...library.bob, ...patch } : library[name]);
+  const link = linkFor(mine());
+  assert.equal(sameTeam(classes, mine(), link, changed({ levels: { c: 4, mi: 2 } })), false);
+  assert.equal(sameTeam(classes, mine(), link, changed({ sets: { c: [{ code: 'sal', level: 3 }] } })), false);
+  assert.equal(sameTeam(classes, mine(), link, changed({ sets: { c: [{ code: 'sal', level: 2 }], mi: [] } })), true);
+});
+
+test('sameTeam: member names match case-insensitively', () => {
+  const link = linkFor({ name: 'Raid A', members: [{ name: 'Bob', base: 'c' }, { name: 'ANN', base: 'mi' }] }, (n) => library[n.toLowerCase()]);
+  assert.equal(sameTeam(classes, mine(), link, resolve), true);
+});
+
+test('sameTeam: members the library cannot resolve are skipped on my side', () => {
+  const link = linkFor({ name: 'Raid A', members: [{ name: 'ann', base: 'mi' }] });
+  assert.equal(sameTeam(classes, mine(), link, resolve), false);
+  assert.equal(sameTeam(classes, mine(), link, (n) => (n === 'bob' ? null : library[n])), true);
 });

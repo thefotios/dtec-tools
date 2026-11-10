@@ -77,6 +77,16 @@ export function createPassiveStore(storage, classes) {
       sets = next;
       save();
     },
+    // Replaces every saved set from a map of base class code to entries, with one write. Unknown codes are dropped and absent classes cleared.
+    replaceAll(setsByCode) {
+      const next = {};
+      for (const c of classes) {
+        const set = normalizeSet(classes, c.slug, setsByCode?.[c.code]);
+        if (set.length) next[c.slug] = set;
+      }
+      sets = next;
+      save();
+    },
     // Every saved set keyed by base class code, as entries; empty sets are omitted.
     all() {
       const out = {};

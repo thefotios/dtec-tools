@@ -1,4 +1,4 @@
-// Players and teams: my username, a library of saved players, and named teams that reference players by name.
+// Players and the team: my username, a library of saved players, and one named team that references players by name.
 // A player record is { name, base, levels, sets }: base is a class code, levels maps class code to max level 1-5,
 // sets maps class code to a passive set of { code, level } entries.
 
@@ -19,7 +19,7 @@ export const NAME_RULE = 'Use 3 to 20 letters or digits, with at most one unders
 // 3-20 letters, digits, or one underscore that is not at either end.
 export const isValidName = (name) => typeof name === 'string' && name.length >= 3 && name.length <= 20 && NAME_RE.test(name);
 
-export const SELF_NAME = "That's you \u2014 edit your build on the Classes page";
+export const SELF_NAME = "That's you \u2014 import your own build on the Builds page";
 
 // Why a player name cannot be used, or null: invalid format first, then the same name as mine.
 export function nameProblem(name, me) {
@@ -93,8 +93,40 @@ export function linkOwner(store, player, bare) {
   return store.get(player.name) ? 'library' : 'visitor';
 }
 
+const copySet = (set) => set.map((e) => ({ ...e }));
+const copySets = (sets) => Object.fromEntries(Object.entries(sets).map(([code, set]) => [code, copySet(set)]));
+const hasLevel = (levels) => Object.values(levels).some((n) => n > 0);
+const hasSet = (sets) => Object.values(sets).some((set) => set.length > 0);
+
+// Pure: my next { levels, sets, base } after importing `parsed` (a parseImport build) over current { levels, sets }, plus a
+// summary of what existing data is replaced. A roster replaces the levels, else only the base level is set. Sets are replaced
+// wholesale when the input carries `s`, or is a full link with a roster (the app omits `s` only when there are no other sets);
+// otherwise only the base's set is replaced, or removed when the input has no passives.
+export function ownImport(current, parsed) {
+  const { player, hasRoster, hasSets, isLink } = parsed;
+  const base = player.base;
+  const levels = hasRoster ? { ...player.levels } : { ...current.levels, [base]: player.levels[base] };
+  const replaceAll = hasSets || (isLink && hasRoster);
+  const sets = replaceAll ? copySets(player.sets) : copySets(current.sets);
+  if (!replaceAll) {
+    if (player.sets[base]?.length) sets[base] = copySet(player.sets[base]);
+    else delete sets[base];
+  }
+  const summary = {
+    replacesRoster: hasRoster && hasLevel(current.levels),
+    replacesAllSets: replaceAll && hasSet(current.sets),
+    replacesBaseSet: !replaceAll && (current.sets[base]?.length ?? 0) > 0,
+    replacesBaseLevel: !hasRoster && (current.levels[base] ?? 0) > 0 && current.levels[base] !== player.levels[base],
+  };
+  return { levels, sets, base, summary: { ...summary, replacesExisting: Object.values(summary).some(Boolean) } };
+}
+
+const TEAM_ID = 'team';
+const emptyTeam = () => ({ name: '', members: [] });
+
+// Stored teams are cleaned field by field; the active one (else the first) becomes the single in-memory team.
 function load(storage, classes) {
-  const empty = { me: '', players: [], teams: [], active: null };
+  const empty = { me: '', players: [], team: emptyTeam() };
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
     if (parsed?.v !== STORE_VERSION) return empty;
@@ -110,45 +142,38 @@ function load(storage, classes) {
       if (typeof raw?.id !== 'string' || !raw.id || teams.some((t) => t.id === raw.id)) continue;
       teams.push({ id: raw.id, name: cleanTeamName(raw.name), members: cleanMembers(classes, raw.members) });
     }
-    const active = teams.some((t) => t.id === parsed.active) ? parsed.active : null;
-    return { me, players, teams, active };
+    const kept = teams.find((t) => t.id === parsed.active) ?? teams[0];
+    return { me, players, team: kept ? { name: kept.name, members: kept.members } : emptyTeam() };
   } catch {
     return empty;
   }
 }
 
-const defaultNewId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-
 // Reads and writes never throw: a blocked store degrades to in-memory state.
-export function createPlayersStore(storage, classes, { newId = defaultNewId } = {}) {
-  let { me, players, teams, active } = load(storage, classes);
+// The persisted shape keeps the v1 layout with exactly one team so earlier versions of the app can still read it.
+export function createPlayersStore(storage, classes) {
+  let { me, players, team } = load(storage, classes);
   const save = () => {
     try {
-      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, me, players, teams, active }));
+      const teams = [{ id: TEAM_ID, ...team }];
+      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, me, players, teams, active: TEAM_ID }));
     } catch {
       /* in-memory only */
     }
   };
-  const findTeam = (id) => teams.find((t) => t.id === id);
-  const updateTeam = (id, fn) => {
-    teams = teams.map((t) => (t.id === id ? fn(t) : t));
-    save();
-  };
   const hasCode = (code) => classes.some((c) => c.code === code);
-  // Renames every membership whose name matches any of `from` to `to`, keeping the first entry when that collides within a team.
+  // Renames every membership whose name matches any of `from` to `to`, keeping the first entry when that collides.
   const rekey = (from, to) => {
     const matches = (name) => from.some((f) => sameName(f, name));
-    teams = teams.map((t) => {
-      const seen = new Set();
-      const members = [];
-      for (const m of t.members) {
-        const name = matches(m.name) ? to : m.name;
-        if (seen.has(lower(name))) continue;
-        seen.add(lower(name));
-        members.push({ name, base: m.base });
-      }
-      return { ...t, members };
-    });
+    const seen = new Set();
+    const members = [];
+    for (const m of team.members) {
+      const name = matches(m.name) ? to : m.name;
+      if (seen.has(lower(name))) continue;
+      seen.add(lower(name));
+      members.push({ name, base: m.base });
+    }
+    team = { ...team, members };
   };
 
   return {
@@ -205,62 +230,42 @@ export function createPlayersStore(storage, classes, { newId = defaultNewId } = 
       save();
       return { ok: true, updated: Boolean(existing) };
     },
-    // Removing a player drops every membership of that name.
+    // Removing a player drops its team membership.
     remove(name) {
       players = players.filter((p) => !sameName(p.name, name));
-      teams = teams.map((t) => ({ ...t, members: t.members.filter((m) => !sameName(m.name, name)) }));
+      team = { ...team, members: team.members.filter((m) => !sameName(m.name, name)) };
       save();
     },
-    get teams() {
-      return teams;
+    get team() {
+      return team;
     },
-    get active() {
-      return active;
-    },
-    setActive(id) {
-      const next = findTeam(id) ? id : null;
-      if (next === active) return;
-      active = next;
+    renameTeam(name) {
+      team = { ...team, name: cleanTeamName(name) };
       save();
     },
-    // The new team always becomes active, so the first team and every freshly created team open in the UI.
-    createTeam(name, members = []) {
-      let id = String(newId());
-      while (findTeam(id)) id = String(newId());
-      teams = [...teams, { id, name: cleanTeamName(name), members: cleanMembers(classes, members) }];
-      active = id;
-      save();
-      return id;
-    },
-    renameTeam(id, name) {
-      if (findTeam(id)) updateTeam(id, (t) => ({ ...t, name: cleanTeamName(name) }));
-    },
-    // Deleting the active team activates the first remaining team.
-    deleteTeam(id) {
-      if (!findTeam(id)) return;
-      teams = teams.filter((t) => t.id !== id);
-      if (active === id) active = teams[0]?.id ?? null;
+    // Replaces name and members at once; the members are cleaned as on load.
+    replaceTeam(name, members) {
+      team = { name: cleanTeamName(name), members: cleanMembers(classes, members) };
       save();
     },
-    addMember(id, name, base) {
-      const team = findTeam(id);
-      if (!team) return { error: 'Unknown team' };
+    addMember(name, base) {
       if (!isValidName(name)) return { error: 'Invalid name; set your username first to add yourself' };
       if (!hasCode(base)) return { error: 'Unknown base class' };
       if (team.members.some((m) => sameName(m.name, name))) return { error: 'Already on this team' };
       if (team.members.length >= MAX_MEMBERS) return { error: `A team holds at most ${MAX_MEMBERS} members` };
-      updateTeam(id, (t) => ({ ...t, members: [...t.members, { name, base }] }));
+      team = { ...team, members: [...team.members, { name, base }] };
+      save();
       return { ok: true };
     },
-    removeMember(id, name) {
-      if (findTeam(id)) updateTeam(id, (t) => ({ ...t, members: t.members.filter((m) => !sameName(m.name, name)) }));
+    removeMember(name) {
+      team = { ...team, members: team.members.filter((m) => !sameName(m.name, name)) };
+      save();
     },
-    setMemberBase(id, name, base) {
-      const team = findTeam(id);
-      if (!team) return { error: 'Unknown team' };
+    setMemberBase(name, base) {
       if (!hasCode(base)) return { error: 'Unknown base class' };
       if (!team.members.some((m) => sameName(m.name, name))) return { error: 'Not on this team' };
-      updateTeam(id, (t) => ({ ...t, members: t.members.map((m) => (sameName(m.name, name) ? { ...m, base } : m)) }));
+      team = { ...team, members: team.members.map((m) => (sameName(m.name, name) ? { ...m, base } : m)) };
+      save();
       return { ok: true };
     },
   };

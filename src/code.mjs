@@ -145,6 +145,7 @@ export function serializeSets(classes, player) {
 }
 
 // Accepts a full URL on any host, a path, or a bare code. Returns { player, hasRoster, hasSets, notices } or { error }.
+// A team path returns its error plus team: true and the base-relative path with query.
 // The player's base level wins over the roster's; name comes from `u`, trimmed, or is ''.
 export function parseShare(classes, text, basePath = '/') {
   const input = String(text ?? '').trim();
@@ -157,7 +158,10 @@ export function parseShare(classes, text, basePath = '/') {
   }
   const [first, ...extras] = relativePath(url.pathname, basePath).split('/').filter(Boolean);
   if (first === undefined) return { error: 'Enter a build code or link' };
-  if (first.toLowerCase() === 'team') return { error: TEAM_LINK_ERROR };
+  if (first.toLowerCase() === 'team') {
+    const rest = relativePath(url.pathname, basePath).replace(/^\/+[^/]*/, '');
+    return { error: TEAM_LINK_ERROR, team: true, path: `/team${rest}${url.search}` };
+  }
   const build = parseBuildCode(classes, first);
   if (!build.base) return { error: build.notices[0].message };
   const sets = parseSets(classes, url.searchParams.get('s'), build.base);
@@ -170,6 +174,23 @@ export function parseShare(classes, text, basePath = '/') {
     hasSets: Boolean((url.searchParams.get('s') ?? '').trim()),
     notices: [...build.notices, ...sets.notices, ...extras.map((e) => notice(e, 'extra'))],
   };
+}
+
+const URL_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
+const ROSTER_ALPHABET = /^[\sXBCDFGOIL0-9]*$/i;
+
+// Classifies pasted text. Returns { kind: 'build', player, hasRoster, hasSets, isLink, notices }, { kind: 'roster', owned, notices },
+// { kind: 'team', path } (base-relative, with query) or { error }. A share parse failure falls back to a bare roster code;
+// when both fail, text made only of roster characters gets the roster error, anything else the share error.
+export function parseImport(classes, text, basePath = '/') {
+  const input = String(text ?? '').trim();
+  if (!input) return { error: 'Paste a link or code' };
+  const share = parseShare(classes, input, basePath);
+  if (share.team) return { kind: 'team', path: share.path };
+  if (!share.error) return { kind: 'build', ...share, isLink: URL_SCHEME.test(input) };
+  const roster = decodeRoster(classes, input);
+  if (!roster.error) return { kind: 'roster', owned: roster.owned, notices: roster.notices.map((message) => notice(input, 'extra', message)) };
+  return { error: ROSTER_ALPHABET.test(input) ? roster.error : share.error };
 }
 
 // Absolute share URL under baseURI: build code with roster, `u` when the player has a name, `s` when other sets exist.

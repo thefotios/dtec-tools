@@ -1,15 +1,19 @@
 import { absoluteUrl, relativePath, pushPath, replacePath, currentPath, teamSegment, addSlot, removeSlot } from './router.mjs';
 import { render } from './render.mjs';
-import { createStore, decodeRoster } from './owned.mjs';
+import { createStore } from './owned.mjs';
 import { createPassiveStore, savedSlots, fromSlots, MAX_PASSIVES } from './passives.mjs';
-import { parseShare, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
-import { createPlayersStore, nameProblem, mePlayer, playerByName, sameName, linkOwner, ownedBase as ownedBaseCode } from './players.mjs';
-import { parseTeamLink, serializeTeamLink } from './team.mjs';
+import { parseShare, parseImport, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
+import { createPlayersStore, nameProblem, isValidName, mePlayer, playerByName, sameName, linkOwner, ownImport, ownedBase as ownedBaseCode } from './players.mjs';
+import { parseTeamLink, serializeTeamLink, sameTeam } from './team.mjs';
 
 const root = document.getElementById('app');
 const storage = { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) };
 const dataUrl = () => new URL('data/classes.json', document.baseURI).href;
 const effectsUrl = () => new URL('data/effects.json', document.baseURI).href;
+
+function freshImport() {
+  return { draft: '', error: null, message: null, savedName: '', notices: [], pending: null };
+}
 
 const state = {
   status: 'loading',
@@ -28,22 +32,21 @@ const state = {
   copyText: '',
   // One-shot: the next paint selects the clipboard fallback field, then clears it.
   copyFocus: false,
-  // The player shown on the Classes page, null for me: { player, source, link }. source is 'library' (a saved player) or 'link' (an opened link, unsaved).
+  // The player shown on the Builds page, null for me: { player, source, link }. source is 'library' (a saved player) or 'link' (an opened link, unsaved).
   // link carries the banner fields { incoming, bare, nameDraft, saved, savedName, error } for an unsaved link or one that differs from the saved record; incoming is the link's record. Never saved until the user saves it.
   viewing: null,
   // In-memory passive experiments for a viewed player: expKey(player, base code) -> slots. Never persisted and never written to the stores.
   experiments: new Map(),
   players: null,
   // Local view state; never part of the share URL.
-  view: 'classes',
+  view: 'builds',
   store: createStore(storage),
   // Rows expanded by hand in edit mode.
   expanded: new Set(),
-  // Team cards whose "Own effects" disclosure is open (member names); transient, not persisted.
-  openEffects: new Set(),
-  // link: an opened team link, null or { name, members, saved }; paste: the library paste form's drafts and feedback.
-  team: { link: null, paste: { draft: '', name: '', error: null, message: null, notices: [] } },
-  list: { editing: false, filter: '', rosterOpen: false, draft: '', error: null, notices: [], nameEditing: false, nameDraft: null, nameError: null, nameConflict: null },
+  // link: an opened team link, null or { name, members, confirming }; confirming shows the "Replace my team" prompt.
+  team: { link: null },
+  // import: the import box. pending is null, { kind: 'confirm', parsed, summary } or { kind: 'whose', parsed, nameDraft, error }.
+  list: { editing: false, filter: '', import: freshImport(), nameEditing: false, nameDraft: null, nameError: null, nameConflict: null },
 };
 
 const paint = () => render(root, state, actions);
@@ -70,7 +73,6 @@ function myPlayer() {
 const ownedBase = (player, stored) => ownedBaseCode(state.data.classes, player, stored);
 
 const resolvePlayer = (name) => playerByName(state.players, meRecord(), name);
-const activeTeam = () => state.players.teams.find((t) => t.id === state.players.active) ?? null;
 
 // The viewed player's share link as a base-relative path, with the selected base.
 function viewPath() {
@@ -105,14 +107,6 @@ function restoreLast(notices) {
   state.notices = notices;
 }
 
-// The saved team an opened team link duplicates: same name and same member names, ignoring case and order.
-function savedTeamFor(link) {
-  if (!link?.members.length) return null;
-  const key = (names) => names.map((n) => n.toLowerCase()).sort().join('~');
-  const wanted = key(link.members.map((m) => m.name));
-  return state.players.teams.find((t) => t.name.toLowerCase() === link.name.toLowerCase() && key(t.members.map((m) => m.name)) === wanted) ?? null;
-}
-
 // Keyed by lower-cased name and base code; a nameless link is keyed by its canonical code so two links never share one.
 const expPrefix = (player) => `${player.name ? player.name.toLowerCase() : `~${serializeBuildCode(state.data.classes, player, { roster: true })}`}\n`;
 const expKey = (player, code) => `${expPrefix(player)}${code}`;
@@ -125,7 +119,7 @@ function dropExperiments(player) {
   for (const k of [...state.experiments.keys()]) if (k.startsWith(prefix)) state.experiments.delete(k);
 }
 
-// Shows a player on the Classes page with the saved set of the base; edit and import state is reset so the view stays read-only.
+// Shows a player on the Builds page with the saved set of the base; edit and import state is reset so the view stays read-only.
 function showPlayer(player, source, link, baseCode, hasRoster = false) {
   state.viewing = { player, source, link, hasRoster };
   state.linkView = false;
@@ -165,11 +159,11 @@ function syncFromLocation() {
       return;
     }
     const parsed = parseTeamLink(state.data.classes, segment, window.location.search);
-    state.team.link = { name: parsed.name, members: parsed.members, saved: false };
+    state.team.link = { name: parsed.name, members: parsed.members, confirming: false };
     state.notices = parsed.notices;
     return;
   }
-  state.view = 'classes';
+  state.view = 'builds';
   state.loadoutEditing = false;
   state.copy = null;
   if (path === '/') return restoreLast([]);
@@ -220,12 +214,67 @@ function setSlots(slots) {
   paint();
 }
 
+// My current levels and saved sets, the input ownImport merges a pasted build into.
+const currentOwn = () => ({ levels: state.store.owned, sets: state.passives.all() });
+
+// What importing `parsed` over my own data would replace; a roster code replaces only my classes.
+function importSummary(parsed) {
+  if (parsed.kind === 'roster') {
+    const replacesRoster = state.store.hasAny();
+    return { replacesRoster, replacesExisting: replacesRoster };
+  }
+  return ownImport(currentOwn(), parsed).summary;
+}
+
+const focusFk = (key) => document.querySelector(`[data-fk="${key}"]`)?.focus({ preventScroll: true });
+
+const noticeTexts = (notices) => notices.map((n) => n.message);
+
+// Applies an own import: one write per store, then my view shows the imported base with its saved set.
+function applyOwnBuild(parsed) {
+  const next = ownImport(currentOwn(), parsed);
+  state.store.replace(next.levels);
+  state.passives.replaceAll(next.sets);
+  const base = classByCode(state.data.classes, next.base);
+  const moved = Boolean(state.viewing) || base.slug !== state.build.base?.slug;
+  state.viewing = null;
+  state.linkView = false;
+  state.list.editing = false;
+  state.loadoutEditing = false;
+  state.expanded.clear();
+  state.build = { base, slots: state.passives.get(base.slug) };
+  state.passives.setLast(base.slug);
+  state.notices = [];
+  state.copy = null;
+  (moved ? pushPath : replacePath)(window, buildPath());
+  state.list.import = { ...freshImport(), message: 'Updated your build', notices: noticeTexts(parsed.notices) };
+}
+
+// A bare roster code replaces only my owned classes; a viewed player's view returns to me.
+function applyOwnRoster(parsed) {
+  state.store.replace(parsed.owned);
+  state.linkView = false;
+  state.list.editing = false;
+  state.expanded.clear();
+  if (state.viewing) restoreLast([]);
+  state.copy = null;
+  replacePath(window, buildPath());
+  state.list.import = { ...freshImport(), message: 'Updated your classes', notices: noticeTexts(parsed.notices) };
+}
+
+const applyOwn = (parsed) => (parsed.kind === 'roster' ? applyOwnRoster(parsed) : applyOwnBuild(parsed));
+
+// Saves a pasted build to the library under `name`; returns an error text or null. A code with neither roster nor sets only updates the base.
+function saveImported(parsed, name) {
+  const saved = state.players.upsert({ ...parsed.player, name }, { merge: !parsed.hasRoster && !parsed.hasSets });
+  if (saved.error) return saved.error;
+  state.list.import = { ...freshImport(), message: `${saved.updated ? 'Updated' : 'Added'} ${name}`, savedName: name, notices: noticeTexts(parsed.notices) };
+  if (state.viewing) refreshViewing();
+  return null;
+}
+
 const actions = {
   retry: () => load(),
-  setEffectsOpen(key, open) {
-    if (open) state.openEffects.add(key);
-    else state.openEffects.delete(key);
-  },
   // Team has its own URL; leaving it returns to the single-build URL.
   setView(view) {
     const was = state.view;
@@ -247,10 +296,10 @@ const actions = {
     }
     paint();
   },
-  // Opens the You panel's username input on the Classes page and focuses it.
+  // Opens the You panel's username input on the Builds page and focuses it.
   openUsername() {
     state.list.nameEditing = true;
-    actions.setView('classes');
+    actions.setView('builds');
     focusUsername();
   },
   editUsername() {
@@ -265,108 +314,193 @@ const actions = {
     state.list.nameConflict = null;
     paint();
   },
-  pastePlayer(text, nameText) {
-    const paste = state.team.paste;
-    const fail = (error) => {
-      state.team.paste = { draft: text, name: nameText, error, message: null, notices: [] };
+  // Draft setters keep typed text in state without painting; a draft change while a prompt is open dismisses the prompt, which must never act on other text than it shows.
+  setImportDraft(text) {
+    const imp = state.list.import;
+    imp.draft = text;
+    if (imp.pending) {
+      imp.pending = null;
       paint();
-    };
-    const r = parseShare(state.data.classes, text, new URL(document.baseURI).pathname);
-    if (r.error) return fail(r.error);
-    const name = (nameText.trim() || r.player.name).trim();
-    if (!name) return fail('Enter a name for this player');
-    const problem = nameProblem(name, state.players.me);
-    if (problem) return fail(problem);
-    const saved = state.players.upsert({ ...r.player, name }, { merge: !r.hasRoster && !r.hasSets });
-    if (saved.error) return fail(saved.error);
-    state.team.paste = { ...paste, draft: '', name: '', error: null, message: `${saved.updated ? 'Updated' : 'Added'} ${name}`, notices: r.notices.map((n) => n.message) };
+    }
+  },
+  setImportName(text) {
+    const p = state.list.import.pending;
+    if (p?.kind !== 'whose') return;
+    p.nameDraft = text;
+    if (p.error) {
+      p.error = null;
+      paint();
+    }
+  },
+  importSummary,
+  // Classifies the pasted text and routes it by owner: my own build, the library, a team link, or the whose-prompt.
+  importText(text) {
+    const r = parseImport(state.data.classes, text, new URL(document.baseURI).pathname);
+    const imp = state.list.import;
+    imp.draft = text;
+    imp.message = null;
+    imp.savedName = '';
+    imp.notices = [];
+    imp.pending = null;
+    imp.error = null;
+    if (r.error) {
+      imp.error = r.error;
+      return paint();
+    }
+    if (r.kind === 'team') {
+      state.list.import = freshImport();
+      pushPath(window, r.path);
+      syncFromLocation();
+      return paint();
+    }
+    const me = state.players.me;
+    const name = r.kind === 'build' ? r.player.name : '';
+    const mine = r.kind === 'roster' || (name && me && sameName(name, me));
+    if (mine) {
+      const summary = importSummary(r);
+      if (summary.replacesExisting) {
+        imp.pending = { kind: 'confirm', parsed: r, summary };
+        paint();
+        return focusFk('import-yes');
+      }
+      applyOwn(r);
+      return paint();
+    }
+    if (name && me && !nameProblem(name, me)) {
+      imp.error = saveImported(r, name);
+      return paint();
+    }
+    imp.pending = { kind: 'whose', parsed: r, nameDraft: name, error: null };
     paint();
+    focusFk('import-mine');
   },
-  // Draft setters keep typed text in state without painting, so a repaint from any source cannot drop it.
-  setPasteDraft(text) {
-    state.team.paste.draft = text;
+  // Applies the pending own update against my current data, so edits made while the prompt was open are kept.
+  confirmImport() {
+    const p = state.list.import.pending;
+    if (p?.kind !== 'confirm') return;
+    applyOwn(p.parsed);
+    paint();
+    focusFk('import-field');
   },
-  setPasteName(text) {
-    state.team.paste.name = text;
+  cancelImport() {
+    state.list.import.pending = null;
+    paint();
+    focusFk('import-field');
   },
-  setRosterDraft(text) {
-    state.list.draft = text;
+  // "Mine" applies the own update; with no username set it also takes the pasted name as my username.
+  importAsMine() {
+    const p = state.list.import.pending;
+    if (p?.kind !== 'whose') return;
+    const name = p.parsed.player.name;
+    if (!state.players.me && name && isValidName(name)) {
+      const r = state.players.setMe(name);
+      if (r.conflict) {
+        p.error = `${name} is a saved player. Set your username to claim it, or save this build under another name.`;
+        return paint();
+      }
+      if (r.error) {
+        p.error = r.error;
+        return paint();
+      }
+    }
+    applyOwn(p.parsed);
+    paint();
+    focusFk('import-field');
+  },
+  importAs(text) {
+    const p = state.list.import.pending;
+    if (p?.kind !== 'whose') return;
+    const name = text.trim();
+    p.nameDraft = text;
+    const me = state.players.me;
+    p.error = !name ? 'Enter a name for this player' : me && sameName(name, me) ? "That's your username. Choose Mine to update your build." : nameProblem(name, me);
+    if (!p.error) p.error = saveImported(p.parsed, name);
+    paint();
+    if (!p.error) focusFk('import-field');
   },
   setNameDraft(text) {
     state.list.nameDraft = text;
   },
   setTeamNameDraft(name) {
-    const team = activeTeam();
-    if (team) state.players.renameTeam(team.id, name);
+    state.players.renameTeam(name);
   },
   removePlayer(name) {
     state.players.remove(name);
     paint();
   },
-  createTeam() {
-    state.players.createTeam(`Team ${state.players.teams.length + 1}`, []);
-    paint();
-  },
   renameTeam(name) {
-    const team = activeTeam();
-    if (team) state.players.renameTeam(team.id, name);
-    paint();
-  },
-  deleteTeam() {
-    const team = activeTeam();
-    if (team) state.players.deleteTeam(team.id);
-    paint();
-  },
-  setActiveTeam(id) {
-    state.players.setActive(id);
-    state.copy = null;
+    state.players.renameTeam(name);
     paint();
   },
   addMember(name) {
-    const team = activeTeam();
     const player = name ? resolvePlayer(name) : null;
     const base = player ? ownedBase(player, player.base) : null;
-    if (team && player && base) state.players.addMember(team.id, player.name, base);
+    if (player && base) state.players.addMember(player.name, base);
     paint();
   },
   removeMember(name) {
-    const team = activeTeam();
-    if (team) state.players.removeMember(team.id, name);
+    state.players.removeMember(name);
     paint();
+    focusFk('team-add');
   },
   setMemberBase(name, base) {
-    const team = activeTeam();
-    if (team) state.players.setMemberBase(team.id, name, base);
+    state.players.setMemberBase(name, base);
     state.copy = null;
     paint();
   },
-  // The saved team an opened team link duplicates, or null.
-  linkSavedTeam: () => savedTeamFor(state.team.link),
-  openTeam(id) {
-    state.players.setActive(id);
+  // Whether the opened team link is already my team: same name, order, classes, levels and passives.
+  linkIsMyTeam() {
+    const link = state.team.link;
+    return Boolean(link?.members.length) && sameTeam(state.data.classes, state.players.team, link, resolvePlayer);
+  },
+  // Leaves the opened team link for my own team.
+  openMyTeam() {
     state.team.link = null;
     state.notices = [];
     state.copy = null;
     pushPath(window, '/team');
     paint();
   },
-  // Saves an opened team link: missing players are added from the link, existing ones stay as they are, my own name maps to Me.
-  saveTeamLink() {
+  // Replaces my team with the opened link; an existing team, or saved players the link would update, ask first.
+  replaceTeamFromLink() {
     const link = state.team.link;
-    if (!link || !link.members.length || savedTeamFor(link)) return;
+    if (!link?.members.length) return;
+    const me = state.players.me;
+    const updatesSaved = link.members.some(({ name }) => !(me && sameName(name, me)) && state.players.get(name));
+    if (state.players.team.members.length || updatesSaved) {
+      link.confirming = true;
+      paint();
+      return focusFk('replace-yes');
+    }
+    actions.confirmReplaceTeam();
+  },
+  cancelReplaceTeam() {
+    if (state.team.link) state.team.link.confirming = false;
+    paint();
+    focusFk('replace-team');
+  },
+  // My own name maps to Me and is never written; a new player is added from the link; a saved player takes the link's base, its level and its passives for that base.
+  confirmReplaceTeam() {
+    const link = state.team.link;
+    if (!link?.members.length) return;
     const me = state.players.me;
     const members = link.members.map(({ name, player }) => {
       if (me && sameName(name, me)) return { name: me, base: player.base };
       const existing = state.players.get(name);
-      if (!existing) state.players.upsert(player);
+      state.players.upsert(existing ? { ...player, name: existing.name } : player, { merge: Boolean(existing) });
       return { name: existing?.name ?? name, base: player.base };
     });
-    state.players.createTeam(link.name || 'Team', members);
+    state.players.replaceTeam(link.name, members);
     state.team.link = null;
     state.notices = [];
     state.copy = null;
     replacePath(window, '/team');
     paint();
+  },
+  // Opens the Builds page and focuses the import box.
+  openImport() {
+    actions.setView('builds');
+    focusFk('import-field');
   },
   setEditing(value) {
     if (state.viewing) return;
@@ -388,10 +522,6 @@ const actions = {
     state.list.filter = value;
     paint();
   },
-  toggleRoster() {
-    state.list.rosterOpen = !state.list.rosterOpen;
-    paint();
-  },
   jumpToLoadout() {
     document.getElementById('loadout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
@@ -400,20 +530,6 @@ const actions = {
     paint();
   },
   mePlayer: meRecord,
-  importRoster(text) {
-    const r = decodeRoster(state.data.classes, text);
-    if (r.error) {
-      state.list.error = r.error;
-      state.list.notices = [];
-      state.list.draft = text;
-    } else {
-      state.store.replace(r.owned);
-      state.list.error = null;
-      state.list.notices = r.notices;
-      state.list.draft = '';
-    }
-    paint();
-  },
   dismissNotice(i) {
     state.notices = state.notices.filter((_, j) => j !== i);
     paint();
@@ -471,8 +587,7 @@ const actions = {
   currentUrl() {
     if (state.view !== 'team') return serializeShare(state.data.classes, sharedRecord(), document.baseURI);
     if (state.team.link) return window.location.href;
-    const team = activeTeam();
-    const { path, search } = serializeTeamLink(state.data.classes, team, (name) => {
+    const { path, search } = serializeTeamLink(state.data.classes, state.players.team, (name) => {
       const p = resolvePlayer(name);
       const base = p ? ownedBase(p, p.base) : null;
       return base ? { ...p, base } : null;
@@ -482,9 +597,7 @@ const actions = {
   // Why the team Copy link is unavailable, or null.
   teamShareBlock() {
     if (state.team.link) return null;
-    const team = activeTeam();
-    if (!team) return 'Create a team to share';
-    return team.members.length ? null : 'Add players to share';
+    return state.players.team.members.length ? null : 'Add players to share';
   },
   currentCode: () => serializeBuildCode(state.data.classes, sharedRecord(), { roster: true }),
   shareBlock,
@@ -655,14 +768,14 @@ function refreshViewing() {
   if (!stored) {
     dropExperiments(v.player);
     restoreLast([]);
-    if (state.view === 'classes') replacePath(window, buildPath());
+    if (state.view === 'builds') replacePath(window, buildPath());
     return;
   }
   const code = state.build.base?.code;
   const editing = state.loadoutEditing;
   showPlayer(stored, 'library', v.link, ownedBase(stored, code));
   state.loadoutEditing = editing;
-  if (state.view === 'classes' && !unsavedLink()) replacePath(window, viewPath());
+  if (state.view === 'builds' && !unsavedLink()) replacePath(window, viewPath());
 }
 
 // Another tab wrote one of the stores: reload it from storage so this tab's next write does not overwrite that change.
