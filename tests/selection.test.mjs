@@ -58,7 +58,7 @@ test('a nameless build the person lacks is an unsaved build that names what Save
 
 test('a nameless build already stored only selects its class', () => {
   const me = person('me', '', { base: MI, levels: { [MI]: 3, [REC]: 2 }, sets: { [MI]: e([REC, 2]) } });
-  const r = at(make([me]), '/mi3-rec2');
+  const r = at(make([me]), '/mi3-re2');
   assert.deepEqual([r.kind, r.id, r.base, r.replaceUrl], ['person', 'me', MI, true]);
 });
 
@@ -112,10 +112,10 @@ test('a saved name with equal data selects the person; different data holds a pe
 
 test('a link with a roster replaces a saved name: a second class set is an update, equal full data selects the person', () => {
   const two = person('p1', 'Bob', { base: SC, levels: { [SC]: 3, [MI]: 2, [REC]: 1 }, sets: { [SC]: e([REC, 1]), [MI]: e([REC, 1]) } });
-  const r = at(make([person('me', ''), two]), '/sc3-rec1-C?u=Bob');
+  const r = at(make([person('me', ''), two]), '/sc3-re1-C?u=Bob');
   assert.deepEqual([r.kind, r.id], ['update', 'p1']);
   const equal = person('p1', 'Bob', { base: SC, levels: { [SC]: 3, [MI]: 2 }, sets: { [SC]: e([REC, 1]) } });
-  const same = at(make([person('me', ''), equal]), '/sc3-rec1-C?u=Bob');
+  const same = at(make([person('me', ''), equal]), '/sc3-re1-C?u=Bob');
   assert.deepEqual([same.kind, same.id], ['person', 'p1']);
 });
 
@@ -134,10 +134,10 @@ test('a bare code for a saved name only compares that class', () => {
 test("Me's name with different passives holds a pending own update; equal data only selects Me", () => {
   const me = person('me', 'Fotios', { base: MI, levels: { [MI]: 3, [REC]: 2 }, sets: { [MI]: e([REC, 2]) } });
   const s = make([me]);
-  const diff = at(s, '/mi3-rec1?u=Fotios');
+  const diff = at(s, '/mi3-re1?u=Fotios');
   assert.deepEqual([diff.kind, diff.id, diff.replaceUrl], ['ownUpdate', 'me', false]);
   assert.ok(diff.incoming.player);
-  const same = at(s, '/mi3-rec2?u=fotios');
+  const same = at(s, '/mi3-re2?u=fotios');
   assert.deepEqual([same.kind, same.id, same.incoming, same.replaceUrl], ['person', 'me', undefined, true]);
 });
 

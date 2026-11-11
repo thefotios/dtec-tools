@@ -6,7 +6,7 @@ const RECRUIT_MULT = 1.25;
 export const SCOPES = ['self', 'team', 'nearby'];
 
 // Base levels 1..ownedLevel plus each passive slot's single level. recruitMaster scales passive pct/flat values, rounded to 1 decimal per source.
-export const isRecruitMaster = (base, level) => base?.code === 'rec' && level >= 5;
+export const isRecruitMaster = (base, level) => base?.code === 're' && level >= 5;
 
 export function sourcesForBuild(base, ownedLevel, slots, { recruitMaster = isRecruitMaster(base, ownedLevel) } = {}) {
   const out = [];

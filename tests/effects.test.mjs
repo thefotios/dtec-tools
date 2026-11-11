@@ -14,8 +14,8 @@ const row = (model, stat) => rowsOf(model).find((r) => r.stat === stat);
 const group = (model, when) => model.conditional.find((g) => g.when === when);
 
 const synth = {
-  categories: [{ id: 'c', name: 'C', subs: [{ id: 's', name: 'S' }] }],
-  stats: { a: { name: 'A', unit: 'pct', cat: 'c', sub: 's' } },
+  categories: [{ id: 'cr', name: 'C', subs: [{ id: 's', name: 'S' }] }],
+  stats: { a: { name: 'A', unit: 'pct', cat: 'cr', sub: 's' } },
   whens: {},
   questions: {},
 };
@@ -39,7 +39,7 @@ test('Recruit L4 leaves the passive unscaled', () => {
 });
 
 test('Recruit master rounds to one decimal: 50->62.5, 0.5->0.6, 2->2.5, 1->1.3, 40->50', () => {
-  const rec = { code: 'rec', name: 'Rec', levels: [{ effects: [] }] };
+  const rec = { code: 're', name: 'Rec', levels: [{ effects: [] }] };
   const one = (v) => sourcesForBuild(rec, 1, [{ cls: synthClass('x', v), level: 1 }], { recruitMaster: true })[0];
   for (const [v, want, rounded] of [[50, 62.5, false], [0.5, 0.6, true], [2, 2.5, false], [1, 1.3, true], [40, 50, false], [10, 12.5, false]]) {
     assert.equal(one(v).effect.value, want, String(v));
@@ -65,22 +65,22 @@ test('teamSources: member Recruit L5 without recruitMaster key scales passives',
 });
 
 test('exact scaled values are not marked rounded', () => {
-  const rec = { code: 'rec', name: 'Rec', levels: [] };
+  const rec = { code: 're', name: 'Rec', levels: [] };
   assert.equal(sourcesForBuild(rec, 0, [{ cls: synthClass('x', 40), level: 1 }], { recruitMaster: true })[0].rounded, undefined);
 });
 
 test('same stat from two passive instances of one class sums and warns; the real Salvager 2 + 3 pair has no shared stat', () => {
   const src = [
     ...sourcesForBuild({ code: 'b', name: 'B', levels: [] }, 0, [
-      { cls: synthClass('sal', 10), level: 1 },
-      { cls: synthClass('sal', 5), level: 1 },
+      { cls: synthClass('sa', 10), level: 1 },
+      { cls: synthClass('sa', 5), level: 1 },
     ]),
   ];
   const r = aggregate(synth, src, { scopes: ALL }).categories[0].subs[0].rows[0];
   assert.equal(r.total, 15);
   assert.equal(r.sameClass, true);
   const real = aggregate(taxonomy, build('recruit', 1, [slot('salvager', 2), slot('salvager', 3)]), { scopes: ALL });
-  assert.equal(rowsOf(real).filter((x) => x.sources.some((s) => s.cls.code === 'sal')).some((x) => x.sameClass), false);
+  assert.equal(rowsOf(real).filter((x) => x.sources.some((s) => s.cls.code === 'sa')).some((x) => x.sameClass), false);
 });
 
 test('Nightcrawler 1 passive: conditional rows stay apart from the unconditional melee_damage', () => {
@@ -169,11 +169,11 @@ test('category, sub and stat order follow the taxonomy; conditional groups follo
 });
 
 const mx = {
-  categories: [{ id: 'c', name: 'Combat', subs: [{ id: 's1', name: 'Damage' }, { id: 's2', name: 'Defense' }] }],
+  categories: [{ id: 'cr', name: 'Combat', subs: [{ id: 's1', name: 'Damage' }, { id: 's2', name: 'Defense' }] }],
   stats: {
-    dmg: { name: 'Damage', unit: 'pct', cat: 'c', sub: 's1' },
-    hp: { name: 'HP', unit: 'flat', cat: 'c', sub: 's2' },
-    fly: { name: 'Fly', unit: 'flag', cat: 'c', sub: 's2' },
+    dmg: { name: 'Damage', unit: 'pct', cat: 'cr', sub: 's1' },
+    hp: { name: 'HP', unit: 'flat', cat: 'cr', sub: 's2' },
+    fly: { name: 'Fly', unit: 'flag', cat: 'cr', sub: 's2' },
   },
   whens: { night: 'At night' },
   questions: { q1: { q: 'Does it stack?' } },
@@ -187,7 +187,7 @@ const find = (m, stat, scope) => flatRows(m).find((r) => r.stat === stat && r.sc
 test('effectMatrix: two members with a team value give filled cells, a total, shared, and null for a third member', () => {
   const a = mxClass('a', fx('dmg', 5, 'team'));
   const b = mxClass('b', fx('dmg', 10, 'team'));
-  const c = mxClass('c', fx('hp', 3, 'self'));
+  const c = mxClass('cr', fx('hp', 3, 'self'));
   const m = effectMatrix(mx, [mxMember('Ann', a), mxMember('Bob', b), mxMember('Cy', c)]);
   assert.deepEqual(m.members, ['Ann', 'Bob', 'Cy']);
   const r = find(m, 'dmg', 'team');
@@ -269,7 +269,7 @@ test('effectMatrix: no members, or none contributing, gives no groups', () => {
 });
 
 test('effectMatrix: Recruit L5 marks a row rounded only when a value was actually rounded', () => {
-  const rec = { code: 'rec', name: 'Recruit', levels: [{ effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }] };
+  const rec = { code: 're', name: 'Recruit', levels: [{ effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }, { effects: [] }] };
   const odd = mxClass('x', fx('dmg', 7, 'team')); // 8.75 rounds to 8.8
   const even = mxClass('y', fx('hp', 8, 'team')); // 10 exact
   const m = effectMatrix(mx, [mxMember('Ann', rec, 5, [{ cls: odd, level: 1 }, { cls: even, level: 1 }]), mxMember('Bob', mxClass('z'), 1)]);

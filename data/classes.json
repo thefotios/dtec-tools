@@ -95,7 +95,8 @@
       "source": "screenshot 2026-11-11 01.png"
     },
     {
-      "code": "rec",
+      "code": "re",
+      "was": "rec",
       "slug": "recruit",
       "name": "Recruit",
       "tier": 1,
@@ -171,7 +172,8 @@
       "source": "screenshot 2026-11-11 02.png"
     },
     {
-      "code": "h",
+      "code": "he",
+      "was": "h",
       "slug": "healer",
       "name": "Healer",
       "tier": 2,
@@ -235,7 +237,8 @@
       "source": "screenshot 2026-11-11 07.png"
     },
     {
-      "code": "mec",
+      "code": "me",
+      "was": "mec",
       "slug": "mechanic",
       "name": "Mechanic",
       "tier": 2,
@@ -300,7 +303,8 @@
       "source": "screenshot 2026-11-11 04.png"
     },
     {
-      "code": "mer",
+      "code": "mr",
+      "was": "mer",
       "slug": "mercenary",
       "name": "Mercenary",
       "tier": 2,
@@ -559,7 +563,8 @@
       "source": "screenshot 2026-11-11 06.png"
     },
     {
-      "code": "w",
+      "code": "wi",
+      "was": "w",
       "slug": "witch",
       "name": "Witch",
       "tier": 2,
@@ -777,7 +782,8 @@
       "source": "screenshot 2026-11-11 10.png"
     },
     {
-      "code": "gunsl",
+      "code": "gs",
+      "was": "gunsl",
       "slug": "gunslinger",
       "name": "Gunslinger",
       "tier": 3,
@@ -843,7 +849,8 @@
       "source": "screenshot 2026-11-11 09.png"
     },
     {
-      "code": "j",
+      "code": "ja",
+      "was": "j",
       "slug": "jackolantern",
       "name": "Jack-o'-Lantern",
       "tier": 3,
@@ -1042,7 +1049,8 @@
       "source": "screenshot 2026-11-11 22.png"
     },
     {
-      "code": "v",
+      "code": "va",
+      "was": "v",
       "slug": "vampire",
       "name": "Vampire",
       "tier": 3,
@@ -1113,7 +1121,8 @@
       "source": "screenshot 2026-11-11 21.png"
     },
     {
-      "code": "c",
+      "code": "cr",
+      "was": "c",
       "slug": "crafter",
       "name": "Crafter",
       "tier": 4,
@@ -1250,7 +1259,8 @@
       "source": "screenshot 2026-11-11 26.png"
     },
     {
-      "code": "l",
+      "code": "lu",
+      "was": "l",
       "slug": "luckylooter",
       "name": "Lucky Looter",
       "tier": 4,
@@ -1318,7 +1328,8 @@
       "source": "screenshot 2026-11-11 28.png"
     },
     {
-      "code": "n",
+      "code": "ni",
+      "was": "n",
       "slug": "nightcrawler",
       "name": "Nightcrawler",
       "tier": 4,
@@ -1396,7 +1407,8 @@
       "source": "screenshot 2026-11-11 25.png"
     },
     {
-      "code": "prin",
+      "code": "pr",
+      "was": "prin",
       "slug": "princess",
       "name": "Princess",
       "tier": 4,
@@ -1461,7 +1473,8 @@
       "source": "screenshot 2026-11-11 12.png"
     },
     {
-      "code": "rea",
+      "code": "rp",
+      "was": "rea",
       "slug": "reaper",
       "name": "Reaper",
       "tier": 4,
@@ -1535,7 +1548,8 @@
       "source": "screenshot 2026-11-11 24.png"
     },
     {
-      "code": "sal",
+      "code": "sa",
+      "was": "sal",
       "slug": "salvager",
       "name": "Salvager",
       "tier": 4,
@@ -1881,7 +1895,8 @@
       "source": "screenshot 2026-11-11 16.png"
     },
     {
-      "code": "gunsm",
+      "code": "gu",
+      "was": "gunsm",
       "slug": "gunsmith",
       "name": "Gunsmith",
       "tier": 5,
@@ -2009,7 +2024,8 @@
       "source": "screenshot 2026-11-11 14.png"
     },
     {
-      "code": "prie",
+      "code": "pe",
+      "was": "prie",
       "slug": "priest",
       "name": "Priest",
       "tier": 5,
@@ -2074,7 +2090,8 @@
       "source": "screenshot 2026-11-11 33.png"
     },
     {
-      "code": "pro",
+      "code": "po",
+      "was": "pro",
       "slug": "prospector",
       "name": "Prospector",
       "tier": 5,
@@ -2138,7 +2155,8 @@
       "source": "screenshot 2026-11-11 31.png"
     },
     {
-      "code": "sam",
+      "code": "sm",
+      "was": "sam",
       "slug": "samurai",
       "name": "Samurai",
       "tier": 5,

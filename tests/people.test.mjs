@@ -158,6 +158,25 @@ test('load cleans every field and keeps Me', () => {
   assert.equal(s.add('Dee').id, 'p4');
 });
 
+test('load maps former codes in levels, sets, base and team member base to current codes', () => {
+  const storage = memory({
+    [KEY]: payload({
+      seq: 1,
+      people: [
+        person('me', ''),
+        person('p1', 'Bob', { base: 'c', levels: { c: 5, sal: 3, [MI]: 2 }, sets: { c: e(['sal', 2], ['rec', 1]), rec: e([MI, 1]) } }),
+      ],
+      team: { name: 'T', members: [{ id: 'p1', base: 'c' }] },
+    }),
+  });
+  const s = make(storage);
+  const bob = s.get('p1');
+  assert.equal(bob.base, C);
+  assert.deepEqual(bob.levels, { [C]: 5, [SAL]: 3, [MI]: 2 });
+  assert.deepEqual(bob.sets, { [C]: e([REC, 1], [SAL, 2]), [REC]: e([MI, 1]) });
+  assert.deepEqual(s.team.members, [{ id: 'p1', base: C }]);
+});
+
 test('an import never moves the selection, even when it creates a person', () => {
   const { s } = seeded({ selected: 'p2' });
   s.applyImport(parsed(), { id: 'p1' });
@@ -211,7 +230,7 @@ test('a full link replaces the record and a bare code updates only its class', (
   assert.equal(s.selected, 'me');
 
   s.setLevel('p1', SAL, 1);
-  s.applyImport(parseImport(classes, 'mi3-rec2'), { id: 'p1' });
+  s.applyImport(parseImport(classes, 'mi3-re2'), { id: 'p1' });
   assert.deepEqual(s.get('p1').levels, { [MI]: 3, [BO]: 5, [SAL]: 1 });
   assert.deepEqual(s.get('p1').sets, { [MI]: e([REC, 2]) });
   assert.equal(s.get('p1').base, MI);
@@ -220,7 +239,7 @@ test('a full link replaces the record and a bare code updates only its class', (
 
 test('a bare code keeps an unknown roster unknown, and creates an unknown person', () => {
   const { s } = seeded();
-  const r = s.applyImport(parseImport(classes, 'mi3-rec2'), { name: 'Cyd' });
+  const r = s.applyImport(parseImport(classes, 'mi3-re2'), { name: 'Cyd' });
   assert.ok(r.created);
   assert.equal(s.get(r.id).rosterKnown, false);
   s.applyImport(parseImport(classes, 'sc2'), { id: r.id });

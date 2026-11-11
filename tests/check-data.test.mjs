@@ -50,9 +50,21 @@ test('unregistered entry with the right code still fails until registered', () =
 test('registered entry with its code passes (registry stability)', () => {
   const [data, registry, taxonomy] = withEntry({ code: 'ca', slug: 'cannoneer', name: 'Cannoneer' });
   registry.ca = 'cannoneer';
-  data.classes.push(entry({ code: 'car', slug: 'cart', name: 'Cart' }));
-  registry.car = 'cart';
+  data.classes.push(entry({ code: 'ct', slug: 'cart', name: 'Cart' }));
+  registry.ct = 'cart';
   assert.deepEqual(checkData(data, registry, taxonomy), []);
+});
+
+test('unregistered entry reports the newCode suggestion, skipping registered and former codes', () => {
+  const [data, registry, taxonomy] = fresh();
+  data.classes.push(entry({ code: 'zz', slug: 'cart', name: 'Cart' }));
+  registry.ca = 'cannoneer';
+  let v = checkData(data, registry, taxonomy);
+  assert.ok(v.some((m) => m.includes('expected code "ct"')), v.join('\n'));
+  data.classes[0].was = 'xy';
+  data.classes.push(entry({ code: 'zz', slug: 'xylophone', name: 'Xylophone' }));
+  v = checkData(data, registry, taxonomy);
+  assert.ok(v.some((m) => m.includes('expected code "xl"')), v.join('\n'));
 });
 
 test('code differing from the registry is a violation', () => {
@@ -97,7 +109,7 @@ test('R2: missing or mistyped fields are violations', () => {
   assert.ok(checkData(d2, r2, t2).some((m) => m.includes('event')));
 });
 
-test('R3: code must be lowercase letters, unique, and a prefix of its slug', () => {
+test('R3: code must be lowercase letters, unique, and fit its slug', () => {
   const [d1, r1, t1] = fresh();
   d1.classes[0].code = 'Mi';
   assert.ok(checkData(d1, r1, t1).length > 0);
@@ -107,7 +119,37 @@ test('R3: code must be lowercase letters, unique, and a prefix of its slug', () 
   const [d3, r3, t3] = fresh();
   d3.classes[0].code = 'x';
   r3.x = d3.classes[0].slug;
-  assert.ok(checkData(d3, r3, t3).some((m) => m.includes('prefix')));
+  assert.ok(checkData(d3, r3, t3).some((m) => m.includes("slug's first letter")));
+  const [d4, r4, t4] = fresh();
+  d4.classes[0].code = 'mx';
+  r4.mx = d4.classes[0].slug;
+  delete r4.mi;
+  assert.ok(checkData(d4, r4, t4).some((m) => m.includes("slug's first letter")));
+  const [d5, r5, t5] = fresh();
+  d5.classes[0].code = 'min';
+  r5.min = d5.classes[0].slug;
+  assert.ok(checkData(d5, r5, t5).some((m) => m.includes("slug's first letter")));
+});
+
+test('a code equal to another class former code fails, in either direction of the clash', () => {
+  const [data, registry, taxonomy] = fresh();
+  data.classes[0].was = data.classes[1].code;
+  const v = checkData(data, registry, taxonomy);
+  assert.ok(v.some((m) => m.includes(`code ${data.classes[1].code} is the former code of`)), v.join('\n'));
+});
+
+test('duplicate was values fail', () => {
+  const [data, registry, taxonomy] = fresh();
+  const [a, b] = data.classes.filter((c) => c.was);
+  b.was = a.was;
+  const v = checkData(data, registry, taxonomy);
+  assert.ok(v.some((m) => m.includes(`former code ${a.was} is also the former code of`)), v.join('\n'));
+});
+
+test('was must be lowercase letters', () => {
+  const [data, registry, taxonomy] = fresh();
+  data.classes.find((c) => c.was).was = 'Old1';
+  assert.ok(checkData(data, registry, taxonomy).some((m) => m.includes('was must be lowercase letters')));
 });
 
 test('R3: slugs must be unique lowercase letters', () => {

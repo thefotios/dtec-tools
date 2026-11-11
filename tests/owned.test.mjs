@@ -108,7 +108,7 @@ test('appending a class keeps existing codes decoding to the same map', () => {
 });
 
 test('ownedClasses: owned plus kept slugs, nothing when nothing is owned', () => {
-  const list = [{ code: 'a', slug: 'aa' }, { code: 'b', slug: 'bb' }, { code: 'c', slug: 'cc' }];
+  const list = [{ code: 'a', slug: 'aa' }, { code: 'b', slug: 'bb' }, { code: 'cr', slug: 'cc' }];
   assert.deepEqual(ownedClasses(list, { b: 2 }).map((c) => c.slug), ['bb']);
   assert.deepEqual(ownedClasses(list, { b: 2 }, ['cc']).map((c) => c.slug), ['bb', 'cc']);
   assert.deepEqual(ownedClasses(list, {}).map((c) => c.slug), []);

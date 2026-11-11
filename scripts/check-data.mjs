@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { newCode } from './codes.mjs';
+import { newCode, codeFits } from './codes.mjs';
 
 const LETTERS = /^[a-z]+$/;
 const SCOPES = ['self', 'nearby', 'team'];
@@ -30,6 +30,16 @@ export function checkData(data, registry, taxonomy) {
   const seenSlugs = new Set();
   const bySlug = new Map(Object.entries(registry).map(([code, slug]) => [slug, code]));
   const registered = Object.entries(registry).map(([code, slug]) => ({ code, slug }));
+  // Former codes stay readable in old links, so no class may take one as its code or as another former code.
+  const formers = new Map();
+  for (const c of classes) {
+    if (c.was === undefined) continue;
+    const id = c.slug ?? c.code ?? '(unnamed)';
+    if (!isStr(c.was) || !LETTERS.test(c.was)) out.push(`${id}: was must be lowercase letters only`);
+    else if (formers.has(c.was)) out.push(`${id}: former code ${c.was} is also the former code of ${formers.get(c.was)}`);
+    else formers.set(c.was, id);
+  }
+  const taken = [...registered.map((r) => r.code), ...formers.keys()];
 
   for (const c of classes) {
     const id = c.slug ?? c.code ?? '(unnamed)';
@@ -63,7 +73,8 @@ export function checkData(data, registry, taxonomy) {
       if (!LETTERS.test(c.code)) bad('code must be lowercase letters only');
       if (seenCodes.has(c.code)) bad(`duplicate code ${c.code}`);
       seenCodes.add(c.code);
-      if (isStr(c.slug) && !c.slug.startsWith(c.code)) bad(`code ${c.code} must be a prefix of its slug`);
+      if (formers.has(c.code)) bad(`code ${c.code} is the former code of ${formers.get(c.code)}`);
+      if (isStr(c.slug) && !codeFits(c.code, c.slug)) bad(`code ${c.code} must be the slug's first letter plus a later letter of the slug`);
     }
     if (isStr(c.slug)) {
       if (!LETTERS.test(c.slug)) bad('slug must be lowercase letters only');
@@ -77,9 +88,9 @@ export function checkData(data, registry, taxonomy) {
     } else if (bySlug.has(c.slug)) {
       bad(`registry pins slug ${c.slug} to code ${bySlug.get(c.slug)}, not ${c.code}`);
     } else {
-      const others = classes.filter((o) => o !== c && isStr(o.slug)).map((o) => ({ code: '', slug: o.slug }));
-      const expected = newCode(c.slug, [...registered, ...others]);
-      bad(`not in the registry; expected code "${expected}"${c.code === expected ? '' : ` (has "${c.code}")`}`);
+      const expected = newCode(c.slug, taken);
+      if (!expected) bad('not in the registry; no free two-letter code');
+      else bad(`not in the registry; expected code "${expected}"${c.code === expected ? '' : ` (has "${c.code}")`}`);
     }
   }
 

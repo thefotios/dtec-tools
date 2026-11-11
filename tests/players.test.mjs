@@ -8,7 +8,7 @@ const code = (slug) => classes.find((c) => c.slug === slug).code;
 const [MI, SC, SAL, PR] = ['miner', 'scout', 'salvager', 'priest'].map(code);
 
 test('isValidName accepts and rejects the documented shapes', () => {
-  for (const ok of ['bob', 'Bob_2', 'a1b2c3', 'abc']) assert.equal(isValidName(ok), true, ok);
+  for (const ok of ['bob', 'Bob_2', 'a1b2cr3', 'abc']) assert.equal(isValidName(ok), true, ok);
   for (const bad of ['_bob', 'bob_', 'b_o_b', 'ab', 'a'.repeat(21), 'bob.x', '', null, undefined]) assert.equal(isValidName(bad), false, String(bad));
   assert.equal(isValidName('a'.repeat(20)), true);
 });

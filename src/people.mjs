@@ -3,6 +3,7 @@
 // levels maps class code to max level 1-5, sets maps class code to a passive set of { code, level } entries.
 
 import { normalizeSet } from './passives.mjs';
+import { classByCode } from './code.mjs';
 import { cleanMax } from './owned.mjs';
 import { isValidName, sameName, lower, copySets, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
 
@@ -18,20 +19,23 @@ const freshMe = () => ({ id: ME_ID, name: '', base: null, levels: {}, sets: {}, 
 const idNumber = (id) => (/^p\d+$/.test(id) && Number.isSafeInteger(Number(id.slice(1))) ? Number(id.slice(1)) : -1);
 
 // Canonical record for an id and raw data: known classes and levels 1-5 only, sets cleaned for their base class.
+// Former class codes read as the class's current code.
 function cleanRecord(classes, id, raw) {
-  const known = new Map(classes.map((c) => [c.code, c]));
+  const current = (code) => (code == null ? null : (classByCode(classes, code)?.code ?? null));
   const levels = {};
-  for (const [code, value] of Object.entries(raw?.levels ?? {})) {
-    if (known.has(code) && cleanMax(value) > 0) levels[code] = value;
+  for (const [key, value] of Object.entries(raw?.levels ?? {})) {
+    const code = current(key);
+    if (code && cleanMax(value) > 0) levels[code] = value;
   }
   const sets = {};
-  for (const [code, entries] of Object.entries(raw?.sets ?? {})) {
-    if (!known.has(code)) continue;
-    const set = normalizeSet(classes, known.get(code).slug, entries);
-    if (set.length) sets[code] = set;
+  for (const [key, entries] of Object.entries(raw?.sets ?? {})) {
+    const cls = classByCode(classes, key);
+    if (!cls || !Array.isArray(entries)) continue;
+    const set = normalizeSet(classes, cls.slug, entries.map((e) => ({ ...e, code: current(e?.code) })));
+    if (set.length) sets[cls.code] = set;
   }
   const name = typeof raw?.name === 'string' ? raw.name : '';
-  return { id, name, base: known.has(raw?.base) ? raw.base : null, levels, sets, rosterKnown: raw?.rosterKnown !== false };
+  return { id, name, base: current(raw?.base), levels, sets, rosterKnown: raw?.rosterKnown !== false };
 }
 
 // Members keep the first occurrence per person, known named people and known bases only, at most eight.
@@ -39,8 +43,9 @@ function cleanMembers(classes, people, members) {
   const out = [];
   for (const m of Array.isArray(members) ? members : []) {
     const person = people.find((p) => p.id === m?.id);
-    if (!person?.name || !classes.some((c) => c.code === m.base) || out.some((o) => o.id === person.id)) continue;
-    out.push({ id: person.id, base: m.base });
+    const base = m?.base == null ? null : classByCode(classes, m.base)?.code;
+    if (!person?.name || !base || out.some((o) => o.id === person.id)) continue;
+    out.push({ id: person.id, base });
     if (out.length === MAX_MEMBERS) break;
   }
   return out;

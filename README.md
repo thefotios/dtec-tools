@@ -4,17 +4,51 @@ Class and passive combo viewer for Drill to Earth's Core. Pick a base class and 
 
 ## URL format
 
-A build code is the URL path: `/c5-sc1sal23` is base class Crafter at level 5 with passives Scout 1, Salvager 2, Salvager 3. It is hyphen-separated: the first segment is the base class code plus its level (1 to 5); a later segment ending in a digit is the passive run; a later segment ending in a roster letter (`X B C D F G`) is the roster code. The passive run and the roster are each optional and each used once, in either order. Output is always in the order build, passive run, roster.
+A build code is the URL path: `/cr5-sc1sa23` is base class Crafter at level 5 with passives Scout 1, Salvager 2, Salvager 3. It is hyphen-separated: the first segment is the base class code plus its level (1 to 5); a later segment ending in a digit is the passive run; a later segment ending in a roster letter (`X B C D F G`) is the roster code. The passive run and the roster are each optional and each used once, in either order. Output is always in the order build, passive run, roster.
 
-The passive run is class code plus one or more level digits (1 to 3), repeated, at most three passives, no duplicates, never the base class. Several levels of one class share its code: `sal23` is Salvager 2 and Salvager 3, the same as `sal2sal3`. Class tokens are exact codes, case-insensitive. Passives are written in canonical order: class list order in `data/classes.json`, then level, with a class's levels combined, so Scout 1, Salvager 2, Salvager 3 is `sc1sal23` (Scout precedes Salvager). Any order and either form is accepted on input.
+The passive run is class code plus one or more level digits (1 to 3), repeated, at most three passives, no duplicates, never the base class. Several levels of one class share its code: `sa23` is Salvager 2 and Salvager 3, the same as `sa2sa3`. Class tokens are exact codes or former codes, case-insensitive. Passives are written in canonical order: class list order in `data/classes.json`, then level, with a class's levels combined, so Scout 1, Salvager 2, Salvager 3 is `sc1sa23` (Scout precedes Salvager). Any order and either form is accepted on input.
 
-Two query parameters carry the rest of a share link. `u` is the person's name. `s` is every other saved passive set, as dot-separated `<base code>-<passive run>` items: `?s=mi-rec1sc2.sal-c2` is Miner with Recruit 1 and Scout 2, and Salvager with Crafter 2. `u` and `s` are independent and either may be absent. A full link is `/c5-sc1sal23-D5XB8XG5XD?u=thefotios&s=mi-rec1sc2`.
+Two query parameters carry the rest of a share link. `u` is the person's name. `s` is every other saved passive set, as dot-separated `<base code>-<passive run>` items: `?s=mi-re1sc2.sa-cr2` is Miner with Recruit 1 and Scout 2, and Salvager with Crafter 2. `u` and `s` are independent and either may be absent. A full link is `/cr5-sc1sa23-D5XB8XG5XD?u=thefotios&s=mi-re1sc2`.
 
 A share input is accepted as a full URL on any host, a path, or a bare code. Invalid tokens, extra path segments, malformed `s` items, and a roster that fails to decode are dropped with a notice. An unknown base class or level rejects the input with a reason.
 
-Class codes:
+Class codes are two letters: the first letter of the class plus a later letter of its name. A class whose code was once longer keeps reading that former code in links and stored data, and is always written with the current code.
 
-$table
+| Code | Class | Former code |
+| --- | --- | --- |
+| `mi` | Miner |  |
+| `re` | Recruit | `rec` |
+| `he` | Healer | `h` |
+| `me` | Mechanic | `mec` |
+| `mr` | Mercenary | `mer` |
+| `ra` | Racer |  |
+| `sc` | Scout |  |
+| `wi` | Witch | `w` |
+| `br` | Bruiser |  |
+| `dr` | Driller |  |
+| `gs` | Gunslinger | `gunsl` |
+| `ja` | Jack-o'-Lantern | `j` |
+| `ta` | Tank |  |
+| `ti` | Timekeeper |  |
+| `va` | Vampire | `v` |
+| `cr` | Crafter | `c` |
+| `de` | Demolitionist |  |
+| `lu` | Lucky Looter | `l` |
+| `ni` | Nightcrawler | `n` |
+| `pr` | Princess | `prin` |
+| `rp` | Reaper | `rea` |
+| `sa` | Salvager | `sal` |
+| `bo` | Bounty Hunter |  |
+| `en` | Engineer |  |
+| `ex` | Executioner |  |
+| `go` | Goblin King |  |
+| `gu` | Gunsmith | `gunsm` |
+| `pi` | Pirate |  |
+| `pe` | Priest | `prie` |
+| `po` | Prospector | `pro` |
+| `sm` | Samurai | `sam` |
+| `ho` | Hoarder |  |
+| `sp` | Spider Queen |  |
 
 ## Builds page
 
@@ -32,9 +66,9 @@ The class list shows the classes the selected person owns in tier order, each wi
 
 A selected base class or passive the person doesn't own is flagged "Not owned". With no classes marked, the list says so and the loadout asks you to pick a class.
 
-The address bar shows the selected person's share path: their share link with `u` (for example `/c5-sc1sal23-D5XB8XG5XD?u=ann`), or `/` when the person has no class to share. While Me has no name, Me's path is the bare build code, such as `/c5-sc1sal23`. A class owned at level 0 shows `/`, and both copy actions are disabled with "Unlock <class> to share".
+The address bar shows the selected person's share path: their share link with `u` (for example `/cr5-sc1sa23-D5XB8XG5XD?u=ann`), or `/` when the person has no class to share. While Me has no name, Me's path is the bare build code, such as `/cr5-sc1sa23`. A class owned at level 0 shows `/`, and both copy actions are disabled with "Unlock <class> to share".
 
-The sharing actions sit in the title row of the base class panel (the class's five levels), for the selected person. "Copy link" copies the full share URL: the build code with the person's roster segment, `u` when the person has a name, and `s` when they have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `c5-sc1sal23-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation and Import only.
+The sharing actions sit in the title row of the base class panel (the class's five levels), for the selected person. "Copy link" copies the full share URL: the build code with the person's roster segment, `u` when the person has a name, and `s` when they have saved sets for other classes. "Copy code" copies the build code with the roster segment, such as `cr5-sc1sa23-D5XB8XG5XD`, short enough for chat. If the clipboard is unavailable, the text appears in a field to copy by hand. The header holds navigation and Import only.
 
 Every person is edited the same way: class levels in the class list Edit, the selected class, and the passive set of each class. Each change is saved at once to that person only. A person created from a code without a roster has unknown class levels, so the passive picker treats levels 1 to 3 of every class as unlocked until the first level edit for that person.
 
@@ -54,7 +88,7 @@ A build URL with passives shows those passives for the selected person without c
 
 ## Roster code
 
-The roster code encodes your marks as a short string. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `15XF` is level 4 on the 16th class (Crafter), and `33D` is every class at level 3. In a link it is the last hyphen segment, as in `/c5-sc1sal23-15XF`.
+The roster code encodes your marks as a short string. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `15XF` is level 4 on the 16th class (Crafter), and `33D` is every class at level 3. In a link it is the last hyphen segment, as in `/cr5-sc1sa23-15XF`.
 
 Decoding is case-insensitive, ignores spaces, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so codes stay valid when classes are added. `E` and `U` are reserved as version markers. Invalid text shows an inline error and leaves your marks unchanged.
 
@@ -109,7 +143,7 @@ All app data is stored in the browser entry `dtec:people`, version 1: `{v, seq, 
 
 The team is a table. Columns run left to right: the effect with its scope tag, one column per member in team order, a narrow "+" column, then Team total. Each member header shows the person's name ("(you)" for Me), a class select limited to the classes that person owns, and a Remove button that takes them off the team. The "+" header adds a person with their saved class. Each row is one effect tagged self, team or nearby, with that member's summed contribution at their level and saved passives; a member who does not contribute has an empty cell, and sources are not shown. Rows are grouped as in Combined effects: categories, then Conditional per situation, Flags, Nearby and Uncertain per open question; a stat with both self and team contributions has two rows. Team total sums the member cells of team-scope rows with a number; self, nearby and uncertain rows have no total, and a flag shows a check mark. A row is marked "rounded" or "stacking unconfirmed" by the same rules as Combined effects, and the Recruit level 5 scaling note shows under the table when it applies. A row with two or more contributing members is marked ×N and has the accessible name "shared by N players". Passives are never edited on the Team page. With no members the table shows the "+" column and a line explaining how to add players. The header row stays visible while the table scrolls, and on a phone the table scrolls sideways inside its panel with the effect column pinned.
 
-A team link is `/team/ann.c5-sc1sal23~bob.mi3-rec1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy team link" in the team panel header copies the team's link and is disabled with "Add players to share" while the team is empty. Opening a team link shows the linked team as the same table, read-only (class as text, no Remove, no "+"), with "Replace my team" and "Copy link". Replace asks for confirmation when your team has members or when the link includes players already saved, whose base level and passives it would update. It sets your team's name and members from the link, adds players that are not in the library, updates saved players with the link's class, level and passives for that class, maps your own name to Me, and opens `/team`. A link that matches your team shows "This is your team". A repeated member name (case-insensitive) is dropped with a notice. Links never import anything on their own.
+A team link is `/team/ann.cr5-sc1sa23~bob.mi3-re1?n=Raid%20night`: members separated by `~`, each `<name>.<build code>` with the selected class, its level, and that class's passives only, and the team name in `n` (at most 40 characters). The Team page address bar is `/team`; "Copy team link" in the team panel header copies the team's link and is disabled with "Add players to share" while the team is empty. Opening a team link shows the linked team as the same table, read-only (class as text, no Remove, no "+"), with "Replace my team" and "Copy link". Replace asks for confirmation when your team has members or when the link includes players already saved, whose base level and passives it would update. It sets your team's name and members from the link, adds players that are not in the library, updates saved players with the link's class, level and passives for that class, maps your own name to Me, and opens `/team`. A link that matches your team shows "This is your team". A repeated member name (case-insensitive) is dropped with a notice. Links never import anything on their own.
 
 ## Help
 
@@ -142,4 +176,4 @@ Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served
 6. Add `icons/<code>.png`: 72x72, white glyph on a transparent background, the inner glyph of the class's single-circle base icon. `npm run check` and `npm run build` fail while a class has no icon.
 7. Run `npm run check` again. It prints `data ok`. Run `npm test`.
 
-The code is the shortest prefix of the slug that is not an existing code and is a prefix of no other slug; if none qualifies, it is the full slug. Examples: `cannoneer` gets `ca` (`c` is taken by Crafter); `prince` beside `princess` gets `prince`, since `prince` is a prefix of `princess` and no shorter prefix is free. Registered codes never change, even when later classes would have produced a shorter one. Merging to `main` deploys.
+The code is the slug's first letter plus the earliest later letter of the slug that gives a code no class uses, current or former (`was`). Examples: `cannoneer` gets `ca`; a later `carrier` skips `ca` and `cr` (Crafter) and gets `ci`. A class with no free pair fails the check. Registered codes never change, and a former code is never reused. Merging to `main` deploys.

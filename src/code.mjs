@@ -1,4 +1,4 @@
-// Build code and share codecs (pure): `c5-sal23sc1[-roster]`, the `s` saved-sets query, and share inputs.
+// Build code and share codecs (pure): `cr5-sa23sc1[-roster]`, the `s` saved-sets query, and share inputs.
 // Passives are plain entries { code, level }; a player is { name, base, levels, sets } with base a class code.
 import { encodeRoster, decodeRoster, cleanMax } from './owned.mjs';
 import { normalizeSet, MAX_PASSIVES } from './passives.mjs';
@@ -21,7 +21,7 @@ function notice(token, reason, detail = REASON_TEXT[reason]) {
   return { token, reason, message: `"${token}": ${detail}` };
 }
 
-// Splits a passive run into greedy letters+digits groups, one group per digit, so `sal23` is `sal2` then `sal3`; any other
+// Splits a passive run into greedy letters+digits groups, one group per digit, so `sa23` is `sa2` then `sa3`; any other
 // maximal chunk is one invalid group.
 export function tokenize(run) {
   const s = String(run).toLowerCase();
@@ -45,8 +45,11 @@ export function tokenize(run) {
   return groups;
 }
 
-// Exact lowercase class code only; null when nothing matches.
-export const classByCode = (classes, code) => classes.find((c) => c.code === String(code).toLowerCase()) ?? null;
+// Exact class code, case-insensitive, or a class's former code (`was`) so old links keep working; null when nothing matches.
+export function classByCode(classes, code) {
+  const key = String(code).toLowerCase();
+  return classes.find((c) => c.code === key) ?? classes.find((c) => c.was === key) ?? null;
+}
 
 // Parses a passive run for a base code. Invalid groups, self, and duplicates are dropped with a notice; the first three
 // valid groups are kept and returned in canonical order (registry order, then level). Returns { slots, notices }.
@@ -57,16 +60,19 @@ function parseRun(classes, baseCode, run) {
     if (!g.token) notices.push(notice(g.raw, 'malformed'));
     else if (!g.valid) notices.push(notice(g.raw, 'level'));
     else if (!classByCode(classes, g.token)) notices.push(notice(g.token, 'unknown'));
-    else if (g.token === baseCode) notices.push(notice(g.raw, 'self'));
-    else if (valid.some((e) => e.code === g.token && e.level === g.level)) notices.push(notice(g.raw, 'duplicate'));
-    else valid.push({ code: g.token, level: g.level });
+    else {
+      const code = classByCode(classes, g.token).code;
+      if (code === baseCode) notices.push(notice(g.raw, 'self'));
+      else if (valid.some((e) => e.code === code && e.level === g.level)) notices.push(notice(g.raw, 'duplicate'));
+      else valid.push({ code, level: g.level });
+    }
   }
   for (const e of valid.slice(MAX_PASSIVES)) notices.push(notice(`${e.code}${e.level}`, 'extra'));
   const base = classByCode(classes, baseCode);
   return { slots: normalizeSet(classes, base?.slug, valid.slice(0, MAX_PASSIVES)), notices };
 }
 
-// Canonical order keeps a class's levels adjacent, so they share one code: `sal2`, `sal3` -> `sal23`.
+// Canonical order keeps a class's levels adjacent, so they share one code: `sa2`, `sa3` -> `sa23`.
 const runText = (slots) =>
   slots.map((e, i) => (i > 0 && slots[i - 1].code === e.code ? `${e.level}` : `${e.code}${e.level}`)).join('');
 
@@ -77,10 +83,11 @@ export function parseBuildCode(classes, text) {
   const [first = '', ...rest] = String(text).trim().toLowerCase().split('-');
   const failed = (n) => ({ base: null, level: 0, slots: [], roster: null, notices: [n] });
   const m = /^([a-z]+)(\d+)$/.exec(first);
-  if (!m || !classByCode(classes, m[1])) return failed(notice(first, 'unknown'));
+  const baseCls = m ? classByCode(classes, m[1]) : null;
+  if (!baseCls) return failed(notice(first, 'unknown'));
   const level = Number(m[2]);
   if (!cleanMax(level)) return failed(notice(first, 'level', 'level must be 1 to 5'));
-  const out = { base: m[1], level, slots: [], roster: null, notices: [] };
+  const out = { base: baseCls.code, level, slots: [], roster: null, notices: [] };
   let sawRun = false;
   let sawRoster = false;
   for (const seg of rest.filter(Boolean)) {
@@ -91,7 +98,7 @@ export function parseBuildCode(classes, text) {
       out.notices.push(notice(seg, 'extra'));
     } else if (isRun) {
       sawRun = true;
-      const r = parseRun(classes, m[1], seg);
+      const r = parseRun(classes, baseCls.code, seg);
       out.slots = r.slots;
       out.notices.push(...r.notices);
     } else {
@@ -125,9 +132,10 @@ export function parseSets(classes, text, baseCode = null) {
   const sets = {};
   const notices = [];
   for (const item of String(text ?? '').toLowerCase().split('.').filter(Boolean)) {
-    const [code, run, ...more] = item.split('-');
+    const [token, run, ...more] = item.split('-');
+    const code = classByCode(classes, token)?.code;
     if (more.length || !run) notices.push(notice(item, 'malformed'));
-    else if (!classByCode(classes, code)) notices.push(notice(code, 'unknown'));
+    else if (!code) notices.push(notice(token, 'unknown'));
     else if (code === baseCode) continue;
     else if (sets[code]) notices.push(notice(item, 'duplicate'));
     else {

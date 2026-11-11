@@ -771,7 +771,7 @@ function teamView(state, actions) {
   return h('main', { class: 'team' }, teamPanel(state, actions, members), libraryPanel(state, actions));
 }
 
-const HELP_SAMPLE = 'c5-sc1sal23-D5XB8XG5XD';
+const HELP_SAMPLE = 'cr5-sc1sa23-D5XB8XG5XD';
 
 function helpView(state) {
   const section = (title, ...body) => h('section', { class: 'panel help-panel', 'aria-label': title }, h('h2', { class: 'panel-title', text: title }), ...body);
@@ -867,8 +867,8 @@ function helpView(state) {
       h(
         'ul',
         { class: 'help-list' },
-        h('li', {}, code('c5'), ': base class Crafter at level 5.'),
-        h('li', {}, code('sc1sal23'), ': passives, each a class code plus its levels: Scout 1, Salvager 2, Salvager 3. Levels of one class share its code, so sal23 is sal2sal3.'),
+        h('li', {}, code('cr5'), ': base class Crafter at level 5.'),
+        h('li', {}, code('sc1sa23'), ': passives, each a class code plus its levels: Scout 1, Salvager 2, Salvager 3. Levels of one class share its code, so sa23 is sa2sa3.'),
         h('li', {}, code('D5XB8XG5XD'), ': the classes you own, one symbol per class in list order. The symbol is the highest level unlocked and a number repeats it.'),
       ),
       h('p', {}, 'Class codes:'),

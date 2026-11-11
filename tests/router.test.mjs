@@ -10,23 +10,23 @@ const str = (slots) => slots.map((x) => `${x.cls.slug}${x.level}`);
 const slot = (slug, level) => ({ cls: by(slug), level });
 
 test('relativePath strips the base path', () => {
-  assert.equal(relativePath('/c5-sal2', '/'), '/c5-sal2');
-  assert.equal(relativePath('/dtec-tools/c5-sal2', '/dtec-tools/'), '/c5-sal2');
+  assert.equal(relativePath('/cr5-sa2', '/'), '/cr5-sa2');
+  assert.equal(relativePath('/dtec-tools/cr5-sa2', '/dtec-tools/'), '/cr5-sa2');
   assert.equal(relativePath('/dtec-tools/', '/dtec-tools/'), '/');
   assert.equal(relativePath('/dtec-tools', '/dtec-tools/'), '/');
 });
 
 test('absoluteUrl resolves canonical path against the base URI', () => {
-  assert.equal(absoluteUrl('https://x.io/dtec-tools/', '/c5-sal2'), 'https://x.io/dtec-tools/c5-sal2');
+  assert.equal(absoluteUrl('https://x.io/dtec-tools/', '/cr5-sa2'), 'https://x.io/dtec-tools/cr5-sa2');
   assert.equal(absoluteUrl('http://localhost:8080/', '/'), 'http://localhost:8080/');
 });
 
 test('teamSegment recognizes the /team prefix only', () => {
   assert.equal(teamSegment('/team'), '');
   assert.equal(teamSegment('/team/'), '/');
-  assert.equal(teamSegment('/team/bob.c5-sal2~ann.mi3'), '/bob.c5-sal2~ann.mi3');
+  assert.equal(teamSegment('/team/bob.cr5-sa2~ann.mi3'), '/bob.cr5-sa2~ann.mi3');
   assert.equal(teamSegment('/'), null);
-  assert.equal(teamSegment('/c5-sal2'), null);
+  assert.equal(teamSegment('/cr5-sa2'), null);
   assert.equal(teamSegment('/teamster'), null);
   assert.equal(teamSegment('/tea'), null);
 });
@@ -41,10 +41,10 @@ test('history helpers push or replace an arbitrary canonical path', () => {
     },
   };
   pushPath(win, '/team');
-  replacePath(win, '/c5-sal2');
+  replacePath(win, '/cr5-sa2');
   assert.deepEqual(calls, [
     ['push', '/dtec-tools/team'],
-    ['replace', '/dtec-tools/c5-sal2'],
+    ['replace', '/dtec-tools/cr5-sa2'],
   ]);
 });
 
