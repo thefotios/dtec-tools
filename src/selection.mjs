@@ -1,7 +1,7 @@
 // Selection: which person and build a location shows, and who a pasted input belongs to. Pure: the people store is only read.
 
-import { isUnsavedBuild, buildRaises } from './people.mjs';
-import { isValidName, sameName, ownImport } from './players.mjs';
+import { isUnsavedBuild, buildRaises, ME_ID } from './people.mjs';
+import { isValidName, ownImport } from './players.mjs';
 
 const isClass = (classes, code) => classes.some((c) => c.code === code);
 
@@ -50,13 +50,13 @@ export function resolveLocation(classes, store, { parsed, state }) {
     if (!isUnsavedBuild(classes, target, build)) return personOutcome(target, build.base);
     return { kind: 'unsaved', id: target.id, base: build.base, build, raises: buildRaises(classes, target, build), replaceUrl: false };
   }
-  const owner = me.name && sameName(player.name, me.name) ? me : store.byName(player.name);
+  const owner = store.byName(player.name);
   if (!owner) {
-    const record = { id: 'temp', name: player.name, base: player.base, levels: player.levels, sets: player.sets, rosterKnown: parsed.hasRoster };
+    const record = { id: 'temp', name: player.name, base: player.base, levels: player.levels, sets: player.sets, rosterKnown: parsed.hasRoster, hasSets: parsed.hasSets };
     return { kind: 'temporary', id: null, base: player.base, record, replaceUrl: false };
   }
   if (!linkDiffers(owner, parsed)) return personOutcome(owner, player.base);
-  return { kind: owner.id === me.id ? 'ownUpdate' : 'update', id: owner.id, base: player.base, incoming: parsed, replaceUrl: false };
+  return { kind: owner.id === ME_ID ? 'ownUpdate' : 'update', id: owner.id, base: player.base, incoming: parsed, replaceUrl: false };
 }
 
 // Who a pasted input belongs to, from a parseImport result:
@@ -68,7 +68,7 @@ export function importTarget(classes, store, parsed) {
   if (parsed.kind === 'team') return { kind: 'team', path: parsed.path };
   if (parsed.kind === 'roster') return { kind: 'own' };
   const name = parsed.player.name;
-  if (name && store.me.name && sameName(name, store.me.name)) return { kind: 'own' };
+  if (store.isMe(name)) return { kind: 'own' };
   const saved = name ? store.byName(name) : null;
   if (saved) return { kind: 'person', id: saved.id };
   if (name && isValidName(name) && store.me.name) return { kind: 'create', name };

@@ -2,7 +2,7 @@ import { absoluteUrl, relativePath, pushPath, replacePath, currentPath, teamSegm
 import { render } from './render.mjs';
 import { savedSlots, toSlots, fromSlots } from './passives.mjs';
 import { parseShare, parseImport, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
-import { isValidName, sameName, ownImport, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
+import { isValidName, ownImport, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
 import { createPeopleStore, isUnsavedBuild, buildRaises, ME_ID } from './people.mjs';
 import { resolveLocation, importTarget, shownBase } from './selection.mjs';
 import { parseTeamLink, serializeTeamLink, sameTeam } from './team.mjs';
@@ -68,8 +68,7 @@ const shownPerson = () => state.temp?.record ?? state.people.get(state.selectedI
 // Why a name cannot be saved as a person, or null: empty, my own name (selfMessage), or an unsaved name that is invalid or taken.
 function saveAsError(name, selfMessage) {
   if (!name) return 'Enter a name for this person';
-  const me = state.people.me;
-  if (me.name && sameName(name, me.name)) return selfMessage;
+  if (state.people.isMe(name)) return selfMessage;
   return state.people.byName(name) ? null : state.people.nameProblem(null, name);
 }
 
@@ -102,13 +101,14 @@ function pathOf(person, baseCode) {
   return relativePath(url.pathname, new URL(document.baseURI).pathname) + url.search;
 }
 
-// Writes the history entry for what is shown: the selected person's share path with { person, base }. A temporary record keeps
-// its own link with no state, and a pending update keeps the incoming URL until Yes or Dismiss.
+// Writes the history entry for what is shown: the selected person's share path with { person, base }, pushed when `push` and
+// replacing the current entry otherwise. A temporary record keeps its own link with no state, and a pending update keeps the
+// incoming URL until Yes or Dismiss.
 function writeEntry(push) {
   derive();
   const person = state.shown;
   const base = state.build.base?.code ?? null;
-  if (state.temp) return replacePath(window, pathOf(person, base));
+  if (state.temp) return (push ? pushPath : replacePath)(window, pathOf(person, base));
   if (state.pending) return;
   (push ? pushPath : replacePath)(window, pathOf(person, base), { person: person.id, base });
 }
@@ -124,6 +124,23 @@ const clearTransient = () => {
   state.pending = null;
   state.unsaved = null;
 };
+
+const hasTransient = () => Boolean(state.temp || state.pending || state.unsaved);
+
+// Makes the saved person `id` the shown one: transient state dropped, their own class shown and every per-page toggle reset. The
+// cards region shows `cardsMessage` with no form open. The caller writes the history entry and paints.
+function switchTo(id, cardsMessage = '') {
+  clearTransient();
+  state.selectedId = id;
+  state.people.select(id);
+  state.baseCode = shownBase(classes(), state.people.get(id));
+  state.list.editing = false;
+  state.loadoutEditing = false;
+  state.expanded.clear();
+  state.notices = [];
+  state.copy = null;
+  state.cards = { form: null, message: cardsMessage };
+}
 
 // The record Copy link and Copy code share: the shown person on the shown class. Unsaved builds never reach it.
 const sharedRecord = () => ({ ...state.shown, base: state.build.base?.code ?? null });
@@ -234,17 +251,8 @@ const noticeTexts = (notices) => notices.map((n) => n.message);
 // Shows the person an import just wrote: selected, on their own class, with the entry for them on Builds; Team and Help keep their
 // page and address. The message names the outcome.
 function showImported(id, before, message, notices) {
-  const moved = before !== id || Boolean(state.temp || state.pending || state.unsaved);
-  clearTransient();
-  state.selectedId = id;
-  state.people.select(id);
-  state.baseCode = shownBase(classes(), state.people.get(id));
-  state.list.editing = false;
-  state.loadoutEditing = false;
-  state.expanded.clear();
-  state.notices = [];
-  state.copy = null;
-  state.cards = { form: null, message: '' };
+  const moved = before !== id || hasTransient();
+  switchTo(id);
   if (state.view === 'builds') writeEntry(moved);
   state.list.import = { ...freshImport(), message, notices: noticeTexts(notices) };
 }
@@ -279,16 +287,7 @@ function failCardForm(error) {
 
 // Selects a person a card form just created or saved, on their own class, with their entry; the message names the outcome.
 function showPerson(id, message) {
-  clearTransient();
-  state.selectedId = id;
-  state.people.select(id);
-  state.baseCode = shownBase(classes(), state.people.get(id));
-  state.list.editing = false;
-  state.loadoutEditing = false;
-  state.expanded.clear();
-  state.notices = [];
-  state.copy = null;
-  state.cards = { form: null, message };
+  switchTo(id, message);
   writeEntry(true);
   paint();
 }
@@ -467,8 +466,7 @@ const actions = {
   },
   // Whether a linked member other than me is already saved, so replacing the team would update them.
   linkUpdatesSaved() {
-    const me = state.people.me;
-    return Boolean(state.team.link?.members.some(({ name }) => !(me.name && sameName(name, me.name)) && state.people.byName(name)));
+    return Boolean(state.team.link?.members.some(({ name }) => !state.people.isMe(name) && state.people.byName(name)));
   },
   cancelReplaceTeam() {
     if (state.team.link) state.team.link.confirming = false;
@@ -479,16 +477,13 @@ const actions = {
   confirmReplaceTeam() {
     const link = state.team.link;
     if (!link?.members.length) return;
-    const me = state.people.me;
-    const keep = state.selectedId;
     const members = link.members.map(({ name, player }) => {
-      if (me.name && sameName(name, me.name)) return { id: ME_ID, base: player.base };
+      if (state.people.isMe(name)) return { id: ME_ID, base: player.base };
       const existing = state.people.byName(name);
       const parsed = { player, hasRoster: false, hasSets: false, isLink: false };
       const r = state.people.applyImport(parsed, existing ? { id: existing.id } : { name });
       return { id: r.id, base: player.base };
     });
-    state.people.select(keep);
     state.people.replaceTeam(link.name, members);
     state.team.link = null;
     state.notices = [];
@@ -625,6 +620,7 @@ const actions = {
     if (!p) return;
     const r = state.people.applyImport(p.incoming, { id: p.id });
     if (r.error) return;
+    state.people.select(p.id);
     state.pending = null;
     state.baseCode = shownBase(classes(), state.people.get(p.id));
     state.copy = null;
@@ -661,17 +657,8 @@ const actions = {
   // Selects a saved person: pushes their entry and shows their own class. Anything pending or temporary is dropped.
   selectPerson(id) {
     if (!state.people.get(id)) return paint();
-    if (id === state.selectedId && !state.temp && !state.pending && !state.unsaved) return paint();
-    clearTransient();
-    state.selectedId = id;
-    state.people.select(id);
-    state.baseCode = shownBase(classes(), state.people.get(id));
-    state.list.editing = false;
-    state.loadoutEditing = false;
-    state.expanded.clear();
-    state.copy = null;
-    state.notices = [];
-    state.cards = { form: null, message: '' };
+    if (id === state.selectedId && !hasTransient()) return paint();
+    switchTo(id);
     writeEntry(true);
     paint();
   },
@@ -736,7 +723,7 @@ const actions = {
       const problem = saveAsError(name, "That's your name. Use Import and choose Mine to update your build.");
       if (problem) return failCardForm(problem);
       const { record } = state.temp;
-      const parsed = { player: record, hasRoster: record.rosterKnown, hasSets: false, isLink: true };
+      const parsed = { player: record, hasRoster: record.rosterKnown, hasSets: Boolean(record.hasSets), isLink: true };
       const r = state.people.applyImport(parsed, saved ? { id: saved.id } : { name });
       if (r.error) return failCardForm(r.error);
       showPerson(r.id, `Saved ${state.people.get(r.id).name}`);
@@ -749,16 +736,7 @@ const actions = {
     if (state.cards.form?.kind !== 'delete' || !person) return;
     const r = state.people.remove(person.id);
     if (r.error) return;
-    clearTransient();
-    state.selectedId = ME_ID;
-    state.people.select(ME_ID);
-    state.baseCode = shownBase(classes(), state.people.me);
-    state.list.editing = false;
-    state.loadoutEditing = false;
-    state.expanded.clear();
-    state.copy = null;
-    state.notices = [];
-    state.cards = { form: null, message: `Deleted ${person.name}` };
+    switchTo(ME_ID, `Deleted ${person.name}`);
     writeEntry(false);
     paint();
     focusFk(`card-${ME_ID}`);
@@ -820,8 +798,13 @@ window.addEventListener('storage', (e) => {
   if (e.key !== null && e.key !== 'dtec:people') return;
   state.people = createPeopleStore(storage, state.data.classes);
   if (!state.people.get(state.selectedId)) {
-    state.selectedId = ME_ID;
-    state.cards.form = null;
+    if (state.temp) {
+      state.selectedId = ME_ID;
+      state.cards.form = null;
+    } else {
+      switchTo(ME_ID);
+      if (state.view === 'builds') writeEntry(false);
+    }
   }
   if (state.pending && !state.people.get(state.pending.id)) state.pending = null;
   if (state.unsaved && !state.people.get(state.unsaved.id)) state.unsaved = null;

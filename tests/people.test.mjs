@@ -158,6 +158,33 @@ test('load cleans every field and keeps Me', () => {
   assert.equal(s.add('Dee').id, 'p4');
 });
 
+test('an import never moves the selection, even when it creates a person', () => {
+  const { s } = seeded({ selected: 'p2' });
+  s.applyImport(parsed(), { id: 'p1' });
+  assert.equal(s.selected, 'p2');
+  const r = s.applyImport(parsed(), { name: 'Cyd' });
+  assert.ok(r.created);
+  assert.equal(s.selected, 'p2');
+});
+
+test('ids and the sequence load only as safe integers, so a corrupt huge id cannot strand new people', () => {
+  const huge = 'p1000000000000000000000';
+  const storage = memory({ [KEY]: payload({ seq: 1e21, people: [person('me', ''), person(huge, 'Big'), person('p1', 'Bob')] }) });
+  const s = make(storage);
+  assert.deepEqual(s.people.map((p) => p.id), ['me', 'p1']);
+  const added = s.add('Dee');
+  assert.equal(added.id, 'p2');
+  assert.equal(make(storage).get('p2').name, 'Dee');
+});
+
+test('isMe is true only for the name Me holds, case ignored', () => {
+  const s = make(memory({ [KEY]: payload({ seq: 1, people: [person('me', 'Fotios'), person('p1', 'Bob')] }) }));
+  assert.equal(s.isMe('fotios'), true);
+  assert.equal(s.isMe('Bob'), false);
+  assert.equal(s.isMe(''), false);
+  assert.equal(make().isMe(''), false);
+});
+
 test('level edits step back at the current max and make the roster known', () => {
   const { s } = seeded();
   s.applyImport(parsed({ player: { name: '', base: SC, levels: { [SC]: 3 }, sets: {} } }), { name: 'Cyd' });
@@ -181,7 +208,7 @@ test('a full link replaces the record and a bare code updates only its class', (
   assert.deepEqual(s.get('p1').levels, { [MI]: 2, [BO]: 5 });
   assert.deepEqual(s.get('p1').sets, { [MI]: e([SC, 3]) });
   assert.equal(s.get('p1').rosterKnown, true);
-  assert.equal(s.selected, 'p1');
+  assert.equal(s.selected, 'me');
 
   s.setLevel('p1', SAL, 1);
   s.applyImport(parseImport(classes, 'mi3-rec2'), { id: 'p1' });
@@ -362,4 +389,39 @@ test('the add-to-team offer lists named people with a class and says why the oth
   const offer = teamAddOffer(people, { name: '', members: [{ id: 'p3', base: SC }] });
   assert.deepEqual(offer.candidates.map((p) => p.id), ['p2']);
   assert.deepEqual(offer.left, [{ id: 'me', label: 'Me', reason: 'no name' }, { id: 'p1', label: 'Ann', reason: 'no classes' }]);
+});
+
+test('saveBuild replaces a changed passive set at equal levels and keeps the other bases', () => {
+  const p = person0({ base: BO, levels: { [BO]: 5, [MI]: 3, [SC]: 1 }, sets: { [BO]: e([MI, 3]), [C]: e([SC, 1]) } });
+  const build = { base: BO, level: 5, passives: e([SC, 1]) };
+  assert.equal(isUnsavedBuild(classes, p, build), true);
+  const next = saveBuild(classes, p, build);
+  assert.deepEqual(next.sets[BO], e([SC, 1]));
+  assert.deepEqual(next.sets[C], e([SC, 1]));
+  assert.deepEqual(buildRaises(classes, p, build), []);
+});
+
+test('store guards report their error and leave the data untouched', () => {
+  const { storage, s } = seeded({ team: { name: 'T', members: [{ id: 'p1', base: SC }] } });
+  const before = storage.data.get(KEY);
+  assert.deepEqual(s.setBase('nope', SC), { error: 'Unknown person' });
+  assert.deepEqual(s.setBase('p1', 'zz'), { error: 'Unknown base class' });
+  assert.deepEqual(s.setLevel('nope', SC, 2), { error: 'Unknown class' });
+  assert.deepEqual(s.setLevel('p1', 'zz', 2), { error: 'Unknown class' });
+  assert.deepEqual(s.setLevel('p1', SC, 6), { error: 'Level must be 1 to 5' });
+  assert.deepEqual(s.setMemberBase('p1', 'zz'), { error: 'Unknown base class' });
+  assert.deepEqual(s.setMemberBase('p2', SC), { error: 'Not on this team' });
+  assert.deepEqual(s.applyImport(parsed(), { id: 'nope' }), { error: 'Unknown person' });
+  assert.deepEqual(s.saveBuild('nope', { base: BO, level: 5, passives: [] }), { error: 'Unknown person' });
+  assert.deepEqual(s.saveBuild('p1', { base: 'zz', level: 5, passives: [] }), { error: 'Unknown base class' });
+  assert.equal(storage.data.get(KEY), before);
+});
+
+test('a team holds at most eight members', () => {
+  const people = [person('me', '')];
+  for (let i = 1; i <= 9; i += 1) people.push(person(`p${i}`, `Pal${i}`));
+  const { s } = seeded({ seq: 9, people, team: { name: 'T', members: people.slice(1, 9).map((p) => ({ id: p.id, base: SC })) } });
+  assert.equal(s.team.members.length, 8);
+  assert.deepEqual(s.addMember('p9', SC), { error: 'A team holds at most 8 members' });
+  assert.equal(s.team.members.length, 8);
 });

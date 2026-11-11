@@ -1,5 +1,5 @@
 import { ownedClasses } from './owned.mjs';
-import { sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
+import { ownedBase, MAX_MEMBERS } from './players.mjs';
 import { MAX_PASSIVES } from './passives.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
@@ -567,7 +567,7 @@ function meRow(state, actions) {
     'li',
     { class: 'player-row is-me' },
     h('span', { class: 'player-name', text: 'Me' }),
-    h('a', { class: 'player-setname', 'data-fk': 'set-username', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('builds')), text: 'Name yourself with Rename on your card' }),
+    h('a', { class: 'player-setname', 'data-fk': 'set-name', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('builds')), text: 'Name yourself with Rename on your card' }),
   );
 }
 
@@ -596,7 +596,7 @@ function libraryPanel(state, actions) {
 
 // Team matrix header: name, class select and remove for my team; name and class text for a link.
 function memberHeader(state, actions, { id, name, player, base }, { readOnly }) {
-  const isMe = Boolean(state.people.me.name) && sameName(state.people.me.name, name);
+  const isMe = state.people.isMe(name);
   const title = h('span', { class: 'member-name', text: isMe ? `${name} (you)` : name });
   if (readOnly) return [title, base ? h('span', { class: 'member-base' }, classIcon(base, { size: 24 }), h('span', { text: base.name }), diamonds(base, state.data.tiers)) : h('span', { class: 'card-empty', text: 'No classes owned' })];
   const k = `member-${name.toLowerCase()}`;

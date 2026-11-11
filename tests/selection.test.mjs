@@ -18,7 +18,9 @@ const person = (id, name, extra = {}) => ({ id, name, base: null, levels: {}, se
 const payload = (over) => JSON.stringify({ v: 1, seq: 2, people: [], team: { name: '', members: [] }, selected: 'me', unlockedOnly: false, ...over });
 const make = (people, over = {}) => createPeopleStore(memory({ [KEY]: payload({ people, ...over }) }), classes);
 const share = (text) => parseShare(classes, text);
-const at = (store, text, state = null) => resolveLocation(classes, store, { parsed: text === null ? null : share(text), state });
+// An address-bar URL is a link, as app.mjs marks it.
+const link = (parsed) => (parsed && !parsed.error ? { ...parsed, isLink: true } : parsed);
+const at = (store, text, state = null) => resolveLocation(classes, store, { parsed: text === null ? null : link(share(text)), state });
 const imp = (store, text) => importTarget(classes, store, parseImport(classes, text));
 
 test('a state naming a deleted person resolves to Me with nothing pending, whatever the path', () => {
@@ -106,6 +108,21 @@ test('a saved name with equal data selects the person; different data holds a pe
   const r = at(s, '/sc4?u=Bob');
   assert.deepEqual([r.kind, r.id, r.replaceUrl], ['update', 'p1', false]);
   assert.equal(r.incoming.player.levels[SC], 4);
+});
+
+test('a link with a roster replaces a saved name: a second class set is an update, equal full data selects the person', () => {
+  const two = person('p1', 'Bob', { base: SC, levels: { [SC]: 3, [MI]: 2, [REC]: 1 }, sets: { [SC]: e([REC, 1]), [MI]: e([REC, 1]) } });
+  const r = at(make([person('me', ''), two]), '/sc3-rec1-C?u=Bob');
+  assert.deepEqual([r.kind, r.id], ['update', 'p1']);
+  const equal = person('p1', 'Bob', { base: SC, levels: { [SC]: 3, [MI]: 2 }, sets: { [SC]: e([REC, 1]) } });
+  const same = at(make([person('me', ''), equal]), '/sc3-rec1-C?u=Bob');
+  assert.deepEqual([same.kind, same.id], ['person', 'p1']);
+});
+
+test('a temporary record carries whether the link had passive sets', () => {
+  const s = make([person('me', '')]);
+  assert.equal(at(s, '/sc4-C?s=mi2&u=Zed').record.hasSets, true);
+  assert.equal(at(s, '/sc4?u=Zed').record.hasSets, false);
 });
 
 test('a bare code for a saved name only compares that class', () => {

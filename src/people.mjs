@@ -4,7 +4,7 @@
 
 import { normalizeSet } from './passives.mjs';
 import { cleanMax } from './owned.mjs';
-import { isValidName, sameName, lower, copySet, copySets, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
+import { isValidName, sameName, lower, copySets, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
 
 const STORAGE_KEY = 'dtec:people';
 const STORE_VERSION = 1;
@@ -14,7 +14,8 @@ export const NAME_TAKEN = 'That name is already used by someone else';
 
 const emptyTeam = () => ({ name: '', members: [] });
 const freshMe = () => ({ id: ME_ID, name: '', base: null, levels: {}, sets: {}, rosterKnown: true });
-const idNumber = (id) => (/^p\d+$/.test(id) ? Number(id.slice(1)) : 0);
+// A stored id is 'p' and a safe-integer counter, so the next id built from the sequence always reads back.
+const idNumber = (id) => (/^p\d+$/.test(id) && Number.isSafeInteger(Number(id.slice(1))) ? Number(id.slice(1)) : -1);
 
 // Canonical record for an id and raw data: known classes and levels 1-5 only, sets cleaned for their base class.
 function cleanRecord(classes, id, raw) {
@@ -56,12 +57,12 @@ function load(storage, classes) {
     if (me.name !== '' && !isValidName(me.name)) me.name = '';
     const people = [me];
     for (const raw of parsed.people) {
-      if (typeof raw?.id !== 'string' || !/^p\d+$/.test(raw.id) || people.some((p) => p.id === raw.id)) continue;
+      if (typeof raw?.id !== 'string' || idNumber(raw.id) < 0 || people.some((p) => p.id === raw.id)) continue;
       const record = cleanRecord(classes, raw.id, raw);
       if (!isValidName(record.name) || people.some((p) => p.name && sameName(p.name, record.name))) continue;
       people.push(record);
     }
-    const seq = Math.max(Number.isInteger(parsed.seq) && parsed.seq > 0 ? parsed.seq : 0, ...people.map((p) => idNumber(p.id)));
+    const seq = Math.max(Number.isSafeInteger(parsed.seq) && parsed.seq > 0 ? parsed.seq : 0, ...people.map((p) => idNumber(p.id)));
     const team = { name: cleanTeamName(parsed.team?.name), members: cleanMembers(classes, people, parsed.team?.members) };
     const selected = people.some((p) => p.id === parsed.selected) ? parsed.selected : ME_ID;
     return { seq, people, team, selected, unlockedOnly: parsed.unlockedOnly === true };
@@ -134,6 +135,7 @@ export function createPeopleStore(storage, classes) {
   };
   const hasCode = (code) => classes.some((c) => c.code === code);
   const find = (id) => people.find((p) => p.id === id) ?? null;
+  const findByName = (name) => (name ? (people.find((p) => p.name && sameName(p.name, name)) ?? null) : null);
   const patch = (id, change) => {
     people = people.map((p) => (p.id === id ? { ...p, ...change } : p));
     save();
@@ -147,10 +149,12 @@ export function createPeopleStore(storage, classes) {
       return [find(ME_ID), ...others];
     },
     get: (id) => find(id),
-    byName: (name) => (name ? (people.find((p) => p.name && sameName(p.name, name)) ?? null) : null),
+    byName: findByName,
     get me() {
       return find(ME_ID);
     },
+    // Whether the name is the one Me holds, case ignored.
+    isMe: (name) => findByName(name)?.id === ME_ID,
     get selected() {
       return selected;
     },
@@ -233,7 +237,7 @@ export function createPeopleStore(storage, classes) {
       patch(id, { sets });
       return { ok: true };
     },
-    // Applies a parseImport build to { id } or to the person named { name }; an unmatched name creates a person (and selects them).
+    // Applies a parseImport build to { id } or to the person named { name }; an unmatched name creates a person. The selection is left alone.
     // The data merge is the own-import rule for everyone: a roster replaces levels, a bare code updates only its class. The
     // person keeps their id and team place. A roster makes the roster known; a created person without one stays unknown.
     applyImport(parsed, target) {
@@ -251,7 +255,6 @@ export function createPeopleStore(storage, classes) {
       const record = cleaned(person.id, { ...person, base: next.base, levels: next.levels, sets: next.sets });
       record.rosterKnown = parsed.hasRoster ? true : person.rosterKnown;
       people = people.map((p) => (p.id === person.id ? record : p));
-      selected = person.id;
       save();
       return { ok: true, id: person.id, created };
     },

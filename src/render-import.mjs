@@ -32,7 +32,7 @@ function whosePrompt(state, actions, pending) {
   const { parsed } = pending;
   const replaces = replacesText(state, parsed, actions.importSummary(parsed));
   const setsName = !state.people.me.name && parsed.player.name && isValidName(parsed.player.name);
-  const hint = [setsName ? `sets your username to ${parsed.player.name}` : null, replaces ? `replaces ${replaces}` : null].filter(Boolean);
+  const hint = [setsName ? `sets your name to ${parsed.player.name}` : null, replaces ? `replaces ${replaces}` : null].filter(Boolean);
   return h(
     'div',
     { class: 'claim-prompt import-prompt', role: 'group', 'aria-labelledby': 'import-whose-title' },
