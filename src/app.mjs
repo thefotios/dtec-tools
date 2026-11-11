@@ -736,7 +736,7 @@ const actions = {
       const saved = name ? state.people.byName(name) : null;
       const me = state.people.me;
       if (!name) return failCardForm('Enter a name for this person');
-      if (me.name && sameName(name, me.name)) return failCardForm("That's your name. Select your own card to update your build.");
+      if (me.name && sameName(name, me.name)) return failCardForm("That's your name. Use Import and choose Mine to update your build.");
       if (!saved) {
         const problem = state.people.nameProblem(null, name);
         if (problem) return failCardForm(problem);
