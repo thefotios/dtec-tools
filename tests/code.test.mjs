@@ -29,6 +29,18 @@ test('tokenize splits greedy letters+digit groups and flags leftovers', () => {
   assert.deepEqual(tokenize('sal2sc1').map((g) => [g.token, g.level, g.valid]), [['sal', 2, true], ['sc', 1, true]]);
   assert.deepEqual(tokenize('rec4').map((g) => g.valid), [false]);
   assert.deepEqual(tokenize('sal').map((g) => [g.raw, g.valid]), [['sal', false]]);
+  assert.deepEqual(tokenize('sal23sc1').map((g) => [g.raw, g.token, g.level]), [['sal2', 'sal', 2], ['sal3', 'sal', 3], ['sc1', 'sc', 1]]);
+  assert.deepEqual(tokenize('sal14').map((g) => [g.raw, g.valid]), [['sal1', true], ['sal4', false]]);
+});
+
+test('a class with several levels shares one code: sal23 equals sal2sal3', () => {
+  const r = parseBuildCode(classes, 'c5-sc1sal23');
+  assert.deepEqual(r.slots, e(['sc', 1], ['sal', 2], ['sal', 3]));
+  assert.deepEqual(r.notices, []);
+  assert.deepEqual(parseBuildCode(classes, 'c5-sal2sc1sal3').slots, r.slots);
+  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: e(['sal', 1], ['sal', 2], ['sal', 3]) } }), 'c5-sal123');
+  assert.deepEqual(parseBuildCode(classes, 'c5-sal22').notices.map((n) => n.reason), ['duplicate']);
+  assert.deepEqual(parseSets(classes, 'mi-sal13', 'c').sets, { mi: e(['sal', 1], ['sal', 3]) });
 });
 
 test('1: c5-sal2sal3sc1 parses to Crafter 5 with three passives and round-trips', () => {
@@ -39,17 +51,17 @@ test('1: c5-sal2sal3sc1 parses to Crafter 5 with three passives and round-trips'
   assert.deepEqual(r.slots.map((s) => classByCode(classes, s.code).slug), ['scout', 'salvager', 'salvager']);
   assert.deepEqual(r.notices, []);
   assert.equal(r.roster, null);
-  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal2sal3');
+  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal23');
 });
 
 test('1: serialization is canonical so the stated code round-trips in registry order', () => {
   const r = parseBuildCode(classes, 'c5-sc1sal2sal3');
-  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal2sal3');
+  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal23');
 });
 
 test('2: any input order serializes in canonical registry-then-level order', () => {
   const r = parseBuildCode(classes, 'c5-sc1sal3sal2');
-  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal2sal3');
+  assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: r.slots } }), 'c5-sc1sal23');
   const mi = parseBuildCode(classes, 'c5-sal2mi1');
   assert.equal(serializeBuildCode(classes, { base: 'c', levels: { c: 5 }, sets: { c: mi.slots } }), 'c5-mi1sal2');
 });

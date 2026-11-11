@@ -1,10 +1,10 @@
-// Build code and share codecs (pure): `c5-sal2sal3sc1[-roster]`, the `s` saved-sets query, and share inputs.
+// Build code and share codecs (pure): `c5-sal23sc1[-roster]`, the `s` saved-sets query, and share inputs.
 // Passives are plain entries { code, level }; a player is { name, base, levels, sets } with base a class code.
 import { encodeRoster, decodeRoster, cleanMax } from './owned.mjs';
 import { normalizeSet, MAX_PASSIVES } from './passives.mjs';
 import { relativePath } from './router.mjs';
 
-const GROUP = /^[a-z]+\d/;
+const GROUP = /^[a-z]+\d+/;
 const ROSTER_END = /[xbcdfg]$/;
 const TEAM_LINK_ERROR = 'Open a team link to save its players';
 
@@ -21,16 +21,19 @@ function notice(token, reason, detail = REASON_TEXT[reason]) {
   return { token, reason, message: `"${token}": ${detail}` };
 }
 
-// Splits a passive run into greedy letters+digit groups; any other maximal chunk is one invalid group.
+// Splits a passive run into greedy letters+digits groups, one group per digit, so `sal23` is `sal2` then `sal3`; any other
+// maximal chunk is one invalid group.
 export function tokenize(run) {
   const s = String(run).toLowerCase();
   const groups = [];
   for (let i = 0; i < s.length; ) {
     const m = GROUP.exec(s.slice(i));
     if (m) {
-      const [, token, digit] = /^([a-z]+)(\d)$/.exec(m[0]);
-      const level = Number(digit);
-      groups.push({ raw: m[0], token, level, valid: level >= 1 && level <= 3 });
+      const [, token, digits] = /^([a-z]+)(\d+)$/.exec(m[0]);
+      for (const digit of digits) {
+        const level = Number(digit);
+        groups.push({ raw: `${token}${digit}`, token, level, valid: level >= 1 && level <= 3 });
+      }
       i += m[0].length;
       continue;
     }
@@ -63,7 +66,9 @@ function parseRun(classes, baseCode, run) {
   return { slots: normalizeSet(classes, base?.slug, valid.slice(0, MAX_PASSIVES)), notices };
 }
 
-const runText = (slots) => slots.map((e) => `${e.code}${e.level}`).join('');
+// Canonical order keeps a class's levels adjacent, so they share one code: `sal2`, `sal3` -> `sal23`.
+const runText = (slots) =>
+  slots.map((e, i) => (i > 0 && slots[i - 1].code === e.code ? `${e.level}` : `${e.code}${e.level}`)).join('');
 
 // Parses a build code. Returns { base, level, slots, roster, notices }: base is a class code or null (unknown base or level
 // drops everything else), roster is the decoded owned map or null. After the base segment, a segment ending in a digit is

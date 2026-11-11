@@ -31,7 +31,7 @@ test('team link: round-trips to the same path and search', () => {
   const players = { bob: rec('bob', 'c', 5, [{ code: 'sal', level: 2 }, { code: 'sal', level: 3 }]), ann: rec('ann', 'mi', 3) };
   const parsed = parseTeamLink(classes, '/bob.c5-sal2sal3~ann.mi3', '?n=Raid%20A');
   const team = { name: parsed.name, members: parsed.members.map((m) => ({ name: m.name, base: m.player.base })) };
-  assert.deepEqual(serializeTeamLink(classes, team, (n) => players[n]), { path: '/team/bob.c5-sal2sal3~ann.mi3', search: '?n=Raid%20A' });
+  assert.deepEqual(serializeTeamLink(classes, team, (n) => players[n]), { path: '/team/bob.c5-sal23~ann.mi3', search: '?n=Raid%20A' });
 });
 
 test('team link: empty name gives empty search; unresolved members are skipped', () => {
