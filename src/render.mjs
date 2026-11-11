@@ -5,7 +5,7 @@ import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
 import { importPanel, replacesText, listOf } from './render-import.mjs';
-import { cardsPanel, revealCard } from './render-people.mjs';
+import { cardsPanel } from './render-people.mjs';
 import { teamAddOffer, ME_ID } from './people.mjs';
 
 // Renders from state only; all data text goes through textContent.
@@ -915,5 +915,4 @@ export function render(root, state, actions) {
     state.copyFocus = false;
     root.querySelector('.copy-fallback')?.select();
   } else restoreFocus(root, key);
-  if (state.view === 'builds') revealCard(root);
 }

@@ -542,8 +542,8 @@ button.own-pill:hover { border-color: var(--accent-green); }
 
 /* Person cards */
 .cards-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.card-row { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; position: relative; }
-.card { flex: 1 1 140px; display: flex; align-items: stretch; min-width: 0; background: var(--panel-raised); border: 2px solid var(--panel-border); border-radius: 10px; }
+.card-row { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.card { display: flex; align-items: stretch; min-width: 0; background: var(--panel-raised); border: 2px solid var(--panel-border); border-radius: 10px; }
 .card.is-me { border-color: #6b5a2a; }
 .card.is-selected, .card.is-active { border-color: var(--tier-gold); background: linear-gradient(#2e2a1c, #1a170e); box-shadow: inset 4px 0 0 var(--tier-gold); }
 .card-select { flex: 1; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; font: inherit; color: var(--text); text-align: left; background: none; border: 0; border-radius: 8px; cursor: pointer; }
@@ -556,7 +556,7 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .card-menu-btn { flex: none; width: 44px; min-height: 44px; align-self: center; margin-right: 4px; font: inherit; font-size: 20px; font-weight: 900; color: var(--text); background: none; border: 0; border-radius: 8px; cursor: pointer; }
 .card-menu-btn[aria-expanded='true'] { background: var(--panel-border); }
 .card-save { align-self: center; margin-right: 6px; min-height: 44px; }
-.card-add { flex: 0 0 64px; border-style: dashed; }
+.card-add { border-style: dashed; }
 .card-add .card-select { justify-content: center; padding: 6px; }
 .card-plus { font-size: 26px; font-weight: 900; line-height: 1; }
 .card-region:empty { display: none; }
@@ -568,11 +568,6 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .card-menu .btn { min-height: 44px; }
 .card-status { color: var(--accent-green); padding-left: 10px; }
 .card-status:empty { display: none; }
-@media (max-width: 719px) {
-  .card-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-  .card { flex: 0 0 auto; min-width: 150px; max-width: 70%; }
-  .card-add { flex: 0 0 64px; min-width: 64px; }
-}
 
 /* Help */
 .help { display: grid; gap: 14px; max-width: 760px; }

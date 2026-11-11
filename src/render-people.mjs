@@ -114,11 +114,3 @@ export function cardsPanel(state, actions) {
     h('div', { class: 'card-status', role: 'status', text: state.cards.message }),
   );
 }
-
-// Brings the highlighted card into view inside the scrolling row. The page itself never scrolls.
-export function revealCard(root) {
-  const row = root.querySelector('.card-row');
-  const target = row?.querySelector('.card.is-active') ?? row?.querySelector('.card.is-selected');
-  if (!row || !target || row.scrollWidth <= row.clientWidth) return;
-  row.scrollLeft = target.offsetLeft - (row.clientWidth - target.offsetWidth) / 2;
-}
