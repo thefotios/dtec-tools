@@ -677,7 +677,7 @@ function teamPanel(state, actions, members) {
 }
 
 // What replacing my team does, in words: it replaces a non-empty team, and updates every linked person (other than me) already saved.
-function replaceText(state, link) {
+function replaceText(state, actions) {
   const updates = actions.linkUpdatesSaved();
   const replaces = state.people.team.members.length > 0;
   const tail = 'saved players with the classes, levels and passives in this link';
@@ -699,7 +699,7 @@ function replaceControls(state, actions, mine) {
     return h(
       'div',
       { class: 'claim-prompt', role: 'alert' },
-      h('p', { class: 'roster-error', text: replaceText(state, link) }),
+      h('p', { class: 'roster-error', text: replaceText(state, actions) }),
       h(
         'div',
         { class: 'roster-row' },
@@ -889,7 +889,7 @@ export function render(root, state, actions) {
   if (state.status === 'error') return void root.append(errorPanel(state.error, actions));
   root.append(
     header(state, actions),
-    state.importOpen ? importPanel(state, actions) : null,
+    ...(state.importOpen ? [importPanel(state, actions)] : []),
     ...[noticesBar(state.notices, actions)].filter(Boolean),
     state.view === 'help' ? helpView(state) : state.view === 'team' ? teamView(state, actions) : classesView(state, actions),
   );
