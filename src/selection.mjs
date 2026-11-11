@@ -6,7 +6,7 @@ import { isValidName, sameName, ownImport } from './players.mjs';
 const isClass = (classes, code) => classes.some((c) => c.code === code);
 
 // The class a person is shown on: their stored base, else the first class they own.
-function shownBase(classes, person) {
+export function shownBase(classes, person) {
   if (isClass(classes, person.base)) return person.base;
   return classes.find((c) => (person.levels[c.code] ?? 0) > 0)?.code ?? null;
 }

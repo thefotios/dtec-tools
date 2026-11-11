@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isValidName, nameProblem, cleanTeamName, NAME_RULE, SELF_NAME, ownedBase, ownImport } from '../src/players.mjs';
+import { isValidName, cleanTeamName, NAME_RULE, ownedBase, ownImport } from '../src/players.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const code = (slug) => classes.find((c) => c.slug === slug).code;
@@ -21,17 +21,6 @@ test('ownedBase: stored owned wins, then the player base, then the first owned c
   assert.equal(ownedBase(classes, player(PR, { [SC]: 3, [MI]: 2 }), SAL), classes.find((c) => c.code === MI || c.code === SC).code);
   assert.equal(ownedBase(classes, player(PR, { [MI]: 0, [SC]: 0 }), MI), null);
   assert.equal(ownedBase(classes, player(null, {}), null), null);
-});
-
-test('nameProblem: format first, then my own name in any case, else null', () => {
-  assert.equal(nameProblem('b', 'fotios'), NAME_RULE);
-  assert.equal(nameProblem('', ''), NAME_RULE);
-  assert.equal(nameProblem('FOTIOS', 'fotios'), SELF_NAME);
-  assert.match(SELF_NAME, /Import/);
-  assert.match(SELF_NAME, /Mine/);
-  assert.doesNotMatch(SELF_NAME, /Builds page/);
-  assert.equal(nameProblem('bob', 'fotios'), null);
-  assert.equal(nameProblem('fotios', ''), null);
 });
 
 test('cleanTeamName trims and caps at 40 characters without trailing whitespace', () => {

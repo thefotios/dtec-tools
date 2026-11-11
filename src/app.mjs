@@ -4,7 +4,7 @@ import { savedSlots, toSlots, fromSlots } from './passives.mjs';
 import { parseShare, parseImport, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
 import { isValidName, sameName, ownImport, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
 import { createPeopleStore, isUnsavedBuild, buildRaises, ME_ID } from './people.mjs';
-import { resolveLocation, importTarget } from './selection.mjs';
+import { resolveLocation, importTarget, shownBase } from './selection.mjs';
 import { parseTeamLink, serializeTeamLink, sameTeam } from './team.mjs';
 
 const root = document.getElementById('app');
@@ -65,10 +65,12 @@ const classBySlug = (slug) => classes().find((c) => c.slug === slug) ?? null;
 // The person the page shows: the temporary record, else the selected saved person.
 const shownPerson = () => state.temp?.record ?? state.people.get(state.selectedId) ?? state.people.me;
 
-// A person's own class to show: their stored base, else the first class they own.
-function baseFor(person) {
-  if (classByCode(classes(), person.base)) return person.base;
-  return classes().find((c) => (person.levels[c.code] ?? 0) > 0)?.code ?? null;
+// Why a name cannot be saved as a person, or null: empty, my own name (selfMessage), or an unsaved name that is invalid or taken.
+function saveAsError(name, selfMessage) {
+  if (!name) return 'Enter a name for this person';
+  const me = state.people.me;
+  if (me.name && sameName(name, me.name)) return selfMessage;
+  return state.people.byName(name) ? null : state.people.nameProblem(null, name);
 }
 
 // Recomputes what the page shows from the selected person. An unsaved build is dropped once saving it would change nothing.
@@ -77,7 +79,7 @@ function derive() {
   const u = state.unsaved;
   if (u && (state.temp || u.id !== person.id || !isUnsavedBuild(classes(), person, u.build))) state.unsaved = null;
   const build = state.unsaved?.build ?? null;
-  const base = classByCode(classes(), build ? build.base : (state.baseCode ?? baseFor(person)));
+  const base = classByCode(classes(), build ? build.base : (state.baseCode ?? shownBase(classes(), person)));
   let slots = [];
   if (base) slots = build?.passives.length ? toSlots(classes(), build.passives) : savedSlots(classes(), person, base.code);
   state.shown = person;
@@ -236,7 +238,7 @@ function showImported(id, before, message, notices) {
   clearTransient();
   state.selectedId = id;
   state.people.select(id);
-  state.baseCode = baseFor(state.people.get(id));
+  state.baseCode = shownBase(classes(), state.people.get(id));
   state.list.editing = false;
   state.loadoutEditing = false;
   state.expanded.clear();
@@ -280,7 +282,7 @@ function showPerson(id, message) {
   clearTransient();
   state.selectedId = id;
   state.people.select(id);
-  state.baseCode = baseFor(state.people.get(id));
+  state.baseCode = shownBase(classes(), state.people.get(id));
   state.list.editing = false;
   state.loadoutEditing = false;
   state.expanded.clear();
@@ -412,10 +414,7 @@ const actions = {
     const name = text.trim();
     p.nameDraft = text;
     const saved = name ? state.people.byName(name) : null;
-    const me = state.people.me;
-    if (!name) p.error = 'Enter a name for this person';
-    else if (me.name && sameName(name, me.name)) p.error = "That's your name. Choose Mine to update your build.";
-    else p.error = saved ? null : state.people.nameProblem(null, name);
+    p.error = saveAsError(name, "That's your name. Choose Mine to update your build.");
     if (!p.error) p.error = applyToPerson(p.parsed, saved ? { id: saved.id } : { name });
     paint();
     if (!p.error) focusImported();
@@ -627,7 +626,7 @@ const actions = {
     const r = state.people.applyImport(p.incoming, { id: p.id });
     if (r.error) return;
     state.pending = null;
-    state.baseCode = baseFor(state.people.get(p.id));
+    state.baseCode = shownBase(classes(), state.people.get(p.id));
     state.copy = null;
     writeEntry(false);
     paint();
@@ -666,7 +665,7 @@ const actions = {
     clearTransient();
     state.selectedId = id;
     state.people.select(id);
-    state.baseCode = baseFor(state.people.get(id));
+    state.baseCode = shownBase(classes(), state.people.get(id));
     state.list.editing = false;
     state.loadoutEditing = false;
     state.expanded.clear();
@@ -734,13 +733,8 @@ const actions = {
     }
     if (form.kind === 'save') {
       const saved = name ? state.people.byName(name) : null;
-      const me = state.people.me;
-      if (!name) return failCardForm('Enter a name for this person');
-      if (me.name && sameName(name, me.name)) return failCardForm("That's your name. Use Import and choose Mine to update your build.");
-      if (!saved) {
-        const problem = state.people.nameProblem(null, name);
-        if (problem) return failCardForm(problem);
-      }
+      const problem = saveAsError(name, "That's your name. Use Import and choose Mine to update your build.");
+      if (problem) return failCardForm(problem);
       const { record } = state.temp;
       const parsed = { player: record, hasRoster: record.rosterKnown, hasSets: false, isLink: true };
       const r = state.people.applyImport(parsed, saved ? { id: saved.id } : { name });
@@ -758,7 +752,7 @@ const actions = {
     clearTransient();
     state.selectedId = ME_ID;
     state.people.select(ME_ID);
-    state.baseCode = baseFor(state.people.me);
+    state.baseCode = shownBase(classes(), state.people.me);
     state.list.editing = false;
     state.loadoutEditing = false;
     state.expanded.clear();

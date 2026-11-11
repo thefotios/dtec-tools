@@ -4,7 +4,7 @@
 
 import { normalizeSet } from './passives.mjs';
 import { cleanMax } from './owned.mjs';
-import { isValidName, sameName, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
+import { isValidName, sameName, lower, copySet, copySets, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
 
 const STORAGE_KEY = 'dtec:people';
 const STORE_VERSION = 1;
@@ -12,9 +12,6 @@ export const ME_ID = 'me';
 
 export const NAME_TAKEN = 'That name is already used by someone else';
 
-const lower = (name) => String(name ?? '').toLowerCase();
-const copySet = (set) => set.map((e) => ({ ...e }));
-const copySets = (sets) => Object.fromEntries(Object.entries(sets).map(([code, set]) => [code, copySet(set)]));
 const emptyTeam = () => ({ name: '', members: [] });
 const freshMe = () => ({ id: ME_ID, name: '', base: null, levels: {}, sets: {}, rosterKnown: true });
 const idNumber = (id) => (/^p\d+$/.test(id) ? Number(id.slice(1)) : 0);

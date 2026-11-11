@@ -1,7 +1,7 @@
 import { isValidName } from './players.mjs';
 import { h } from './dom.mjs';
 
-const listOf = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
+export const listOf = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
 
 // What an import replaces, in words: "your classes and all passive sets"; `who` is the owner's possessive. Empty when nothing existing is replaced.
 export function replacesText(state, parsed, summary, who = 'your') {

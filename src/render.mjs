@@ -4,9 +4,9 @@ import { MAX_PASSIVES } from './passives.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
-import { importPanel, replacesText } from './render-import.mjs';
+import { importPanel, replacesText, listOf } from './render-import.mjs';
 import { cardsPanel, revealCard } from './render-people.mjs';
-import { teamAddOffer } from './people.mjs';
+import { teamAddOffer, ME_ID } from './people.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -387,9 +387,6 @@ function levelList(base, owned) {
   );
 }
 
-// Names joined for a sentence: "A", "A and B", "A, B and C".
-const listOf = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
-
 // What Save would raise, in words with the class shown first: "Bounty Hunter 5 and Miner 3".
 function raisesText(state) {
   const first = state.build.base.code;
@@ -440,7 +437,7 @@ function basePanel(state, base, owned, actions = null) {
 function updateBanner(state, actions) {
   const { id, incoming } = state.pending;
   const person = state.people.get(id);
-  const own = id === 'me';
+  const own = id === ME_ID;
   const replaces = replacesText(state, incoming, actions.pendingSummary(), own ? 'your' : `${person.name}'s`);
   const who = own ? 'you' : person.name;
   return h(
@@ -499,7 +496,7 @@ function loadout(state, actions) {
 }
 
 // The empty class list's sentence: yours, or the selected person's.
-const emptyClassesText = (state) => (state.shown.id === 'me' ? "You haven't marked any classes yet. Tap Edit to add some." : `${state.shown.name} has no classes yet. Tap Edit to add some.`);
+const emptyClassesText = (state) => (state.shown.id === ME_ID ? "You haven't marked any classes yet. Tap Edit to add some." : `${state.shown.name} has no classes yet. Tap Edit to add some.`);
 
 function classesView(state, actions) {
   const { classes } = state.data;
@@ -623,8 +620,7 @@ function memberHeader(state, actions, { id, name, player, base }, { readOnly }) 
 }
 
 // The "+" header cell: a native select listing named people who own a class and are not on the team.
-function teamAddSelect(state, actions, team) {
-  const { candidates } = teamAddOffer(state.people.people, team);
+function teamAddSelect(state, actions, team, candidates) {
   const full = team.members.length >= MAX_MEMBERS;
   const disabled = full || !candidates.length;
   const reason = full ? 'Team is full (8)' : 'All players added';
@@ -642,8 +638,9 @@ function teamAddSelect(state, actions, team) {
 function teamPanel(state, actions, members) {
   const team = state.people.team;
   const teamBlock = actions.teamShareBlock();
-  const add = teamAddSelect(state, actions, team);
-  const leftOut = teamAddOffer(state.people.people, team).left;
+  const offer = teamAddOffer(state.people.people, team);
+  const add = teamAddSelect(state, actions, team, offer.candidates);
+  const leftOut = offer.left;
   const empty = h(
     'p',
     { class: 'empty' },

@@ -1,4 +1,4 @@
-import { cardModel } from './people.mjs';
+import { cardModel, ME_ID } from './people.mjs';
 import { h } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 
@@ -7,9 +7,8 @@ import { classIcon } from './icons.mjs';
 
 const REGION_ID = 'card-region';
 
-const classText = (state, model) => {
+const classText = (cls, model) => {
   if (model.empty) return 'No classes';
-  const cls = state.data.classes.find((c) => c.code === model.code);
   return `${cls.name} L${model.level}`;
 };
 
@@ -17,8 +16,8 @@ const classText = (state, model) => {
 function card(state, actions, person, { selected, temp = false, active = false }) {
   const model = cardModel(state.data.classes, person);
   const cls = model.empty ? null : state.data.classes.find((c) => c.code === model.code);
-  const text = classText(state, model);
-  const me = person.id === 'me';
+  const text = classText(cls, model);
+  const me = person.id === ME_ID;
   const menuOpen = selected && !temp && ['menu', 'rename', 'delete'].includes(state.cards.form?.kind);
   return h(
     'li',
@@ -75,7 +74,7 @@ function menu(state, actions) {
     'div',
     { class: 'card-menu', role: 'group', 'aria-label': `${cardModel(state.data.classes, person).label} menu` },
     h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'menu-rename', onclick: () => actions.openCardForm('rename'), text: 'Rename' }),
-    person.id === 'me' ? null : h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'menu-delete', onclick: () => actions.openCardForm('delete'), text: 'Delete' }),
+    person.id === ME_ID ? null : h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'menu-delete', onclick: () => actions.openCardForm('delete'), text: 'Delete' }),
   );
 }
 
