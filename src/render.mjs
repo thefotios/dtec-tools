@@ -394,11 +394,11 @@ function buildLevelsText(state) {
   return listOf(ordered.map((r) => `${state.data.classes.find((c) => c.code === r.code).name} ${r.level}`));
 }
 
-// Save and its label replace the copy actions while the shown build is not what the person has stored.
+// Save and its label replace the copy actions while the shown build is not what the person has stored; the Save as form, once open, owns the Save button.
 function saveControls(state, actions) {
   return [
     h('span', { class: 'unsaved-label', text: `Unsaved build: ${buildLevelsText(state)}` }),
-    h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'build-save', onclick: actions.saveBuild, text: 'Save' }),
+    state.saveAs ? null : h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'build-save', onclick: actions.saveBuild, text: 'Save' }),
   ];
 }
 
