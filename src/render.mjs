@@ -185,7 +185,7 @@ function ownRow(state, actions, cls) {
 
 // Every passive at once: one row per class (tier order), one toggle cell per level.
 // The base class is never listed: a class cannot be its own passive.
-// opts: { noTitle (omit the heading), levels (owned levels by class code; levelRows only), unknownRoster (omit the "Not owned" pill: no roster to judge by), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+// opts: { noTitle (omit the heading), levels (owned levels by class code; levelRows only), unknownRoster (omit the "Not owned" pill: no roster to judge by), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, allClasses (levelRows: list every class with levels 1 to 3 pickable, locked ones marked), onAllClasses (null hides the toggle), base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
@@ -195,9 +195,9 @@ function passivePicker(state, actions, opts) {
   const ordered = Object.keys(tiers).flatMap((tier) => classes.filter((c) => String(c.tier) === tier));
   const visibleLevels = (c) => [1, 2, 3].filter((n) => picked(c, n) || !opts.ownedOnly || opts.has(c.code, n));
   const hasPicked = (c) => slots.some((s) => s.cls.slug === c.slug);
-  const levelRowsVisible = (c) => [1, 2, 3].filter((n) => picked(c, n) || !opts.unlockedOnly || opts.has(c.code, n));
+  const levelRowsVisible = (c) => [1, 2, 3].filter((n) => picked(c, n) || opts.allClasses || !opts.unlockedOnly || opts.has(c.code, n));
   const rows = opts.levelRows
-    ? ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && (opts.has(c.code, 1) || hasPicked(c)) && levelRowsVisible(c).length)
+    ? ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && (opts.allClasses || opts.has(c.code, 1) || hasPicked(c)) && levelRowsVisible(c).length)
     : ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
   const k = opts.keyPrefix;
   const cell = (c, n) => {
@@ -241,7 +241,9 @@ function passivePicker(state, actions, opts) {
           levelRowsVisible(c).map((n) => {
             const on = picked(c, n);
             const locked = !opts.has(c.code, n);
-            const blocked = !on && (locked || full);
+            // With All classes a locked level is pickable; picking it raises the class to that level.
+            const pickable = !locked || opts.allClasses;
+            const blocked = !on && (!pickable || full);
             return h(
               'li',
               {},
@@ -249,17 +251,23 @@ function passivePicker(state, actions, opts) {
                 'button',
                 {
                   type: 'button',
-                  class: `level own-level passive-level${on ? ' is-selected' : ''}${locked ? ' is-locked' : ' is-unlocked'}${!locked && blocked ? ' is-disabled' : ''}`,
+                  class: `level own-level passive-level${on ? ' is-selected' : ''}${pickable ? ' is-unlocked' : ' is-locked'}${pickable && blocked ? ' is-disabled' : ''}`,
                   'data-level': n,
                   'data-fk': `${k}-${c.slug}-${n}`,
                   'aria-pressed': String(on),
                   'aria-disabled': blocked ? 'true' : null,
-                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}`,
+                  'aria-label': `${c.name} level ${n}${locked ? (opts.allClasses ? ', not owned' : ', locked') : ''}`,
                   onclick: () => (blocked ? null : opts.onToggle(c, n)),
                 },
                 levelChip(c.levels[n - 1], n - 1),
                 h('span', { class: 'level-text', text: c.levels[n - 1].text }),
-                locked ? (on ? notOwned() : h('span', { class: 'lock-hint', title: `Own ${c.name} at level ${n} to unlock`, text: 'Locked' })) : null,
+                locked
+                  ? on
+                    ? notOwned()
+                    : opts.allClasses
+                      ? h('span', { class: 'lock-hint', title: `Picking it sets ${c.name} to level ${n}`, text: 'Not owned' })
+                      : h('span', { class: 'lock-hint', title: `Own ${c.name} at level ${n} to unlock`, text: 'Locked' })
+                  : null,
                 h('span', { class: 'own-check', 'aria-hidden': 'true', text: on ? '\u2713' : '' }),
               ),
             );
@@ -275,7 +283,15 @@ function passivePicker(state, actions, opts) {
       'div',
       { class: 'passive-head' },
       opts.noTitle ? null : h('h2', { class: 'panel-title', text: `Passives (${slots.length}/${MAX_PASSIVES})` }),
-      opts.levelRows
+      opts.levelRows && opts.onAllClasses
+        ? h(
+            'label',
+            { class: 'unlocked-only', title: 'List every class; picking a level you do not own adds it to your classes' },
+            h('input', { type: 'checkbox', 'data-fk': `${k}-all-classes`, checked: opts.allClasses, onchange: (e) => opts.onAllClasses(e.target.checked) }),
+            h('span', { text: 'All classes' }),
+          )
+        : null,
+      opts.levelRows && !opts.allClasses
         ? h(
             'label',
             { class: 'unlocked-only' },
@@ -339,6 +355,9 @@ function pickerEditor(state, actions) {
     levelRows: true,
     unlockedOnly: state.people.unlockedOnly,
     onUnlockedOnly: actions.setUnlockedOnly,
+    // A person with an unknown roster already has every class unlocked.
+    allClasses: person.rosterKnown && state.people.allClasses,
+    onAllClasses: person.rosterKnown ? actions.setAllClasses : null,
     flag: (code, n) => !has(code, n),
     emptyText: 'No owned passives to pick. Mark classes in the class list.',
     filter: state.passiveFilter,
@@ -786,7 +805,7 @@ function helpView(state) {
         { class: 'help-list' },
         h('li', {}, 'Open Builds and tap Edit in the Classes list. Mark the classes you own and unlock their levels. Levels are cumulative: unlocking level 3 unlocks levels 1 and 2.'),
         h('li', {}, 'Tap Done, then tap a class to make it your base class.'),
-        h('li', {}, 'In the base class passives panel, tap Edit and pick up to 3 passives (levels 1 to 3). You can only pick levels you have unlocked, and a class can never be its own passive. Each class keeps its own set of passives.'),
+        h('li', {}, 'In the base class passives panel, tap Edit and pick up to 3 passives (levels 1 to 3). You can only pick levels you have unlocked unless you tick All classes, which lists every class and adds any level you pick to your classes. A class can never be its own passive. Each class keeps its own set of passives.'),
       ),
     ),
     section(

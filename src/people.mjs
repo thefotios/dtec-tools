@@ -53,7 +53,7 @@ function cleanMembers(classes, people, members) {
 
 // Cleans a stored payload field by field; anything unreadable or of another version gives one unnamed Me.
 function load(storage, classes) {
-  const fresh = { seq: 0, people: [freshMe()], team: emptyTeam(), selected: ME_ID, unlockedOnly: false };
+  const fresh = { seq: 0, people: [freshMe()], team: emptyTeam(), selected: ME_ID, unlockedOnly: false, allClasses: false };
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
     if (parsed?.v !== STORE_VERSION || !Array.isArray(parsed.people)) return fresh;
@@ -70,7 +70,7 @@ function load(storage, classes) {
     const seq = Math.max(Number.isSafeInteger(parsed.seq) && parsed.seq > 0 ? parsed.seq : 0, ...people.map((p) => idNumber(p.id)));
     const team = { name: cleanTeamName(parsed.team?.name), members: cleanMembers(classes, people, parsed.team?.members) };
     const selected = people.some((p) => p.id === parsed.selected) ? parsed.selected : ME_ID;
-    return { seq, people, team, selected, unlockedOnly: parsed.unlockedOnly === true };
+    return { seq, people, team, selected, unlockedOnly: parsed.unlockedOnly === true, allClasses: parsed.allClasses === true };
   } catch {
     return fresh;
   }
@@ -142,10 +142,10 @@ export function saveAsTarget(store, text) {
 
 // Reads and writes never throw: a blocked store degrades to in-memory state. Only the people key is touched.
 export function createPeopleStore(storage, classes) {
-  let { seq, people, team, selected, unlockedOnly } = load(storage, classes);
+  let { seq, people, team, selected, unlockedOnly, allClasses } = load(storage, classes);
   const save = () => {
     try {
-      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, seq, people, team, selected, unlockedOnly }));
+      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, seq, people, team, selected, unlockedOnly, allClasses }));
     } catch {
       /* in-memory only */
     }
@@ -188,6 +188,15 @@ export function createPeopleStore(storage, classes) {
       const next = Boolean(value);
       if (next === unlockedOnly) return;
       unlockedOnly = next;
+      save();
+    },
+    get allClasses() {
+      return allClasses;
+    },
+    setAllClasses(value) {
+      const next = Boolean(value);
+      if (next === allClasses) return;
+      allClasses = next;
       save();
     },
     nameProblem: (id, name) => nameProblem(people, team, id, name),

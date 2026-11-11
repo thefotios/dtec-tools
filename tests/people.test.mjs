@@ -351,6 +351,13 @@ test('selection and the unlocked-only preference persist; unknown ids are ignore
   assert.equal(again.unlockedOnly, true);
 });
 
+test('the all-classes preference defaults off and persists', () => {
+  const { storage, s } = seeded();
+  assert.equal(s.allClasses, false);
+  s.setAllClasses(true);
+  assert.equal(make(storage).allClasses, true);
+});
+
 test('team operations work by id', () => {
   const { s } = seeded({ people: [person('me', 'Fotios'), person('p1', 'Bob'), person('p2', 'Ann'), person('p3', '')].slice(0, 3) });
   assert.ok(s.addMember('p1', SC).ok);

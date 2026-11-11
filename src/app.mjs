@@ -592,16 +592,25 @@ const actions = {
     paint();
   },
   // Passive changes replace the current history entry. Toggling removes a present passive, otherwise adds it in canonical order.
+  // With All classes on, adding a passive above the person's known level raises that class to it, as saving a build URL does.
   toggleSlot(slug, level) {
     const cls = classBySlug(slug);
-    if (!cls) return;
+    if (!cls || state.temp || state.unsaved || !state.build.base) return;
     const has = state.build.slots.some((s) => s.cls.slug === slug && s.level === level);
     const slots = has ? removeSlot(state.build.slots, cls, level) : addSlot(classes(), state.build.slots, cls, level);
+    const person = state.shown;
+    if (!has && slots.length > state.build.slots.length && state.people.allClasses && person.rosterKnown && (person.levels[cls.code] ?? 0) < level) {
+      state.people.replaceLevels(editTarget(), { ...person.levels, [cls.code]: level });
+    }
     setSlots(slots);
   },
   clearSlots: () => setSlots([]),
   setUnlockedOnly(value) {
     state.people.setUnlockedOnly(value);
+    paint();
+  },
+  setAllClasses(value) {
+    state.people.setAllClasses(value);
     paint();
   },
   // Save on an unsaved build opens the Save as form with an empty name; nothing is written yet.
