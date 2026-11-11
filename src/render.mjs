@@ -4,7 +4,7 @@ import { MAX_PASSIVES } from './passives.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
-import { importSection, replacesText } from './render-import.mjs';
+import { importPanel, replacesText } from './render-import.mjs';
 import { cardsPanel, revealCard } from './render-people.mjs';
 import { teamAddOffer } from './people.mjs';
 
@@ -79,11 +79,11 @@ function helpLink(actions) {
   return h('p', { class: 'help-pointer' }, 'New here? ', h('a', { class: 'visitor-team-link', 'data-fk': 'help-link', href: new URL('help', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('help')), text: 'See Help' }));
 }
 
-// "No saved players yet" sentence pointing at the Builds page import.
+// "No saved players yet" sentence whose Import button opens the panel in place.
 const noPlayersHint = (actions) => [
-  'No saved players yet. Import a link or code on the ',
-  h('a', { class: 'visitor-team-link', 'data-fk': 'open-import', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.openImport()), text: 'Builds page' }),
-  '.',
+  'No saved players yet. ',
+  h('button', { type: 'button', class: 'link-btn', 'data-fk': 'open-import', onclick: actions.openImport, text: 'Import' }),
+  ' a link or code.',
 ];
 
 function navButton(state, actions, view, text) {
@@ -122,6 +122,7 @@ function header(state, actions) {
       navButton(state, actions, 'builds', 'Builds'),
       navButton(state, actions, 'team', 'Team'),
       navButton(state, actions, 'help', 'Help'),
+      h('button', { type: 'button', class: `btn ${state.importOpen ? 'btn-green' : 'btn-grey'}`, 'data-fk': 'nav-import', 'aria-expanded': String(state.importOpen), 'aria-controls': 'import-panel', onclick: actions.toggleImport, text: 'Import' }),
     ),
   );
 }
@@ -497,11 +498,6 @@ function loadout(state, actions) {
   );
 }
 
-// The cards panel with the inline import box in its own panel, so the box can move out on its own.
-function rosterSection(state, actions) {
-  return [cardsPanel(state, actions), h('section', { class: 'panel import-slot', 'aria-label': 'Import' }, importSection(state, actions))];
-}
-
 // The empty class list's sentence: yours, or the selected person's.
 const emptyClassesText = (state) => (state.shown.id === 'me' ? "You haven't marked any classes yet. Tap Edit to add some." : `${state.shown.name} has no classes yet. Tap Edit to add some.`);
 
@@ -518,7 +514,7 @@ function classesView(state, actions) {
     h(
       'div',
       { class: 'classes-side' },
-      ...rosterSection(state, actions),
+      cardsPanel(state, actions),
       h(
         'section',
         { class: 'panel classes-panel', 'aria-label': 'Classes' },
@@ -882,6 +878,7 @@ export function render(root, state, actions) {
   if (state.status === 'error') return void root.append(errorPanel(state.error, actions));
   root.append(
     header(state, actions),
+    state.importOpen ? importPanel(state, actions) : null,
     ...[noticesBar(state.notices, actions)].filter(Boolean),
     state.view === 'help' ? helpView(state) : state.view === 'team' ? teamView(state, actions) : classesView(state, actions),
   );

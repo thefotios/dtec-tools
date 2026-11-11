@@ -14,7 +14,7 @@ export const NAME_RULE = 'Use 3 to 20 letters or digits, with at most one unders
 // 3-20 letters, digits, or one underscore that is not at either end.
 export const isValidName = (name) => typeof name === 'string' && name.length >= 3 && name.length <= 20 && NAME_RE.test(name);
 
-export const SELF_NAME = "That's you \u2014 import your own build on the Builds page";
+export const SELF_NAME = "That's you \u2014 use Import and choose Mine to update your own build";
 
 // Why a player name cannot be used, or null: invalid format first, then the same name as mine.
 export function nameProblem(name, me) {

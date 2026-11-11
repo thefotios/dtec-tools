@@ -55,13 +55,14 @@ function whosePrompt(state, actions, pending) {
   );
 }
 
-// The single import box: any pasted link or code. Feedback (error, prompt, message, notices) renders below it.
-export function importSection(state, actions) {
+// The import panel under the header on every page: any pasted link or code. Feedback (error, prompt, message, notices) renders below it.
+// Escape and Close dismiss it; the View button shows only off Builds, where the imported person is not on screen.
+export function importPanel(state, actions) {
   const imp = state.list.import;
   const { pending } = imp;
   return h(
-    'div',
-    { class: 'import' },
+    'section',
+    { class: 'panel import-panel', id: 'import-panel', 'aria-label': 'Import', onkeydown: (e) => (e.key === 'Escape' ? (e.preventDefault(), actions.closeImport()) : null) },
     h(
       'form',
       { class: 'import-form', onsubmit: (e) => (e.preventDefault(), actions.importText(e.target.elements.paste.value)) },
@@ -71,6 +72,7 @@ export function importSection(state, actions) {
         { class: 'roster-row' },
         h('input', { type: 'text', id: 'import-field', name: 'paste', class: 'roster-field', 'data-fk': 'import-field', autocomplete: 'off', spellcheck: 'false', 'aria-invalid': imp.error ? 'true' : null, 'aria-describedby': 'import-msg', value: imp.draft, oninput: (e) => actions.setImportDraft(e.target.value) }),
         h('button', { type: 'submit', class: 'btn btn-grey', 'data-fk': 'import-btn', text: 'Import' }),
+        h('button', { type: 'button', class: 'btn btn-grey', 'data-fk': 'import-close', onclick: actions.closeImport, text: 'Close' }),
       ),
     ),
     h(
@@ -79,7 +81,9 @@ export function importSection(state, actions) {
       imp.error ? h('p', { class: 'roster-error', role: 'alert', text: imp.error }) : null,
       pending?.kind === 'confirm' ? confirmPrompt(state, actions, pending) : null,
       pending?.kind === 'whose' ? whosePrompt(state, actions, pending) : null,
-      imp.message ? h('p', { class: 'visitor-saved', role: 'status', text: imp.message }) : null,
+      imp.message
+        ? h('p', { class: 'visitor-saved', role: 'status' }, imp.message, state.view !== 'builds' ? h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'import-view', onclick: actions.viewImported, text: 'View' }) : null)
+        : null,
       imp.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
     ),
   );

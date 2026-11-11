@@ -51,7 +51,9 @@ const state = {
   expanded: new Set(),
   // link: an opened team link, null or { name, members, confirming }; confirming shows the "Replace my team" prompt.
   team: { link: null },
-  // import: the import box. pending is null, { kind: 'confirm', parsed, summary } or { kind: 'whose', parsed, nameDraft, error }.
+  // True while the import panel under the header is open.
+  importOpen: false,
+  // import: the import panel's draft, feedback and pending prompt. pending is null, { kind: 'confirm', parsed, summary } or { kind: 'whose', parsed, nameDraft, error }.
   list: { editing: false, filter: '', import: freshImport() },
   // The person cards' form region: form is null or { kind: 'add' | 'menu' | 'rename' | 'delete' | 'save', draft, error }; message is the last outcome, announced politely.
   cards: { form: null, message: '' },
@@ -222,9 +224,13 @@ function importSummary(parsed, person = state.people.me) {
 
 const focusFk = (key) => document.querySelector(`[data-fk="${key}"]`)?.focus({ preventScroll: true });
 
+// After a successful import: the selected person's card on Builds, else the panel's View button.
+const focusImported = () => focusFk(state.view === 'builds' ? `card-${state.selectedId}` : 'import-view');
+
 const noticeTexts = (notices) => notices.map((n) => n.message);
 
-// Shows the person an import just wrote: selected, on their own class, with the entry for them; the message names the outcome.
+// Shows the person an import just wrote: selected, on their own class, with the entry for them on Builds; Team and Help keep their
+// page and address. The message names the outcome.
 function showImported(id, before, message, notices) {
   const moved = before !== id || Boolean(state.temp || state.pending || state.unsaved);
   clearTransient();
@@ -237,7 +243,7 @@ function showImported(id, before, message, notices) {
   state.notices = [];
   state.copy = null;
   state.cards = { form: null, message: '' };
-  writeEntry(moved);
+  if (state.view === 'builds') writeEntry(moved);
   state.list.import = { ...freshImport(), message, notices: noticeTexts(notices) };
 }
 
@@ -344,6 +350,7 @@ const actions = {
     }
     if (target.kind === 'team') {
       state.list.import = freshImport();
+      state.importOpen = false;
       pushPath(window, target.path);
       syncFromLocation();
       return paint();
@@ -356,11 +363,13 @@ const actions = {
         return focusFk('import-yes');
       }
       applyOwn(r);
-      return paint();
+      paint();
+      return focusImported();
     }
     if (target.kind === 'person' || target.kind === 'create') {
       imp.error = applyToPerson(r, target.kind === 'person' ? { id: target.id } : { name: target.name });
-      return paint();
+      paint();
+      return imp.error ? null : focusImported();
     }
     imp.pending = { kind: 'whose', parsed: r, nameDraft: target.name, error: null };
     paint();
@@ -372,7 +381,7 @@ const actions = {
     if (p?.kind !== 'confirm') return;
     applyOwn(p.parsed);
     paint();
-    focusFk('import-field');
+    focusImported();
   },
   cancelImport() {
     state.list.import.pending = null;
@@ -394,7 +403,7 @@ const actions = {
     }
     applyOwn(p.parsed);
     paint();
-    focusFk('import-field');
+    focusImported();
   },
   // "Save as": a saved person's name updates that person, another valid name creates one, and my own name points to Mine.
   importAs(text) {
@@ -409,7 +418,7 @@ const actions = {
     else p.error = saved ? null : state.people.nameProblem(null, name);
     if (!p.error) p.error = applyToPerson(p.parsed, saved ? { id: saved.id } : { name });
     paint();
-    if (!p.error) focusFk('import-field');
+    if (!p.error) focusImported();
   },
   setTeamNameDraft(name) {
     state.people.renameTeam(name);
@@ -488,10 +497,28 @@ const actions = {
     replacePath(window, '/team');
     paint();
   },
-  // Opens the Builds page and focuses the import box.
+  // Opens the import panel in place and focuses its field.
   openImport() {
-    actions.setView('builds');
+    state.importOpen = true;
+    paint();
     focusFk('import-field');
+  },
+  toggleImport() {
+    if (state.importOpen) return actions.closeImport();
+    actions.openImport();
+  },
+  // Closes the panel, drops its prompt and feedback (the typed text stays) and returns focus to the Import button.
+  closeImport() {
+    state.importOpen = false;
+    Object.assign(state.list.import, { pending: null, message: null, error: null, notices: [] });
+    paint();
+    focusFk('nav-import');
+  },
+  // The success message's View: closes the panel and shows the imported person on Builds.
+  viewImported() {
+    state.importOpen = false;
+    state.list.import = freshImport();
+    actions.setView('builds');
   },
   // Opening class Edit discards an unsaved build; a temporary person is never edited.
   setEditing(value) {

@@ -525,7 +525,8 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .field-msg:empty { display: none; }
 .claim-prompt { display: grid; gap: 6px; }
 .claim-prompt .roster-row { margin-bottom: 0; }
-.import { margin-bottom: 14px; }
+.import-panel { margin-bottom: 14px; }
+.link-btn { padding: 0; border: 0; background: none; font: inherit; color: var(--text); font-weight: 900; text-decoration: underline; cursor: pointer; }
 .import-form .roster-row { margin-bottom: 6px; }
 .import-form .roster-field, .import-save .roster-field { letter-spacing: 0.02em; font-weight: 700; }
 .import-prompt, .import-save { grid-template-columns: minmax(0, 1fr); }

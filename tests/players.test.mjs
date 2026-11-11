@@ -27,7 +27,9 @@ test('nameProblem: format first, then my own name in any case, else null', () =>
   assert.equal(nameProblem('b', 'fotios'), NAME_RULE);
   assert.equal(nameProblem('', ''), NAME_RULE);
   assert.equal(nameProblem('FOTIOS', 'fotios'), SELF_NAME);
-  assert.match(SELF_NAME, /Builds page/);
+  assert.match(SELF_NAME, /Import/);
+  assert.match(SELF_NAME, /Mine/);
+  assert.doesNotMatch(SELF_NAME, /Builds page/);
   assert.equal(nameProblem('bob', 'fotios'), null);
   assert.equal(nameProblem('fotios', ''), null);
 });
