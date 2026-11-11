@@ -52,7 +52,9 @@ const state = {
   // link: an opened team link, null or { name, members, confirming }; confirming shows the "Replace my team" prompt.
   team: { link: null },
   // import: the import box. pending is null, { kind: 'confirm', parsed, summary } or { kind: 'whose', parsed, nameDraft, error }.
-  list: { editing: false, filter: '', import: freshImport(), nameEditing: false, nameDraft: null, nameError: null },
+  list: { editing: false, filter: '', import: freshImport() },
+  // The person cards' form region: form is null or { kind: 'add' | 'menu' | 'rename' | 'delete' | 'save', draft, error }; message is the last outcome, announced politely.
+  cards: { form: null, message: '' },
 };
 
 const classes = () => state.data.classes;
@@ -148,6 +150,7 @@ function syncFromLocation() {
   state.pending = null;
   state.unsaved = null;
   state.copy = null;
+  state.cards = { form: null, message: '' };
   if (path === '/help' || path === '/help/') {
     state.view = 'help';
     state.notices = [];
@@ -233,6 +236,7 @@ function showImported(id, before, message, notices) {
   state.expanded.clear();
   state.notices = [];
   state.copy = null;
+  state.cards = { form: null, message: '' };
   writeEntry(moved);
   state.list.import = { ...freshImport(), message, notices: noticeTexts(notices) };
 }
@@ -258,6 +262,29 @@ function applyToPerson(parsed, target) {
   return null;
 }
 
+// Shows a rejected card form's error inside the region and keeps the field focused.
+function failCardForm(error) {
+  state.cards.form.error = error;
+  paint();
+  focusFk('card-name');
+}
+
+// Selects a person a card form just created or saved, on their own class, with their entry; the message names the outcome.
+function showPerson(id, message) {
+  clearTransient();
+  state.selectedId = id;
+  state.people.select(id);
+  state.baseCode = baseFor(state.people.get(id));
+  state.list.editing = false;
+  state.loadoutEditing = false;
+  state.expanded.clear();
+  state.notices = [];
+  state.copy = null;
+  state.cards = { form: null, message };
+  writeEntry(true);
+  paint();
+}
+
 const actions = {
   retry: () => load(),
   // Team has its own URL; leaving it returns to the selected person's URL.
@@ -280,23 +307,6 @@ const actions = {
       state.unsaved = null;
       writeEntry(true);
     }
-    paint();
-  },
-  // Opens the You panel's username input on the Builds page and focuses it.
-  openUsername() {
-    state.list.nameEditing = true;
-    actions.setView('builds');
-    focusUsername();
-  },
-  editUsername() {
-    state.list.nameEditing = true;
-    paint();
-    focusUsername();
-  },
-  cancelEditUsername() {
-    state.list.nameEditing = false;
-    state.list.nameDraft = null;
-    state.list.nameError = null;
     paint();
   },
   // Draft setters keep typed text in state without painting; a draft change while a prompt is open dismisses the prompt, which must never act on other text than it shows.
@@ -400,9 +410,6 @@ const actions = {
     if (!p.error) p.error = applyToPerson(p.parsed, saved ? { id: saved.id } : { name });
     paint();
     if (!p.error) focusFk('import-field');
-  },
-  setNameDraft(text) {
-    state.list.nameDraft = text;
   },
   setTeamNameDraft(name) {
     state.people.renameTeam(name);
@@ -625,24 +632,8 @@ const actions = {
   shareBlock,
   copyLink: () => copyText(actions.currentUrl(), 'copied'),
   copyCode: () => copyText(actions.currentCode(), 'code-copied'),
-  // Saves Me's name on change. An invalid or taken name shows an inline error and is not saved.
-  setMe(text) {
-    const name = text.trim();
-    state.list.nameDraft = name;
-    state.list.nameError = null;
-    const problem = state.people.nameProblem(ME_ID, name);
-    if (problem) {
-      state.list.nameError = problem;
-    } else {
-      state.people.rename(ME_ID, name);
-      state.list.nameDraft = null;
-      state.list.nameEditing = false;
-      if (state.view === 'builds' && state.selectedId === ME_ID && !state.temp && !state.pending && !state.unsaved) writeEntry(false);
-    }
-    paint();
-  },
   // Selects a saved person: pushes their entry and shows their own class. Anything pending or temporary is dropped.
-  viewPlayer(id) {
+  selectPerson(id) {
     if (!state.people.get(id)) return paint();
     if (id === state.selectedId && !state.temp && !state.pending && !state.unsaved) return paint();
     clearTransient();
@@ -654,16 +645,104 @@ const actions = {
     state.expanded.clear();
     state.copy = null;
     state.notices = [];
+    state.cards = { form: null, message: '' };
     writeEntry(true);
     paint();
   },
+  // Opens or closes the selected card's edit menu, focusing its first item.
+  toggleCardMenu() {
+    if (state.temp) return;
+    if (['menu', 'rename', 'delete'].includes(state.cards.form?.kind)) return actions.closeCardForm();
+    state.cards = { form: { kind: 'menu', draft: '', error: null }, message: '' };
+    paint();
+    focusFk('menu-rename');
+  },
+  // Opens a form in the form region; the "+" card and the temporary card's Save toggle theirs.
+  openCardForm(kind) {
+    if (state.cards.form?.kind === kind && (kind === 'add' || kind === 'save')) return actions.closeCardForm();
+    if (kind === 'save' ? !state.temp : kind === 'add' ? false : state.temp || (kind === 'delete' && state.selectedId === ME_ID)) return;
+    const draft = kind === 'rename' ? state.shown.name : kind === 'save' ? state.temp.record.name : '';
+    state.cards = { form: { kind, draft, error: null }, message: '' };
+    paint();
+    focusFk(kind === 'delete' ? 'delete-no' : 'card-name');
+    if (kind !== 'delete') document.querySelector('[data-fk="card-name"]')?.select();
+  },
+  // Draft text stays in state without painting; typing clears the form's error.
+  setCardDraft(text) {
+    const form = state.cards.form;
+    if (!form) return;
+    form.draft = text;
+    if (form.error) {
+      form.error = null;
+      paint();
+    }
+  },
+  // Closes the form region and returns focus to the control that opened it.
+  closeCardForm() {
+    const kind = state.cards.form?.kind;
+    if (!kind) return;
+    state.cards.form = null;
+    paint();
+    focusFk(kind === 'add' ? 'card-add' : kind === 'save' ? 'card-temp-save' : 'card-menu');
+  },
+  // Create, Rename or the temporary card's Save: a rejected name shows its error in the region and changes nothing.
+  submitCardForm(text) {
+    const form = state.cards.form;
+    if (!form) return;
+    const name = text.trim();
+    form.draft = text;
+    if (form.kind === 'rename') {
+      const r = state.people.rename(state.selectedId, name);
+      if (r.error) return failCardForm(r.error);
+      state.cards = { form: null, message: name ? `Renamed to ${name}` : 'Name cleared' };
+      if (!state.temp && !state.pending && !state.unsaved) writeEntry(false);
+      paint();
+      return focusFk('card-menu');
+    }
+    if (form.kind === 'add') {
+      const r = state.people.add(name);
+      if (r.error) return failCardForm(r.error);
+      showPerson(r.id, `Created ${name}`);
+      return focusFk(`card-${r.id}`);
+    }
+    if (form.kind === 'save') {
+      const saved = name ? state.people.byName(name) : null;
+      const me = state.people.me;
+      if (!name) return failCardForm('Enter a name for this person');
+      if (me.name && sameName(name, me.name)) return failCardForm("That's your name. Select your own card to update your build.");
+      if (!saved) {
+        const problem = state.people.nameProblem(null, name);
+        if (problem) return failCardForm(problem);
+      }
+      const { record } = state.temp;
+      const parsed = { player: record, hasRoster: record.rosterKnown, hasSets: false, isLink: true };
+      const r = state.people.applyImport(parsed, saved ? { id: saved.id } : { name });
+      if (r.error) return failCardForm(r.error);
+      showPerson(r.id, `Saved ${state.people.get(r.id).name}`);
+      return focusFk(`card-${r.id}`);
+    }
+  },
+  // Yes on the delete confirm: the person and their team place are gone and Me is shown.
+  confirmDelete() {
+    const person = state.people.get(state.selectedId);
+    if (state.cards.form?.kind !== 'delete' || !person) return;
+    const r = state.people.remove(person.id);
+    if (r.error) return;
+    clearTransient();
+    state.selectedId = ME_ID;
+    state.people.select(ME_ID);
+    state.baseCode = baseFor(state.people.me);
+    state.list.editing = false;
+    state.loadoutEditing = false;
+    state.expanded.clear();
+    state.copy = null;
+    state.notices = [];
+    state.cards = { form: null, message: `Deleted ${person.name}` };
+    writeEntry(false);
+    paint();
+    focusFk(`card-${ME_ID}`);
+  },
 };
-
-function focusUsername() {
-  const input = document.querySelector('[data-fk="username"]');
-  input?.focus();
-  input?.select();
-}
 
 let copyTimer = null;
 
@@ -719,7 +798,10 @@ window.addEventListener('storage', (e) => {
   if (state.status !== 'ready') return;
   if (e.key !== null && e.key !== 'dtec:people') return;
   state.people = createPeopleStore(storage, state.data.classes);
-  if (!state.people.get(state.selectedId)) state.selectedId = ME_ID;
+  if (!state.people.get(state.selectedId)) {
+    state.selectedId = ME_ID;
+    state.cards.form = null;
+  }
   if (state.pending && !state.people.get(state.pending.id)) state.pending = null;
   if (state.unsaved && !state.people.get(state.unsaved.id)) state.unsaved = null;
   paint();

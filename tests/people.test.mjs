@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createPeopleStore, saveBuild, isUnsavedBuild, buildRaises, nameProblem, NAME_TAKEN } from '../src/people.mjs';
+import { createPeopleStore, saveBuild, isUnsavedBuild, buildRaises, nameProblem, cardModel, teamAddOffer, NAME_TAKEN } from '../src/people.mjs';
 import { ownImport, NAME_RULE } from '../src/players.mjs';
 import { parseImport } from '../src/code.mjs';
 
@@ -346,4 +346,20 @@ test('replaceLevels swaps one person classes, keeps their sets and makes the ros
   assert.equal(s.get('p1').rosterKnown, true);
   assert.deepEqual(s.get('p2').levels, {});
   assert.ok(s.replaceLevels('p9', {}).error);
+});
+
+test('the card model names the person and their class, falling back to the first owned class', () => {
+  const me = person('me', '');
+  assert.deepEqual(cardModel(classes, me), { id: 'me', label: 'Me', code: null, level: 0, empty: true });
+  assert.equal(cardModel(classes, { ...me, name: 'Fotios' }).label, 'Fotios');
+  assert.deepEqual(cardModel(classes, person('p1', 'Ann', { levels: { [MI]: 3 } })), { id: 'p1', label: 'Ann', code: MI, level: 3, empty: false });
+  assert.deepEqual(cardModel(classes, person('p2', 'Bob', { base: SC, levels: { [MI]: 3 } })), { id: 'p2', label: 'Bob', code: MI, level: 3, empty: false });
+  assert.deepEqual(cardModel(classes, person('p3', 'Bob', { base: SC, levels: { [SC]: 2 } })), { id: 'p3', label: 'Bob', code: SC, level: 2, empty: false });
+});
+
+test('the add-to-team offer lists named people with a class and says why the others are left out', () => {
+  const people = [person('me', ''), person('p1', 'Ann'), person('p2', 'Bob', { levels: { [MI]: 1 } }), person('p3', 'Cy', { levels: { [SC]: 1 } })];
+  const offer = teamAddOffer(people, { name: '', members: [{ id: 'p3', base: SC }] });
+  assert.deepEqual(offer.candidates.map((p) => p.id), ['p2']);
+  assert.deepEqual(offer.left, [{ id: 'me', label: 'Me', reason: 'no name' }, { id: 'p1', label: 'Ann', reason: 'no classes' }]);
 });

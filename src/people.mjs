@@ -4,7 +4,7 @@
 
 import { normalizeSet } from './passives.mjs';
 import { cleanMax } from './owned.mjs';
-import { isValidName, sameName, cleanTeamName, ownImport, MAX_MEMBERS, NAME_RULE } from './players.mjs';
+import { isValidName, sameName, cleanTeamName, ownImport, ownedBase, MAX_MEMBERS, NAME_RULE } from './players.mjs';
 
 const STORAGE_KEY = 'dtec:people';
 const STORE_VERSION = 1;
@@ -80,6 +80,24 @@ export function nameProblem(people, team, id, name) {
   if (!isValidName(name)) return NAME_RULE;
   if (people.some((p) => p.id !== id && p.name && sameName(p.name, name))) return NAME_TAKEN;
   return null;
+}
+
+// Pure: what a person card shows. The class is the stored base while owned, else the first owned class; a person who owns none is empty.
+// An unnamed Me reads "Me".
+export function cardModel(classes, person) {
+  const code = ownedBase(classes, person, person.base);
+  return { id: person.id, label: person.name || (person.id === ME_ID ? 'Me' : ''), code, level: code ? person.levels[code] : 0, empty: !code };
+}
+
+// Pure: who the Team page can add: named people who own a class and are not on the team, and why each other person off the team is left out.
+export function teamAddOffer(people, team) {
+  const onTeam = new Set(team.members.map((m) => m.id));
+  const off = people.filter((p) => !onTeam.has(p.id));
+  const reason = (p) => (!p.name ? 'no name' : Object.keys(p.levels).length ? null : 'no classes');
+  return {
+    candidates: off.filter((p) => !reason(p)),
+    left: off.filter(reason).map((p) => ({ id: p.id, label: p.name || 'Me', reason: reason(p) })),
+  };
 }
 
 // Pure: the person after saving a build { base, level, passives }: the base class and every passive class are owned at least at the

@@ -5,6 +5,8 @@ import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
 import { importSection, replacesText } from './render-import.mjs';
+import { cardsPanel, revealCard } from './render-people.mjs';
+import { teamAddOffer } from './people.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -495,71 +497,9 @@ function loadout(state, actions) {
   );
 }
 
-// Viewing select: Me first, then saved people A to Z, with the temporary link's player right after Me.
-// The temporary option's value starts with a unit separator control character, which no person id contains.
-const TEMP_OPTION = '\u001ftemp';
-
-function viewingField(state, actions) {
-  const { temp } = state;
-  const current = temp ? TEMP_OPTION : state.selectedId;
-  const selected = (v) => (v === current ? true : null);
-  const [me, ...others] = state.people.people;
-  return h(
-    'div',
-    { class: 'viewing' },
-    h('label', { class: 'field-label', for: 'viewing', text: 'Viewing' }),
-    h(
-      'select',
-      { id: 'viewing', class: 'slot-select', 'data-fk': 'viewing', onchange: (e) => (e.target.value === TEMP_OPTION ? null : actions.viewPlayer(e.target.value)) },
-      h('option', { value: me.id, selected: selected(me.id), text: 'Me' }),
-      temp ? h('option', { value: TEMP_OPTION, selected: selected(TEMP_OPTION), text: temp.record.name }) : null,
-      others.map((p) => h('option', { value: p.id, selected: selected(p.id), text: p.name })),
-    ),
-  );
-}
-
-// Username: a saved name shows as text with an Edit button; otherwise (or while editing) the input saves on Save or Enter.
-// An invalid or taken name shows an inline error.
-function usernameField(state, actions) {
-  const { list } = state;
-  const me = state.people.me.name;
-  const editing = list.nameEditing || !me || list.nameDraft != null;
-  const msgId = 'username-msg';
-  const save = (form) => actions.setMe(form.elements.username.value);
-  return h(
-    'div',
-    { class: 'username' },
-    editing
-      ? h(
-          'form',
-          { class: 'username-form', onsubmit: (e) => (e.preventDefault(), save(e.target)), onkeydown: (e) => (e.key === 'Escape' && me ? (e.preventDefault(), actions.cancelEditUsername()) : null) },
-          h('label', { class: 'field-label', for: 'username', text: 'Username' }),
-          h(
-            'div',
-            { class: 'roster-row' },
-            h('input', { type: 'text', id: 'username', name: 'username', class: 'roster-field', 'data-fk': 'username', autocomplete: 'off', spellcheck: 'false', maxlength: '40', placeholder: 'Optional', 'aria-invalid': list.nameError ? 'true' : null, 'aria-describedby': msgId, value: list.nameDraft ?? me, oninput: (e) => actions.setNameDraft(e.target.value) }),
-            h('button', { type: 'submit', class: 'btn btn-green btn-small', 'data-fk': 'username-save', text: 'Save' }),
-            me ? h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-cancel', onclick: actions.cancelEditUsername, text: 'Cancel' }) : null,
-          ),
-        )
-      : h(
-          'div',
-          { class: 'identity-row' },
-          h('span', { class: 'field-label', text: 'Username' }),
-          h('span', { class: 'identity-name', 'data-fk': 'username-text', text: me }),
-          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-edit', 'aria-label': 'Edit username', onclick: actions.editUsername, text: '✎' }),
-        ),
-    h(
-      'div',
-      { id: msgId, class: 'field-msg', 'aria-live': 'polite' },
-      list.nameError ? h('p', { class: 'roster-error', role: 'alert', text: list.nameError }) : null,
-      !me && !list.nameError ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
-    ),
-  );
-}
-
+// The cards panel with the inline import box in its own panel, so the box can move out on its own.
 function rosterSection(state, actions) {
-  return h('section', { class: 'panel roster', 'aria-label': 'You' }, usernameField(state, actions), viewingField(state, actions), importSection(state, actions));
+  return [cardsPanel(state, actions), h('section', { class: 'panel import-slot', 'aria-label': 'Import' }, importSection(state, actions))];
 }
 
 // The empty class list's sentence: yours, or the selected person's.
@@ -578,7 +518,7 @@ function classesView(state, actions) {
     h(
       'div',
       { class: 'classes-side' },
-      rosterSection(state, actions),
+      ...rosterSection(state, actions),
       h(
         'section',
         { class: 'panel classes-panel', 'aria-label': 'Classes' },
@@ -634,7 +574,7 @@ function meRow(state, actions) {
     'li',
     { class: 'player-row is-me' },
     h('span', { class: 'player-name', text: 'Me' }),
-    h('a', { class: 'player-setname', 'data-fk': 'set-username', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.openUsername()), text: 'Set your username' }),
+    h('a', { class: 'player-setname', 'data-fk': 'set-username', href: new URL('.', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('builds')), text: 'Name yourself with Rename on your card' }),
   );
 }
 
@@ -688,8 +628,7 @@ function memberHeader(state, actions, { id, name, player, base }, { readOnly }) 
 
 // The "+" header cell: a native select listing named people who own a class and are not on the team.
 function teamAddSelect(state, actions, team) {
-  const onTeam = new Set(team.members.map((m) => m.id));
-  const candidates = state.people.people.filter((p) => p.name && Object.keys(p.levels).length && !onTeam.has(p.id));
+  const { candidates } = teamAddOffer(state.people.people, team);
   const full = team.members.length >= MAX_MEMBERS;
   const disabled = full || !candidates.length;
   const reason = full ? 'Team is full (8)' : 'All players added';
@@ -708,6 +647,7 @@ function teamPanel(state, actions, members) {
   const team = state.people.team;
   const teamBlock = actions.teamShareBlock();
   const add = teamAddSelect(state, actions, team);
+  const leftOut = teamAddOffer(state.people.people, team).left;
   const empty = h(
     'p',
     { class: 'empty' },
@@ -736,6 +676,7 @@ function teamPanel(state, actions, members) {
       h('input', { type: 'text', id: 'team-name', class: 'roster-field', 'data-fk': 'team-name', autocomplete: 'off', maxlength: '40', value: team.name, oninput: (e) => actions.setTeamNameDraft(e.target.value), onchange: (e) => actions.renameTeam(e.target.value) }),
     ),
     teamMatrix(state, teamInputs(state, members), members.map((m) => memberHeader(state, actions, m, { readOnly: false })), { add: add.el, empty }),
+    leftOut.length ? h('p', { class: 'roster-notice team-left-out', text: `Not offered by the + column: ${leftOut.map((p) => `${p.label} (${p.reason})`).join(', ')}.` }) : null,
   );
 }
 
@@ -948,4 +889,5 @@ export function render(root, state, actions) {
     state.copyFocus = false;
     root.querySelector('.copy-fallback')?.select();
   } else restoreFocus(root, key);
+  if (state.view === 'builds') revealCard(root);
 }
