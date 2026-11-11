@@ -105,7 +105,7 @@ Node only, no dependencies. `BASE_PATH` is the sub-path the site is served under
 
 ## Deploy
 
-Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served at the domain root, with unknown paths answered by `index.html` (status 200) so build and team links open directly. Cloudflare Workers Builds deploys every push to `main`. One-time setup: in the Cloudflare dashboard, Workers & Pages, Create, Import a repository, pick this repo, build command `npm run build`, deploy command `npx wrangler deploy`.
+Cloudflare Workers static assets, configured in `wrangler.jsonc`: `dist/` served at the domain root, with unknown paths answered by `index.html` (status 200) so build and team links open directly. Every push to `main` runs the CI workflow (`.github/workflows/ci.yml`): data check, tests, and build, then a `deploy` job that runs `wrangler deploy` once they pass. It needs two repository secrets: `CLOUDFLARE_API_TOKEN` (a token from the "Edit Cloudflare Workers" template) and `CLOUDFLARE_ACCOUNT_ID`. To deploy by hand, run `npm run build && npx wrangler deploy`.
 
 `.github/workflows/ci.yml` runs check, tests and build on pull requests and pushes to `main`.
 
