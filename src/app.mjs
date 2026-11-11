@@ -3,7 +3,7 @@ import { render } from './render.mjs';
 import { savedSlots, toSlots, fromSlots } from './passives.mjs';
 import { parseShare, parseImport, serializeBuildCode, serializeShare, classByCode } from './code.mjs';
 import { isValidName, ownImport, ownedBase as ownedBaseCode, NAME_RULE } from './players.mjs';
-import { createPeopleStore, isUnsavedBuild, buildRaises, ME_ID } from './people.mjs';
+import { createPeopleStore, isUnsavedBuild, buildRaises, saveAsTarget, ME_ID } from './people.mjs';
 import { resolveLocation, importTarget, shownBase } from './selection.mjs';
 import { parseTeamLink, serializeTeamLink, sameTeam } from './team.mjs';
 
@@ -32,10 +32,12 @@ const state = {
   pending: null,
   // A nameless URL build shown on a person until Save: { id, build }.
   unsaved: null,
-  // Derived on every paint from the selected person: the record shown, the class and passives shown, and what Save would raise.
+  // The open Save as form for the unsaved build: { draft, error }; null while closed and whenever there is no unsaved build.
+  saveAs: null,
+  // Derived on every paint from the selected person: the record shown, the class and passives shown, and the unsaved build's own class levels.
   shown: null,
   build: { base: null, slots: [] },
-  unsavedRaises: [],
+  unsavedLevels: [],
   notices: [],
   passiveFilter: '',
   // True while the loadout panel shows the passive picker.
@@ -72,7 +74,8 @@ function saveAsError(name, selfMessage) {
   return state.people.byName(name) ? null : state.people.nameProblem(null, name);
 }
 
-// Recomputes what the page shows from the selected person. An unsaved build is dropped once saving it would change nothing.
+// Recomputes what the page shows from the selected person. An unsaved build is dropped once saving it would change nothing, and the
+// Save as form goes with it.
 function derive() {
   const person = shownPerson();
   const u = state.unsaved;
@@ -83,7 +86,8 @@ function derive() {
   if (base) slots = build?.passives.length ? toSlots(classes(), build.passives) : savedSlots(classes(), person, base.code);
   state.shown = person;
   state.build = { base, slots };
-  state.unsavedRaises = state.unsaved ? buildRaises(classes(), person, state.unsaved.build) : [];
+  state.unsavedLevels = state.unsaved ? buildRaises(classes(), { levels: {}, sets: {} }, state.unsaved.build) : [];
+  if (!state.unsaved) state.saveAs = null;
 }
 
 const paint = () => {
@@ -600,16 +604,44 @@ const actions = {
     state.people.setUnlockedOnly(value);
     paint();
   },
-  // Saves the unsaved build onto its person, then shows their share path with Copy link back.
+  // Save on an unsaved build opens the Save as form with an empty name; nothing is written yet.
   saveBuild() {
+    if (!state.unsaved) return;
+    state.saveAs = { draft: '', error: '' };
+    paint();
+    focusFk('save-as-name');
+  },
+  // The draft is kept in state without painting; typing clears the shown error.
+  setSaveAsDraft(text) {
+    if (!state.saveAs) return;
+    state.saveAs.draft = text;
+    if (!state.saveAs.error) return;
+    state.saveAs.error = '';
+    paint();
+    focusFk('save-as-name');
+  },
+  // Escape or Cancel closes the form and returns focus to Save.
+  cancelSaveAs() {
+    if (!state.saveAs) return;
+    state.saveAs = null;
+    paint();
+    focusFk('build-save');
+  },
+  // Saves the unsaved build onto the person the text names (a new name creates them), selects that person and shows their share
+  // path with Copy link back. A rejected name shows its error in the form and writes nothing.
+  submitSaveAs(text) {
     const u = state.unsaved;
-    if (!u) return;
-    const r = state.people.saveBuild(u.id, u.build);
-    if (r.error) return;
-    state.unsaved = null;
-    state.baseCode = u.build.base;
-    state.copy = null;
-    state.notices = [];
+    if (!u || !state.saveAs) return;
+    state.saveAs.draft = text;
+    const target = saveAsTarget(state.people, text);
+    const r = target.error ? target : state.people.saveBuildAs(target, u.build);
+    if (r.error) {
+      state.saveAs.error = r.error;
+      paint();
+      return focusFk('save-as-name');
+    }
+    state.saveAs = null;
+    switchTo(r.id);
     writeEntry(false);
     paint();
     focusFk('copy');

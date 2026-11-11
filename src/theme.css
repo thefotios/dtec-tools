@@ -528,13 +528,14 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .import-panel { margin-bottom: 14px; }
 .link-btn { padding: 0; border: 0; background: none; font: inherit; color: var(--text); font-weight: 900; text-decoration: underline; cursor: pointer; }
 .import-form .roster-row { margin-bottom: 6px; }
-.import-form .roster-field, .import-save .roster-field { letter-spacing: 0.02em; font-weight: 700; }
-.import-prompt, .import-save { grid-template-columns: minmax(0, 1fr); }
+.import-form .roster-field, .import-save .roster-field, .save-as .roster-field { letter-spacing: 0.02em; font-weight: 700; }
+.import-prompt, .import-save, .save-as { grid-template-columns: minmax(0, 1fr); }
 .import-prompt .roster-row { flex-wrap: wrap; }
 .import-prompt { padding: 10px; border: 2px solid var(--panel-border); border-radius: 10px; background: var(--bg); }
 .import-prompt-title { font-weight: 900; color: var(--text); }
-.import-save { display: grid; gap: 4px; }
-.import-save .roster-row { margin-bottom: 0; }
+.import-save, .save-as { display: grid; gap: 4px; }
+.import-save .roster-row, .save-as .roster-row { margin-bottom: 0; }
+.save-as { margin: 0 0 10px; }
 .visitor-saved .btn { margin-left: 6px; vertical-align: middle; }
 .visitor-saved { color: var(--accent-green); padding: 4px 10px; border-left: 4px solid var(--accent-green); }
 .visitor-team-link { color: var(--text); font-weight: 900; }

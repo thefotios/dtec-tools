@@ -123,6 +123,18 @@ export function buildRaises(classes, person, build) {
   return classes.filter((c) => (next.levels[c.code] ?? 0) > (person.levels[c.code] ?? 0)).map((c) => ({ code: c.code, level: next.levels[c.code] }));
 }
 
+// Pure: who the Save as form's text names: { id } for a saved person (case ignored) or Me ("me" or Me's name), { create } for a valid
+// new name, else { error }.
+export function saveAsTarget(store, text) {
+  const name = String(text ?? '').trim();
+  if (!name) return { error: 'Enter a name' };
+  const found = store.byName(name);
+  if (found) return { id: found.id };
+  if (lower(name) === 'me') return { id: ME_ID };
+  const problem = store.nameProblem(null, name);
+  return problem ? { error: problem } : { create: name };
+}
+
 // Reads and writes never throw: a blocked store degrades to in-memory state. Only the people key is touched.
 export function createPeopleStore(storage, classes) {
   let { seq, people, team, selected, unlockedOnly } = load(storage, classes);
@@ -266,6 +278,17 @@ export function createPeopleStore(storage, classes) {
       if (next === person) return { error: 'Unknown base class' };
       patch(id, { base: next.base, levels: next.levels, sets: next.sets });
       return { ok: true };
+    },
+    // Saves a build onto { id }, or onto a new person named { create }; returns { ok, id }. A rejected name creates no one.
+    saveBuildAs(target, build) {
+      let id = target.id;
+      if (target.create !== undefined) {
+        const added = this.add(target.create);
+        if (added.error) return added;
+        id = added.id;
+      }
+      const r = this.saveBuild(id, build);
+      return r.error ? r : { ok: true, id };
     },
     get team() {
       return team;

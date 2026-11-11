@@ -387,20 +387,40 @@ function levelList(base, owned) {
   );
 }
 
-// What Save would raise, in words with the class shown first: "Bounty Hunter 5 and Miner 3".
-function raisesText(state) {
+// The unsaved build's own classes and levels in words with the class shown first: "Bounty Hunter 5 and Miner 3".
+function buildLevelsText(state) {
   const first = state.build.base.code;
-  const ordered = [...state.unsavedRaises.filter((r) => r.code === first), ...state.unsavedRaises.filter((r) => r.code !== first)];
-  const named = ordered.map((r) => `${state.data.classes.find((c) => c.code === r.code).name} ${r.level}`);
-  return named.length ? listOf(named) : `${state.build.base.name} passives`;
+  const ordered = [...state.unsavedLevels.filter((r) => r.code === first), ...state.unsavedLevels.filter((r) => r.code !== first)];
+  return listOf(ordered.map((r) => `${state.data.classes.find((c) => c.code === r.code).name} ${r.level}`));
 }
 
 // Save and its label replace the copy actions while the shown build is not what the person has stored.
 function saveControls(state, actions) {
   return [
-    h('span', { class: 'unsaved-label', text: `Unsaved build: ${raisesText(state)}` }),
+    h('span', { class: 'unsaved-label', text: `Unsaved build: ${buildLevelsText(state)}` }),
     h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'build-save', onclick: actions.saveBuild, text: 'Save' }),
   ];
+}
+
+// The Save as form under the panel header: a name field that starts empty with every saved person (and Me) as a suggestion.
+// Enter saves, Escape and Cancel close it.
+function saveAsForm(state, actions) {
+  const { draft, error } = state.saveAs;
+  const names = state.people.people.map((p) => p.name || (p.id === ME_ID ? 'Me' : '')).filter(Boolean);
+  return h(
+    'form',
+    { class: 'save-as', onsubmit: (e) => (e.preventDefault(), actions.submitSaveAs(e.target.elements.name.value)), onkeydown: (e) => (e.key === 'Escape' ? (e.preventDefault(), actions.cancelSaveAs()) : null) },
+    h('label', { class: 'field-label', for: 'save-as-name', text: 'Save as' }),
+    h(
+      'div',
+      { class: 'roster-row' },
+      h('input', { type: 'text', id: 'save-as-name', name: 'name', class: 'roster-field', list: 'save-as-people', 'data-fk': 'save-as-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', 'aria-invalid': error ? 'true' : null, 'aria-describedby': error ? 'save-as-error' : null, value: draft, oninput: (e) => actions.setSaveAsDraft(e.target.value) }),
+      h('datalist', { id: 'save-as-people' }, names.map((n) => h('option', { value: n }))),
+      h('button', { type: 'submit', class: 'btn btn-green btn-small', 'data-fk': 'save-as-submit', text: 'Save' }),
+      h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'save-as-cancel', onclick: actions.cancelSaveAs, text: 'Cancel' }),
+    ),
+    error ? h('p', { class: 'roster-error', id: 'save-as-error', role: 'alert', text: error }) : null,
+  );
 }
 
 // The selected class's five levels; with actions (a saved person's build) its header carries the share buttons, or Save for an unsaved build.
@@ -429,6 +449,7 @@ function basePanel(state, base, owned, actions = null) {
         )
       : title,
     actions && !unsaved ? copyFeedback(state, shareBlock) : null,
+    actions && state.saveAs ? saveAsForm(state, actions) : null,
     levelList(base, owned),
   );
 }
@@ -789,7 +810,7 @@ function helpView(state) {
         h('li', {}, h('strong', { text: 'Copy code' }), ' is a short code that fits in Roblox chat, such as ', code(HELP_SAMPLE), '.'),
       ),
       h('p', {}, 'Opening a link from someone you have not saved shows a temporary card with their name. Tap Save on it to keep them. Opening a link for someone you have saved selects them, and an Update banner offers to apply the newer data.'),
-      h('p', {}, 'A build code typed into the address bar with no name, such as ', code('bo5-mi3'), ', shows that build on the selected person. Save raises their classes to what the build uses (here Bounty Hunter 5 and Miner 3) and keeps any higher level.'),
+      h('p', {}, 'A build code typed into the address bar with no name, such as ', code('bo5-mi3'), ', shows that build on the selected person. Save asks who to save it as: type a name, or pick a saved person (or Me) from the suggestions. A new name adds that person. The person is selected and their classes are raised to what the build uses (here Bounty Hunter 5 and Miner 3); a higher level is never lowered.'),
     ),
     section(
       'Importing',

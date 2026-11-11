@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createPeopleStore, saveBuild, isUnsavedBuild, buildRaises, nameProblem, cardModel, teamAddOffer, NAME_TAKEN } from '../src/people.mjs';
+import { createPeopleStore, saveBuild, isUnsavedBuild, buildRaises, nameProblem, cardModel, teamAddOffer, saveAsTarget, NAME_TAKEN } from '../src/people.mjs';
 import { ownImport, NAME_RULE } from '../src/players.mjs';
 import { parseImport } from '../src/code.mjs';
 
@@ -424,4 +424,38 @@ test('a team holds at most eight members', () => {
   assert.equal(s.team.members.length, 8);
   assert.deepEqual(s.addMember('p9', SC), { error: 'A team holds at most 8 members' });
   assert.equal(s.team.members.length, 8);
+});
+
+test('saveAsTarget resolves the typed name', () => {
+  const { s } = seeded();
+  assert.deepEqual(saveAsTarget(s, ''), { error: 'Enter a name' });
+  assert.deepEqual(saveAsTarget(s, '  '), { error: 'Enter a name' });
+  assert.deepEqual(saveAsTarget(s, 'bOB'), { id: 'p1' });
+  assert.deepEqual(saveAsTarget(s, 'me'), { id: 'me' });
+  assert.deepEqual(saveAsTarget(s, 'ME'), { id: 'me' });
+  assert.deepEqual(saveAsTarget(s, 'Zed'), { create: 'Zed' });
+  assert.deepEqual(saveAsTarget(s, '_x'), { error: NAME_RULE });
+});
+
+test('saveAsTarget matches the name Me holds', () => {
+  const { s } = seeded();
+  s.rename('me', 'Fotios');
+  assert.deepEqual(saveAsTarget(s, 'fotios'), { id: 'me' });
+  assert.deepEqual(saveAsTarget(s, 'Me'), { id: 'me' });
+});
+
+test('saveBuildAs creates a new person with the build and leaves Me alone', () => {
+  const { storage, s } = seeded();
+  const me = JSON.stringify(s.me);
+  const build = { base: BO, level: 5, passives: e([MI, 3]) };
+  const r = s.saveBuildAs({ create: 'Dee' }, build);
+  assert.ok(r.ok);
+  const again = make(storage);
+  const dee = again.byName('Dee');
+  assert.equal(dee.id, r.id);
+  assert.deepEqual(dee.levels, { [MI]: 3, [BO]: 5 });
+  assert.equal(dee.base, BO);
+  assert.equal(JSON.stringify(again.me), me);
+  assert.deepEqual(s.saveBuildAs({ id: 'p1' }, build), { ok: true, id: 'p1' });
+  assert.deepEqual(s.saveBuildAs({ create: '_x' }, build), { error: NAME_RULE });
 });
