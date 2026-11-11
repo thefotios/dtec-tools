@@ -116,7 +116,7 @@ function header(state, actions) {
   return h(
     'header',
     { class: 'app-header' },
-    h('h1', { text: 'Class Combo Viewer' }),
+    h('h1', { text: 'DTEC Build Tool' }),
     h(
       'nav',
       { class: 'app-nav', 'aria-label': 'Sections' },
