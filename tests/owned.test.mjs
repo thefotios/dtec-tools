@@ -23,8 +23,8 @@ const at = (levels) => Object.fromEntries(Object.entries(levels).map(([i, n]) =>
 const MIXED = at({ 16: 4, 22: 3 });
 const KEY = 'class-combo-viewer:owned';
 
-test('fixture assumes 31 classes', () => {
-  assert.equal(classes.length, 31);
+test('fixture assumes 33 classes', () => {
+  assert.equal(classes.length, 33);
 });
 
 test('empty roster encodes to X and decodes to an empty map', () => {
@@ -32,12 +32,12 @@ test('empty roster encodes to X and decodes to an empty map', () => {
   assert.deepEqual(decoded('X'), { owned: {}, notices: [] });
 });
 
-test('examples: sparse roster is 16XF5XD, all classes at level 3 is 31D', () => {
+test('examples: sparse roster is 16XF5XD, all classes at level 3 is 33D', () => {
   assert.equal(encodeRoster(classes, MIXED), '16XF5XD');
   assert.deepEqual(decoded('16XF5XD'), { owned: MIXED, notices: [] });
   const all = Object.fromEntries(classes.map((c) => [c.code, 3]));
-  assert.equal(encodeRoster(classes, all), '31D');
-  assert.deepEqual(decoded('31D').owned, all);
+  assert.equal(encodeRoster(classes, all), '33D');
+  assert.deepEqual(decoded('33D').owned, all);
 });
 
 test('legacy A-prefixed codes are rejected as an invalid character', () => {
@@ -92,7 +92,7 @@ test('aliases: O is 0, I and L are 1', () => {
 });
 
 test('positions beyond the class list are ignored with a notice; a shorter code leaves later classes unowned', () => {
-  const r = decoded('33D');
+  const r = decoded('35D');
   assert.equal(Object.keys(r.owned).length, classes.length);
   assert.equal(r.notices.length, 1);
   assert.match(r.notices[0], /2 extra classes/);

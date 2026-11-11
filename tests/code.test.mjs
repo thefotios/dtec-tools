@@ -124,7 +124,7 @@ test('5: a segment ending in a roster letter that fails to decode is dropped as 
 
 test('5: a second roster is extra and the roster notice for extra classes is kept', () => {
   assert.deepEqual(reasons(parseBuildCode(classes, 'c5-X-D')), ['extra']);
-  assert.deepEqual(reasons(parseBuildCode(classes, 'c5-33D')), ['extra']);
+  assert.deepEqual(reasons(parseBuildCode(classes, 'c5-35D')), ['extra']);
 });
 
 test('5a: ?s= without u parses the set and an empty name', () => {

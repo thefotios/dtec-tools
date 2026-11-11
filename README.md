@@ -44,7 +44,7 @@ Opening your own link with passives, such as `/c5-sc1sal23`, shows the link's pa
 
 ## Roster code
 
-The roster code encodes your marks as a short string. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `15XF` is level 4 on the 16th class (Crafter), and `31D` is every class at level 3. In a link it is the last hyphen segment, as in `/c5-sc1sal23-15XF`.
+The roster code encodes your marks as a short string. It has one symbol per class, in the order of `data/classes.json`, giving the highest owned level: `X` is 0, `B` is 1, `C` is 2, `D` is 3, `F` is 4, `G` is 5. The symbols are consonants only, so codes can't spell words. Like FEN notation, a run of three or more identical symbols is written as a count plus the symbol (`16X`), while runs of one or two stay literal (`XX`). Trailing unowned classes are trimmed, and an empty roster is `X`. For example, `15XF` is level 4 on the 16th class (Crafter), and `33D` is every class at level 3. In a link it is the last hyphen segment, as in `/c5-sc1sal23-15XF`.
 
 Decoding is case-insensitive, ignores spaces, and maps `O` to `0` and `I`/`L` to `1`. Classes past the end of a code count as unowned, so codes stay valid when classes are added. `E` and `U` are reserved as version markers. Invalid text shows an inline error and leaves your marks unchanged.
 

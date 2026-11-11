@@ -92,7 +92,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 04.png"
+      "source": "screenshot 2026-11-11 01.png"
     },
     {
       "code": "rec",
@@ -168,7 +168,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 05.png"
+      "source": "screenshot 2026-11-11 02.png"
     },
     {
       "code": "h",
@@ -222,17 +222,17 @@
           ]
         },
         {
-          "text": "Bandages & Medkits can stack in your toolbar",
+          "text": "Bandages, Medkits & Revive Kits apply instantly",
           "tag": "master",
           "effects": [
             {
-              "stat": "heal_items_stack",
+              "stat": "heal_items_instant",
               "scope": "self"
             }
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 11.png"
+      "source": "screenshot 2026-11-11 07.png"
     },
     {
       "code": "mec",
@@ -257,7 +257,7 @@
           ]
         },
         {
-          "text": "Fuel Storage is -50% off",
+          "text": "Fuel Storage Upgrades are 50% off",
           "effects": [
             {
               "stat": "fuel_storage_discount",
@@ -287,7 +287,7 @@
           ]
         },
         {
-          "text": "Defeating enemies automatically deposits Fuel into the Drill",
+          "text": "Enemies you defeat near the Drill automatically deposit Fuel into it",
           "tag": "master",
           "effects": [
             {
@@ -297,7 +297,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 08.png"
+      "source": "screenshot 2026-11-11 04.png"
     },
     {
       "code": "mer",
@@ -370,7 +370,7 @@
           ]
         },
         {
-          "text": "Defeating enemies automatically sells them into Money Bags",
+          "text": "Enemies you defeat are automatically sold into Money Bags",
           "tag": "master",
           "effects": [
             {
@@ -380,7 +380,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 06.png"
+      "source": "screenshot 2026-11-11 18.png"
     },
     {
       "code": "ra",
@@ -412,7 +412,7 @@
           ]
         },
         {
-          "text": "Drive Speed, Power Drive & Engine Overdrive are -50% off",
+          "text": "Drive Speed, Power Drive & Engine Overdrive Upgrades are 50% off",
           "effects": [
             {
               "stat": "drive_speed_upgrade_discount",
@@ -432,7 +432,7 @@
           ]
         },
         {
-          "text": "When Fuel is less than 10%, gain +100% Drive Speed & Acceleration as the Driver",
+          "text": "When Fuel is below 10%, gain +100% Drive Speed & Acceleration as the Driver",
           "effects": [
             {
               "stat": "drive_speed",
@@ -451,17 +451,18 @@
           ]
         },
         {
-          "text": "Drill starts with Engine Overdrive III",
+          "text": "Drill starts with +3 Engine Overdrive Upgrades",
           "tag": "team",
           "effects": [
             {
-              "stat": "start_engine_overdrive_3",
+              "stat": "start_engine_overdrive_upgrades",
+              "value": 3,
               "scope": "team"
             }
           ]
         },
         {
-          "text": "Power Burst grants +100% Wall Damage, Speed & Acceleration",
+          "text": "Power Burst Upgrade grants +100% Wall Damage, Speed & Acceleration",
           "tag": "master",
           "effects": [
             {
@@ -488,7 +489,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 07.png"
+      "source": "screenshot 2026-11-11 03.png"
     },
     {
       "code": "sc",
@@ -498,8 +499,7 @@
       "event": false,
       "gear": [
         "Outfit",
-        "Speed Potion",
-        "Large Sack"
+        "Speed Potion"
       ],
       "levels": [
         {
@@ -523,10 +523,11 @@
           ]
         },
         {
-          "text": "Speed Boots can be crafted in the Crafting Shack",
+          "text": "+15 Carry Capacity",
           "effects": [
             {
-              "stat": "recipe_speed_boots",
+              "stat": "carry_capacity_flat",
+              "value": 15,
               "scope": "self"
             }
           ]
@@ -543,19 +544,19 @@
           ]
         },
         {
-          "text": "Gradually gain up to +100% Movement Speed over 30 seconds, resetting on enemy hit",
+          "text": "Build up to +100% Movement Speed over 30 Seconds. Resets when you deal Damage",
           "tag": "master",
           "effects": [
             {
               "stat": "move_speed",
               "value": 100,
               "scope": "self",
-              "when": "ramp_30s_until_hit"
+              "when": "ramp_30s_until_damage_dealt"
             }
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 10.png"
+      "source": "screenshot 2026-11-11 06.png"
     },
     {
       "code": "w",
@@ -570,11 +571,11 @@
       ],
       "levels": [
         {
-          "text": "+100% Potion Duration",
+          "text": "+50% Potion Duration",
           "effects": [
             {
               "stat": "potion_duration",
-              "value": 100,
+              "value": 50,
               "scope": "self"
             }
           ]
@@ -598,12 +599,12 @@
           ]
         },
         {
-          "text": "+50% Potion Duration",
+          "text": "+25% Potion Duration",
           "tag": "team",
           "effects": [
             {
               "stat": "potion_duration",
-              "value": 50,
+              "value": 25,
               "scope": "team"
             }
           ]
@@ -620,7 +621,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 09.png"
+      "source": "screenshot 2026-11-11 05.png"
     },
     {
       "code": "br",
@@ -644,7 +645,7 @@
           ]
         },
         {
-          "text": "Enemies Stagger from 50% less Melee Damage",
+          "text": "Enemies need 50% less Melee Damage to Stagger",
           "effects": [
             {
               "stat": "stagger_threshold_reduction",
@@ -688,7 +689,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 15.png"
+      "source": "screenshot 2026-11-11 23.png"
     },
     {
       "code": "dr",
@@ -698,7 +699,7 @@
       "event": false,
       "gear": [
         "Outfit",
-        "Rusty Pickaxe"
+        "Steel Pickaxe"
       ],
       "levels": [
         {
@@ -714,7 +715,7 @@
           ]
         },
         {
-          "text": "Drill Power, Mega Drill & Power Slam are -50% off",
+          "text": "Drill Power, Mega Drill & Power Slam Upgrades are 50% off",
           "effects": [
             {
               "stat": "drill_power_discount",
@@ -734,7 +735,7 @@
           ]
         },
         {
-          "text": "When Fuel is less than 10%, gain +100% Wall Damage as the Driver",
+          "text": "When Fuel is below 10%, gain +100% Wall Damage as the Driver",
           "effects": [
             {
               "stat": "drill_wall_damage",
@@ -757,7 +758,7 @@
           ]
         },
         {
-          "text": "RPM Overclock & Ultra Drill are -50% off",
+          "text": "RPM Overclock & Ultra Drill Upgrades are 50% off",
           "tag": "master",
           "effects": [
             {
@@ -773,7 +774,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 29.png"
+      "source": "screenshot 2026-11-11 10.png"
     },
     {
       "code": "gunsl",
@@ -797,7 +798,7 @@
           ]
         },
         {
-          "text": "Enemies have a 10% chance to drop Pistol/Shotgun/Rifle Ammo",
+          "text": "Enemies have a 10% chance to drop Pistol, Shotgun or Rifle Ammo",
           "effects": [
             {
               "stat": "ammo_drop_chance",
@@ -839,7 +840,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 14.png"
+      "source": "screenshot 2026-11-11 09.png"
     },
     {
       "code": "j",
@@ -882,7 +883,7 @@
           ]
         },
         {
-          "text": "Enemies have an additional 10% chance to drop a Trick-or-Treat Pumpkin",
+          "text": "Enemies have a 10% chance to drop a Trick-or-Treat Pumpkin",
           "tag": "team",
           "effects": [
             {
@@ -903,7 +904,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 13.png"
+      "source": "screenshot 2026-11-11 08.png"
     },
     {
       "code": "ta",
@@ -969,7 +970,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 26.png"
+      "source": "screenshot 2026-11-11 20.png"
     },
     {
       "code": "ti",
@@ -1008,7 +1009,7 @@
           ]
         },
         {
-          "text": "Pocket Watch can Rewind cleared Dungeons, fully resetting them",
+          "text": "Pocket Watch can Rewind Dungeons at any time, fully resetting them",
           "effects": [
             {
               "stat": "dungeon_rewind",
@@ -1038,7 +1039,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 28.png"
+      "source": "screenshot 2026-11-11 22.png"
     },
     {
       "code": "v",
@@ -1073,7 +1074,7 @@
           ]
         },
         {
-          "text": "Feed on Corpses to heal and gain +1 Max HP",
+          "text": "Feed on Corpses to heal and gain +1 Max HP each",
           "effects": [
             {
               "stat": "corpse_feeding",
@@ -1088,14 +1089,13 @@
           ]
         },
         {
-          "text": "+200% Lifesteal Healing",
+          "text": "Drill starts with +2 Lifesteal Upgrades",
           "tag": "team",
           "effects": [
             {
-              "stat": "lifesteal_healing",
-              "value": 200,
-              "scope": "team",
-              "uncertain": "team-bonus-needs-source"
+              "stat": "start_lifesteal_upgrades",
+              "value": 2,
+              "scope": "team"
             }
           ]
         },
@@ -1110,7 +1110,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 27.png"
+      "source": "screenshot 2026-11-11 21.png"
     },
     {
       "code": "c",
@@ -1126,7 +1126,7 @@
       ],
       "levels": [
         {
-          "text": "Crafting Shack prices are -10% off",
+          "text": "Crafting Shack prices are 10% off",
           "effects": [
             {
               "stat": "shack_discount",
@@ -1161,7 +1161,7 @@
           ]
         },
         {
-          "text": "Crafting Shack prices are -5% off",
+          "text": "Crafting Shack prices are 5% off",
           "tag": "team",
           "effects": [
             {
@@ -1182,7 +1182,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 01.png"
+      "source": "screenshot 2026-11-11 11.png"
     },
     {
       "code": "de",
@@ -1216,11 +1216,11 @@
           ]
         },
         {
-          "text": "Enemies have a 25% chance to explode when defeated",
+          "text": "Enemies you defeat explode",
           "effects": [
             {
               "stat": "kill_explode_chance",
-              "value": 25,
+              "value": 100,
               "scope": "self"
             }
           ]
@@ -1247,7 +1247,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 17.png"
+      "source": "screenshot 2026-11-11 26.png"
     },
     {
       "code": "l",
@@ -1315,7 +1315,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 18.png"
+      "source": "screenshot 2026-11-11 28.png"
     },
     {
       "code": "n",
@@ -1393,7 +1393,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 16.png"
+      "source": "screenshot 2026-11-11 25.png"
     },
     {
       "code": "prin",
@@ -1407,11 +1407,11 @@
       ],
       "levels": [
         {
-          "text": "Start with 1,000 Coins",
+          "text": "Start with 2,500 Coins",
           "effects": [
             {
               "stat": "start_coins",
-              "value": 1000,
+              "value": 2500,
               "scope": "self"
             }
           ]
@@ -1458,7 +1458,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 20.png"
+      "source": "screenshot 2026-11-11 12.png"
     },
     {
       "code": "rea",
@@ -1472,7 +1472,7 @@
       ],
       "levels": [
         {
-          "text": "Enemies drop Soul Orbs on defeat (Heal 5 HP)",
+          "text": "Enemies you defeat drop Soul Orbs (Heal 5 HP)",
           "effects": [
             {
               "stat": "soul_orb_heal",
@@ -1522,7 +1522,7 @@
           ]
         },
         {
-          "text": "Levels 2 and 3 scale every 5 enemies defeated instead of every 10",
+          "text": "Level 2 & 3 bonuses grow every 5 enemies defeated instead of 10",
           "tag": "master",
           "effects": [
             {
@@ -1532,7 +1532,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 30.png"
+      "source": "screenshot 2026-11-11 24.png"
     },
     {
       "code": "sal",
@@ -1556,7 +1556,7 @@
           ]
         },
         {
-          "text": "Shredding Scrap grants +50% more Cogs",
+          "text": "+50% Cogs from Shredding Scrap",
           "effects": [
             {
               "stat": "shred_cogs",
@@ -1597,7 +1597,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 02.png"
+      "source": "screenshot 2026-11-11 13.png"
     },
     {
       "code": "bo",
@@ -1667,7 +1667,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 23.png"
+      "source": "screenshot 2026-11-11 29.png"
     },
     {
       "code": "en",
@@ -1698,7 +1698,7 @@
           ]
         },
         {
-          "text": "Turrets are -25% off in the Crafting Shack",
+          "text": "Turrets are 25% off in the Crafting Shack",
           "effects": [
             {
               "stat": "turret_discount",
@@ -1730,7 +1730,7 @@
           ]
         },
         {
-          "text": "Your Flamethrowers & Frosthrowers never overheat",
+          "text": "Your Flamethrowers & Frostthrowers never overheat",
           "tag": "master",
           "effects": [
             {
@@ -1740,7 +1740,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 25.png"
+      "source": "screenshot 2026-11-11 17.png"
     },
     {
       "code": "ex",
@@ -1785,7 +1785,7 @@
           ]
         },
         {
-          "text": "Defeating a Boss grants everyone a free Rare+ Drill Upgrade — choose from 3 options",
+          "text": "Defeating a Boss grants every player a free Drill Upgrade — choose from 3 options",
           "tag": "team",
           "effects": [
             {
@@ -1807,7 +1807,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 32.png"
+      "source": "screenshot 2026-11-11 30.png"
     },
     {
       "code": "go",
@@ -1857,11 +1857,12 @@
           ]
         },
         {
-          "text": "Every player starts with a Goblin Knight",
+          "text": "+100% Goblin Ring Spawn Chance",
           "tag": "team",
           "effects": [
             {
-              "stat": "start_goblin_knight",
+              "stat": "goblin_ring_spawn_chance",
+              "value": 100,
               "scope": "team"
             }
           ]
@@ -1877,7 +1878,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 24.png"
+      "source": "screenshot 2026-11-11 16.png"
     },
     {
       "code": "gunsm",
@@ -1918,7 +1919,7 @@
           ]
         },
         {
-          "text": "Ammo grants +100% more bullets",
+          "text": "+100% Bullets from Ammo",
           "tag": "team",
           "effects": [
             {
@@ -1939,7 +1940,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 31.png"
+      "source": "screenshot 2026-11-11 15.png"
     },
     {
       "code": "pi",
@@ -1965,13 +1966,12 @@
           ]
         },
         {
-          "text": "Anything Golden sells for +200% Coins",
+          "text": "Gold Scrap, Gold Ore & Golden Corpses sell for +200% Coins",
           "effects": [
             {
               "stat": "sell_golden_coins",
               "value": 200,
-              "scope": "self",
-              "uncertain": "pirate-golden"
+              "scope": "self"
             }
           ]
         },
@@ -2006,7 +2006,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 22.png"
+      "source": "screenshot 2026-11-11 14.png"
     },
     {
       "code": "prie",
@@ -2071,7 +2071,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 35.png"
+      "source": "screenshot 2026-11-11 33.png"
     },
     {
       "code": "pro",
@@ -2135,7 +2135,7 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 33.png"
+      "source": "screenshot 2026-11-11 31.png"
     },
     {
       "code": "sam",
@@ -2199,7 +2199,143 @@
           ]
         }
       ],
-      "source": "screenshot 2026-10-29 34.png"
+      "source": "screenshot 2026-11-11 32.png"
+    },
+    {
+      "code": "ho",
+      "slug": "hoarder",
+      "name": "Hoarder",
+      "tier": 2,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Sack"
+      ],
+      "levels": [
+        {
+          "text": "+100% Carry Capacity",
+          "effects": [
+            {
+              "stat": "carry_capacity",
+              "value": 100,
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "text": "Carry Capacity Upgrades are 50% off",
+          "effects": [
+            {
+              "stat": "carry_capacity_discount",
+              "value": 50,
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "text": "Your Crates hold double the items",
+          "effects": [
+            {
+              "stat": "crate_double_capacity",
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "text": "+50% Carry Capacity",
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "carry_capacity",
+              "value": 50,
+              "scope": "team"
+            }
+          ]
+        },
+        {
+          "text": "+1 Church Save Slot",
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "church_save_slots",
+              "value": 1,
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "source": "screenshot 2026-11-11 19.png"
+    },
+    {
+      "code": "sp",
+      "slug": "spiderqueen",
+      "name": "Spider Queen",
+      "tier": 4,
+      "event": false,
+      "gear": [
+        "Outfit",
+        "Spider Queen Scepter"
+      ],
+      "levels": [
+        {
+          "text": "Spiders sell for +200% Coins",
+          "effects": [
+            {
+              "stat": "sell_spider_coins",
+              "value": 200,
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "text": "Gain +5% Gun & Melee Damage per active Spider Recruit",
+          "effects": [
+            {
+              "stat": "gun_damage",
+              "value": 5,
+              "scope": "self",
+              "when": "per_spider_recruit"
+            },
+            {
+              "stat": "melee_damage",
+              "value": 5,
+              "scope": "self",
+              "when": "per_spider_recruit"
+            }
+          ]
+        },
+        {
+          "text": "Spider Pits surrender when you enter, granting their rewards",
+          "effects": [
+            {
+              "stat": "spider_pits_surrender",
+              "scope": "self"
+            }
+          ]
+        },
+        {
+          "text": "+100% Spider Pit Spawn Chance",
+          "tag": "team",
+          "effects": [
+            {
+              "stat": "spider_pit_spawn_chance",
+              "value": 100,
+              "scope": "team"
+            }
+          ]
+        },
+        {
+          "text": "Spiders won't attack you",
+          "tag": "master",
+          "effects": [
+            {
+              "stat": "spiders_passive",
+              "scope": "self"
+            }
+          ]
+        }
+      ],
+      "source": "screenshot 2026-11-11 27.png"
     }
   ]
 }

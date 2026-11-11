@@ -37,6 +37,10 @@
         {
           "id": "loot",
           "name": "Loot & Chests"
+        },
+        {
+          "id": "carrying",
+          "name": "Carrying & Storage"
         }
       ]
     },
@@ -407,7 +411,7 @@
       "sub": "sell"
     },
     "sell_golden_coins": {
-      "name": "Golden Items Sell Value",
+      "name": "Gold Scrap, Gold Ore & Golden Corpse Sell Value",
       "unit": "pct",
       "cat": "convert",
       "sub": "sell"
@@ -462,12 +466,6 @@
     },
     "recipe_gas_can": {
       "name": "Gas Can Recipe",
-      "unit": "flag",
-      "cat": "spend",
-      "sub": "recipes"
-    },
-    "recipe_speed_boots": {
-      "name": "Speed Boots Recipe",
       "unit": "flag",
       "cat": "spend",
       "sub": "recipes"
@@ -577,18 +575,6 @@
     "start_coins": {
       "name": "Starting Coins",
       "unit": "flat",
-      "cat": "spend",
-      "sub": "starting"
-    },
-    "start_engine_overdrive_3": {
-      "name": "Drill Starts with Engine Overdrive III",
-      "unit": "flag",
-      "cat": "spend",
-      "sub": "starting"
-    },
-    "start_goblin_knight": {
-      "name": "Start with a Goblin Knight",
-      "unit": "flag",
       "cat": "spend",
       "sub": "starting"
     },
@@ -719,7 +705,7 @@
       "sub": "sentries"
     },
     "thrower_no_overheat": {
-      "name": "Flamethrowers & Frosthrowers Never Overheat",
+      "name": "Flamethrowers & Frostthrowers Never Overheat",
       "unit": "flag",
       "cat": "combat",
       "sub": "sentries"
@@ -774,12 +760,6 @@
     },
     "lifesteal": {
       "name": "Melee Lifesteal",
-      "unit": "pct",
-      "cat": "survival",
-      "sub": "healing"
-    },
-    "lifesteal_healing": {
-      "name": "Lifesteal Healing",
       "unit": "pct",
       "cat": "survival",
       "sub": "healing"
@@ -886,12 +866,6 @@
       "cat": "survival",
       "sub": "consumables"
     },
-    "heal_items_stack": {
-      "name": "Bandages & Medkits Stack in Toolbar",
-      "unit": "flag",
-      "cat": "survival",
-      "sub": "consumables"
-    },
     "drive_speed": {
       "name": "Drive Speed",
       "unit": "pct",
@@ -917,7 +891,7 @@
       "sub": "fuel"
     },
     "kill_auto_fuel": {
-      "name": "Kills Auto-Deposit Fuel",
+      "name": "Kills near the Drill Auto-Deposit Fuel",
       "unit": "flag",
       "cat": "drill",
       "sub": "fuel"
@@ -935,7 +909,7 @@
       "sub": "boosts"
     },
     "boss_free_drill_upgrade": {
-      "name": "Free Rare+ Drill Upgrade per Boss",
+      "name": "Free Drill Upgrade per Boss",
       "unit": "flag",
       "cat": "drill",
       "sub": "upgrades"
@@ -971,7 +945,7 @@
       "sub": "spawns"
     },
     "dungeon_rewind": {
-      "name": "Pocket Watch Rewinds Cleared Dungeons",
+      "name": "Pocket Watch Rewinds Dungeons",
       "unit": "flag",
       "cat": "world",
       "sub": "dungeons"
@@ -999,6 +973,84 @@
       "unit": "flag",
       "cat": "meta",
       "sub": "passives"
+    },
+    "carry_capacity": {
+      "name": "Carry Capacity",
+      "unit": "pct",
+      "cat": "gather",
+      "sub": "carrying"
+    },
+    "carry_capacity_flat": {
+      "name": "Carry Capacity (flat)",
+      "unit": "flat",
+      "cat": "gather",
+      "sub": "carrying"
+    },
+    "crate_double_capacity": {
+      "name": "Crates Hold Double the Items",
+      "unit": "flag",
+      "cat": "gather",
+      "sub": "carrying"
+    },
+    "carry_capacity_discount": {
+      "name": "Carry Capacity Upgrade Discount",
+      "unit": "pct",
+      "cat": "spend",
+      "sub": "discounts"
+    },
+    "start_engine_overdrive_upgrades": {
+      "name": "Drill Starts with Engine Overdrive Upgrades",
+      "unit": "flat",
+      "cat": "spend",
+      "sub": "starting"
+    },
+    "start_lifesteal_upgrades": {
+      "name": "Drill Starts with Lifesteal Upgrades",
+      "unit": "flat",
+      "cat": "spend",
+      "sub": "starting"
+    },
+    "heal_items_instant": {
+      "name": "Bandages, Medkits & Revive Kits Apply Instantly",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "consumables"
+    },
+    "church_save_slots": {
+      "name": "Church Save Slots",
+      "unit": "flat",
+      "cat": "survival",
+      "sub": "revive"
+    },
+    "goblin_ring_spawn_chance": {
+      "name": "Goblin Ring Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "spider_pit_spawn_chance": {
+      "name": "Spider Pit Spawn Chance",
+      "unit": "pct",
+      "cat": "world",
+      "sub": "spawns"
+    },
+    "spider_pits_surrender": {
+      "name": "Spider Pits Surrender",
+      "unit": "flag",
+      "cat": "world",
+      "sub": "dungeons"
+    },
+    "sell_spider_coins": {
+      "name": "Spider Sell Value",
+      "unit": "pct",
+      "cat": "convert",
+      "sub": "sell"
+    },
+    "spiders_passive": {
+      "name": "Spiders Won't Attack You",
+      "unit": "flag",
+      "cat": "survival",
+      "sub": "defense"
     }
   },
   "whens": {
@@ -1007,7 +1059,6 @@
     "power_burst": "During a Power Burst",
     "per_consecutive_hit": "Per consecutive hit",
     "in_dungeon": "In dungeons",
-    "ramp_30s_until_hit": "Builds over 30s until hit",
     "in_glow_ring": "Inside the glow ring",
     "below_50_hp": "Below 50% HP",
     "per_corpse_fed": "Per corpse fed",
@@ -1017,7 +1068,9 @@
     "per_boss_defeated": "Per boss defeated",
     "boss_defeated": "When a boss is defeated",
     "per_goblin_recruit": "Per goblin recruit",
-    "blessed_by_staff": "While blessed by a Priest"
+    "blessed_by_staff": "While blessed by a Priest",
+    "ramp_30s_until_damage_dealt": "Builds over 30s until you deal damage",
+    "per_spider_recruit": "Per spider recruit"
   },
   "questions": {
     "recruit-rounding": {
@@ -1053,9 +1106,8 @@
       ]
     },
     "team-bonus-needs-source": {
-      "q": "Do team L4 bonuses that modify a mechanic (Vampire lifesteal healing, Reaper soul orb healing) apply to teammates who lack the base mechanic?",
+      "q": "Does Reaper L4 soul orb healing apply to teammates who lack the base mechanic?",
       "classes": [
-        "v L4",
         "rea L4"
       ]
     },
@@ -1063,12 +1115,6 @@
       "q": "What does Looter L5 'Mimic Promote Chance' promote a Mimic into (rarity upgrade?), and how does the chance apply?",
       "classes": [
         "l L5"
-      ]
-    },
-    "pirate-golden": {
-      "q": "Does Pirate L2 'Anything Golden' mean golden mutated mobs (e.g. Golden Goblin) only, or also Gold Bars and Golden Pumpkins?",
-      "classes": [
-        "pi L2"
       ]
     }
   }
