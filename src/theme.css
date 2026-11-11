@@ -484,17 +484,6 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .passive-line { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
 .passive-line .row-from { display: flex; align-items: center; gap: 4px; }
 
-/* Passive experiments */
-.state-tag { display: inline-block; align-self: center; margin: 0 0 0 8px; padding: 1px 6px; border-radius: 6px; color: #fff; text-transform: uppercase; }
-.tag-new { background: #14532d; border: 2px solid var(--accent-green); }
-.tag-original { background: #1e3a8a; border: 2px dashed var(--tier-blue); }
-.tag-experiment { background: #581c87; border: 2px solid var(--tier-purple); }
-.loadout-read .passive-ghost-item { list-style: none; }
-.passive-ghost { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; opacity: 0.65; background: transparent; border: 2px dashed var(--panel-border); border-radius: 10px; }
-.passive-ghost.is-disabled { cursor: not-allowed; opacity: 0.45; }
-.ghost-hint { margin: 0; font-size: 12px; font-weight: 700; color: var(--text-muted); }
-.passive-cell .state-tag, .passive-level .state-tag { margin: 0 8px 0 0; }
-
 /* Team view */
 .team { display: grid; gap: 14px; }
 .card-empty { color: var(--text-muted); }
@@ -522,8 +511,12 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .passive-level.is-locked.is-selected { opacity: 1; filter: none; cursor: pointer; }
 .lock-hint { flex: none; align-self: center; margin-right: 8px; font-size: 12px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); border: 2px dashed var(--panel-border); border-radius: 6px; padding: 1px 6px; }
 
-/* You panel, share actions, visitor view */
+/* You panel, share actions, unsaved build, update banner */
 .share-hint { color: var(--text-muted); font-size: 13px; margin: -4px 0 10px; }
+.unsaved-label { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+.update-banner { display: grid; gap: 8px; border-color: var(--accent-green); }
+.update-text { margin: 0; font-weight: 700; }
+.update-banner .roster-row { margin-bottom: 0; }
 .panel > .copy-fallback { width: 100%; margin-bottom: 10px; }
 .identity-row { display: flex; align-items: center; gap: 10px; }
 .identity-row .field-label { margin: 0; }
@@ -532,7 +525,6 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .username { margin-bottom: 14px; }
 .viewing { margin-bottom: 14px; }
 .viewing .slot-select { width: 100%; }
-.viewing-remove { margin-top: 8px; }
 .field-msg { display: grid; gap: 6px; }
 .field-msg:empty { display: none; }
 .claim-prompt { display: grid; gap: 6px; }
@@ -547,9 +539,6 @@ button.own-pill:hover { border-color: var(--accent-green); }
 .import-save { display: grid; gap: 4px; }
 .import-save .roster-row { margin-bottom: 0; }
 .visitor-saved .btn { margin-left: 6px; vertical-align: middle; }
-.visitor-banner .panel-title { margin-bottom: 8px; }
-.visitor-form .roster-row { margin-bottom: 6px; }
-.visitor-form .roster-field { letter-spacing: 0.02em; }
 .visitor-saved { color: var(--accent-green); padding: 4px 10px; border-left: 4px solid var(--accent-green); }
 .visitor-team-link { color: var(--text); font-weight: 900; }
 

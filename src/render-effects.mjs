@@ -46,11 +46,11 @@ function effectGroups(m) {
 }
 
 // section.panel.effects: model is aggregate() output; empty is the text shown when every group is empty.
-function effectsPanel(title, model, { note = null, empty = 'No effects yet', key = null, label = null } = {}) {
+function effectsPanel(title, model, { note = null, empty = 'No effects yet', key = null } = {}) {
   return h(
     'section',
     { class: 'panel effects', 'aria-label': title, 'data-fk': key },
-    h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: title }), label ? h('span', { class: 'level-tag state-tag tag-experiment', text: label }) : null),
+    h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title', text: title })),
     note ? h('p', { class: 'effect-note', text: note }) : null,
     model && !effectsEmpty(model) ? effectGroups(model) : h('p', { class: 'empty', text: empty }),
   );
@@ -62,10 +62,9 @@ function buildEffects(state, base, level, slots, scopes) {
   return aggregate(state.data.effects, sources, { scopes });
 }
 
-// experiment labels a panel computed from passives that differ from the saved set.
-export function buildEffectsPanel(state, base, level, slots, { experiment = false } = {}) {
+export function buildEffectsPanel(state, base, level, slots) {
   const model = buildEffects(state, base, level, slots, SCOPES);
-  return effectsPanel('Combined effects', model, { note: isRecruitMaster(base, level) ? RECRUIT_NOTE : null, key: 'effects-panel', label: experiment ? 'Experiment' : null });
+  return effectsPanel('Combined effects', model, { note: isRecruitMaster(base, level) ? RECRUIT_NOTE : null, key: 'effects-panel' });
 }
 
 // Member inputs for effectMatrix, one per header column in member order; a member without a base class gets an empty column.

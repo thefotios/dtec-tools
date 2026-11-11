@@ -1,11 +1,10 @@
 import { ownedClasses } from './owned.mjs';
-import { nameProblem, playerByName, sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
-import { savedSlots, diffSets, MAX_PASSIVES } from './passives.mjs';
-import { sameSlot } from './router.mjs';
+import { sameName, ownedBase, MAX_MEMBERS } from './players.mjs';
+import { MAX_PASSIVES } from './passives.mjs';
 import { h, hidden } from './dom.mjs';
 import { classIcon } from './icons.mjs';
 import { buildEffectsPanel, teamMatrix, teamInputs } from './render-effects.mjs';
-import { importSection } from './render-import.mjs';
+import { importSection, replacesText } from './render-import.mjs';
 
 // Renders from state only; all data text goes through textContent.
 // Interactive elements carry data-fk so focus survives the full re-render.
@@ -91,9 +90,7 @@ function navButton(state, actions, view, text) {
 }
 
 const notOwned = () => h('span', { class: 'not-owned', text: 'Not owned' });
-const newTag = () => h('span', { class: 'level-tag state-tag tag-new', text: 'NEW' });
 const noClassesText = (player) => `${player.name || 'This player'} has no classes.`;
-const originalTag = () => h('span', { class: 'level-tag state-tag tag-original', text: 'ORIGINAL' });
 
 
 function copyButton(state, actions, { key, done, idle, doneText, primary, block, onclick, small = true }) {
@@ -127,12 +124,11 @@ function header(state, actions) {
   );
 }
 
-// The class levels the Builds page shows: the viewed player's, else mine.
-const levelsOf = (state) => (state.viewing ? state.viewing.player.levels : state.store.owned);
+// The class levels the Builds page shows: the selected person's stored levels.
+const levelsOf = (state) => state.shown.levels;
 
 // One class in the list. Outside edit mode rows stay closed and tapping a row selects it as the base; in edit mode rows expand independently.
 function ownRow(state, actions, cls) {
-  const { store } = state;
   const max = levelsOf(state)[cls.code] ?? 0;
   const editing = state.list.editing;
   const selected = state.build.base?.slug === cls.slug;
@@ -166,7 +162,7 @@ function ownRow(state, actions, cls) {
             'ol',
             { class: 'levels' },
             cls.levels.map((level, i) => {
-              const on = store.has(cls.code, i + 1);
+              const on = max >= i + 1;
               const parts = [levelChip(level, i), h('span', { class: 'level-text', text: level.text }), h('span', { class: 'own-check', 'aria-hidden': 'true', text: on ? '\u2713' : '' })];
               const cn = `level own-level${on ? ' is-unlocked' : ''}`;
               return h(
@@ -186,7 +182,7 @@ function ownRow(state, actions, cls) {
 
 // Every passive at once: one row per class (tier order), one toggle cell per level.
 // The base class is never listed: a class cannot be its own passive.
-// opts: { noTitle (omit the heading), levels (owned levels by class code; levelRows only), unknownRoster (omit the "Not owned" pill: no roster to judge by), original(code, level) (saved passive that is not selected: tagged ORIGINAL), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
+// opts: { noTitle (omit the heading), levels (owned levels by class code; levelRows only), unknownRoster (omit the "Not owned" pill: no roster to judge by), levelRows (render owned classes as ownership-style level rows; locked levels shown gray unless unlockedOnly), unlockedOnly, onUnlockedOnly, base, slots, has(code, level), ownedOnly (list only owned levels, plus selected), emptyText (shown when ownedOnly leaves nothing), flag(code, level), filter, filterKey, keyPrefix, label, onFilter, onToggle, onClear }
 function passivePicker(state, actions, opts) {
   const { classes, tiers } = state.data;
   const { slots } = opts;
@@ -201,7 +197,6 @@ function passivePicker(state, actions, opts) {
     ? ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && (opts.has(c.code, 1) || hasPicked(c)) && levelRowsVisible(c).length)
     : ordered.filter((c) => c.slug !== opts.base?.slug && c.name.toLowerCase().includes(f) && visibleLevels(c).length);
   const k = opts.keyPrefix;
-  const original = (c, n) => !picked(c, n) && Boolean(opts.original?.(c.code, n));
   const cell = (c, n) => {
     const on = picked(c, n);
     const blocked = full && !on;
@@ -214,12 +209,11 @@ function passivePicker(state, actions, opts) {
         'data-level': n,
         'aria-pressed': String(on),
         'aria-disabled': blocked ? 'true' : null,
-        'aria-label': `${c.name} level ${n}${original(c, n) ? ', original' : ''}`,
+        'aria-label': `${c.name} level ${n}`,
         onclick: () => (blocked ? null : opts.onToggle(c, n)),
       },
       h('span', { class: 'cell-badge' }, on ? h('span', { class: 'cell-check', 'aria-hidden': 'true', text: '\u2713' }) : null, h('span', { class: 'level-num', text: String(n) })),
       h('span', { class: 'level-text', text: c.levels[n - 1].text }),
-      original(c, n) ? originalTag() : null,
       opts.flag(c.code, n) ? notOwned() : null,
     );
   };
@@ -257,12 +251,11 @@ function passivePicker(state, actions, opts) {
                   'data-fk': `${k}-${c.slug}-${n}`,
                   'aria-pressed': String(on),
                   'aria-disabled': blocked ? 'true' : null,
-                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}${original(c, n) ? ', original' : ''}`,
+                  'aria-label': `${c.name} level ${n}${locked ? ', locked' : ''}`,
                   onclick: () => (blocked ? null : opts.onToggle(c, n)),
                 },
                 levelChip(c.levels[n - 1], n - 1),
                 h('span', { class: 'level-text', text: c.levels[n - 1].text }),
-                original(c, n) ? originalTag() : null,
                 locked ? (on ? notOwned() : h('span', { class: 'lock-hint', title: `Own ${c.name} at level ${n} to unlock`, text: 'Locked' })) : null,
                 h('span', { class: 'own-check', 'aria-hidden': 'true', text: on ? '\u2713' : '' }),
               ),
@@ -327,24 +320,21 @@ function passivePicker(state, actions, opts) {
   );
 }
 
-// diff is the viewed player's saved-vs-current passive diff, null for me.
-function pickerEditor(state, actions, diff) {
-  const { store, viewing } = state;
+// The passive picker for the selected person. A person whose roster is not known has levels 1 to 3 of every class unlocked.
+function pickerEditor(state, actions) {
+  const person = state.shown;
   const levels = levelsOf(state);
-  const roster = viewing ? passiveOwned(viewing.player, viewing.hasRoster) : levels;
-  // A viewed player known only by their base has no roster: every other class's levels 1-3 count as unlocked.
-  const has = viewing ? (code, n) => (roster ? (roster[code] ?? 0) >= n : n <= 3) : (code, n) => store.has(code, n);
+  const has = person.rosterKnown ? (code, n) => (levels[code] ?? 0) >= n : (code, n) => n <= 3;
   return passivePicker(state, actions, {
     noTitle: true,
     base: state.build.base,
     slots: state.build.slots,
     levels,
-    unknownRoster: Boolean(viewing && !roster),
+    unknownRoster: !person.rosterKnown,
     has,
-    original: diff ? (code, n) => diff.removed.some((s) => s.cls.code === code && s.level === n) : null,
     ownedOnly: true,
     levelRows: true,
-    unlockedOnly: state.passives.unlockedOnly,
+    unlockedOnly: state.people.unlockedOnly,
     onUnlockedOnly: actions.setUnlockedOnly,
     flag: (code, n) => !has(code, n),
     emptyText: 'No owned passives to pick. Mark classes in the class list.',
@@ -357,42 +347,17 @@ function pickerEditor(state, actions, diff) {
   });
 }
 
-// A selected passive written out like a level row, headed by its class.
-// opts.tag marks a changed passive (NEW); opts.key makes the row focusable by a restore action.
-function passiveRow(slot, owned, opts = {}) {
+// A selected passive written out like a level row, headed by its class. `owned` is the levels it is judged against, or null for no judgement.
+function passiveRow(slot, owned) {
   const { cls, level } = slot;
   return h(
     'li',
-    { class: 'level passive-read', 'data-level': level, 'data-fk': opts.key ?? null, tabindex: opts.key ? '-1' : null },
+    { class: 'level passive-read', 'data-level': level },
     levelChip(cls.levels[level - 1], level - 1),
     h(
       'span',
       { class: 'level-text' },
-      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned(), opts.tag ?? null), h('span', { text: cls.levels[level - 1].text })),
-    ),
-  );
-}
-
-// A saved passive removed in the experiment: a dimmed button that puts it back while a slot is free.
-function ghostRow(slot, full, actions) {
-  const { cls, level } = slot;
-  return h(
-    'li',
-    { class: 'passive-ghost-item' },
-    h(
-      'button',
-      {
-        type: 'button',
-        class: `level passive-read passive-ghost${full ? ' is-disabled' : ''}`,
-        'data-level': level,
-        'data-fk': `ghost-${cls.slug}-${level}`,
-        'aria-disabled': full ? 'true' : null,
-        'aria-describedby': full ? 'ghost-hint' : null,
-        'aria-label': `Restore ${cls.name} level ${level}, original, removed`,
-        onclick: () => (full ? null : actions.restoreSlot(cls.slug, level)),
-      },
-      levelChip(cls.levels[level - 1], level - 1),
-      h('span', { class: 'level-text' }, h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, originalTag()), h('span', { text: cls.levels[level - 1].text }))),
+      h('span', { class: 'passive-line' }, h('span', { class: 'row-from' }, classIcon(cls, { size: 24 }), cls.name, !owned || (owned[cls.code] ?? 0) >= level ? null : notOwned()), h('span', { text: cls.levels[level - 1].text })),
     ),
   );
 }
@@ -419,10 +384,30 @@ function levelList(base, owned) {
   );
 }
 
-// The selected class's five levels; with actions (my own build) its header carries the share buttons.
+// Names joined for a sentence: "A", "A and B", "A, B and C".
+const listOf = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
+
+// What Save would raise, in words with the class shown first: "Bounty Hunter 5 and Miner 3".
+function raisesText(state) {
+  const first = state.build.base.code;
+  const ordered = [...state.unsavedRaises.filter((r) => r.code === first), ...state.unsavedRaises.filter((r) => r.code !== first)];
+  const named = ordered.map((r) => `${state.data.classes.find((c) => c.code === r.code).name} ${r.level}`);
+  return named.length ? listOf(named) : `${state.build.base.name} passives`;
+}
+
+// Save and its label replace the copy actions while the shown build is not what the person has stored.
+function saveControls(state, actions) {
+  return [
+    h('span', { class: 'unsaved-label', text: `Unsaved build: ${raisesText(state)}` }),
+    h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'build-save', onclick: actions.saveBuild, text: 'Save' }),
+  ];
+}
+
+// The selected class's five levels; with actions (a saved person's build) its header carries the share buttons, or Save for an unsaved build.
 function basePanel(state, base, owned, actions = null) {
   const title = h('h2', { class: 'panel-title' }, classIcon(base), h('span', { text: base.name }), diamonds(base, state.data.tiers), (owned[base.code] ?? 0) > 0 ? null : notOwned());
-  const shareBlock = actions ? actions.shareBlock() : null;
+  const unsaved = Boolean(state.unsaved);
+  const shareBlock = actions && !unsaved ? actions.shareBlock() : null;
   return h(
     'section',
     { class: 'panel base-levels', 'aria-label': `${base.name} levels` },
@@ -434,75 +419,54 @@ function basePanel(state, base, owned, actions = null) {
           h(
             'div',
             { class: 'head-actions' },
-            copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: true, block: shareBlock, onclick: actions.copyLink }),
-            copyButton(state, actions, { key: 'copy-code', done: 'code-copied', idle: 'Copy code', doneText: 'Code copied', primary: false, block: shareBlock, onclick: actions.copyCode }),
+            unsaved
+              ? saveControls(state, actions)
+              : [
+                  copyButton(state, actions, { key: 'copy', done: 'copied', idle: 'Copy link', doneText: 'Link copied', primary: true, block: shareBlock, onclick: actions.copyLink }),
+                  copyButton(state, actions, { key: 'copy-code', done: 'code-copied', idle: 'Copy code', doneText: 'Code copied', primary: false, block: shareBlock, onclick: actions.copyCode }),
+                ],
           ),
         )
       : title,
-    actions ? copyFeedback(state, shareBlock) : null,
+    actions && !unsaved ? copyFeedback(state, shareBlock) : null,
     levelList(base, owned),
   );
 }
 
-// A player record with only its base level has no roster to judge passives against, unless a shared link spelled the roster out.
-const passiveOwned = (player, explicit = false) => (explicit || Object.keys(player.levels).length > 1 ? player.levels : null);
-
-function visitorNameError(state) {
-  const v = state.viewing.link;
-  const name = v.nameDraft.trim();
-  if (!name) return 'Enter a name to save this build';
-  return nameProblem(name, state.players.me);
-}
-
-// Banner, name field, and save button for another player's opened link.
-function visitorBanner(state, actions) {
-  const v = state.viewing.link;
-  const error = visitorNameError(state);
-  const name = v.nameDraft.trim();
-  const isSaved = v.saved && sameName(name, v.savedName);
-  const existing = !error && state.players.get(name);
-  const shown = v.error ?? (v.nameDraft ? error : null);
+// The Update banner above the loadout: a link for a saved person (or Me) that differs from what is stored, applied only on Yes.
+function updateBanner(state, actions) {
+  const { id, incoming } = state.pending;
+  const person = state.people.get(id);
+  const own = id === 'me';
+  const replaces = replacesText(state, incoming, actions.pendingSummary(), own ? 'your' : `${person.name}'s`);
+  const who = own ? 'you' : person.name;
   return h(
     'section',
-    { class: 'panel visitor-banner', 'aria-label': 'Shared build' },
-    h('h2', { class: 'panel-title', text: v.incoming.name ? `${v.incoming.name}'s build` : 'Shared build' }),
+    { class: 'panel update-banner', role: 'group', 'aria-label': 'Update from link' },
+    h('p', { class: 'update-text', text: `This link differs from what is saved for ${who}${replaces ? ` and replaces ${replaces}` : ''}. Update ${own ? 'your build' : person.name}?` }),
     h(
-      'form',
-      { class: 'visitor-form', onsubmit: (e) => (e.preventDefault(), isSaved ? null : actions.saveVisitor()) },
-      h('label', { class: 'field-label', for: 'visitor-name', text: 'Player name' }),
-      h(
-        'div',
-        { class: 'roster-row' },
-        h('input', { type: 'text', id: 'visitor-name', class: 'roster-field', 'data-fk': 'visitor-name', autocomplete: 'off', spellcheck: 'false', maxlength: '40', 'aria-invalid': shown ? 'true' : null, 'aria-describedby': 'visitor-msg', value: v.nameDraft, oninput: (e) => actions.setVisitorName(e.target.value) }),
-        isSaved
-          ? h('button', { type: 'button', class: 'btn btn-grey is-done', 'data-fk': 'visitor-save', disabled: true, text: 'Saved' })
-          : h('button', { type: 'submit', class: 'btn btn-green', 'data-fk': 'visitor-save', disabled: Boolean(error), text: existing ? `Update ${existing.name}` : 'Save to players' }),
-      ),
-      h('div', { id: 'visitor-msg', class: 'field-msg', 'aria-live': 'polite' },
-        shown ? h('p', { class: 'roster-error', role: 'alert', text: shown }) : null,
-        isSaved
-          ? h('p', { class: 'visitor-saved', role: 'status' }, `Saved ${v.savedName}. `, h('a', { class: 'visitor-team-link', 'data-fk': 'visitor-team', href: new URL('team', document.baseURI).href, onclick: (e) => (e.preventDefault(), actions.setView('team')), text: 'Open the Team page' }))
-          : null,
-      ),
+      'div',
+      { class: 'roster-row' },
+      h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'update-yes', onclick: actions.applyPending, text: 'Yes' }),
+      h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'update-dismiss', onclick: actions.dismissPending, text: 'Dismiss' }),
     ),
   );
 }
 
 function loadout(state, actions) {
-  const { viewing } = state;
   const { base, slots } = state.build;
-  const banner = viewing?.link ? visitorBanner(state, actions) : null;
+  const person = state.shown;
+  const readOnly = Boolean(state.temp);
+  const banner = state.pending ? updateBanner(state, actions) : null;
   if (!base) {
-    const empty = h('section', { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' }, h('p', { class: 'empty', text: viewing ? noClassesText(viewing.player) : 'Pick a class to see its loadout.' }));
+    const empty = h('section', { class: 'panel loadout', id: 'loadout', 'aria-label': 'Loadout' }, h('p', { class: 'empty', text: readOnly ? noClassesText(person) : 'Pick a class to see its loadout.' }));
     return banner ? h('div', { class: 'loadout-col' }, banner, empty) : empty;
   }
   const editing = state.loadoutEditing;
   const owned = levelsOf(state);
-  const passiveOwners = viewing ? passiveOwned(viewing.player, viewing.hasRoster) : owned;
-  // Experiment diff against the viewed player's saved set; me has none.
-  const diff = viewing ? diffSets(savedSlots(state.data.classes, viewing.player, base.code), slots) : null;
-  const isNew = (sl) => diff?.added.some((a) => sameSlot(a, sl));
-  const full = slots.length >= MAX_PASSIVES;
+  // Passives are judged against the person's stored levels, unless their roster is not known.
+  const passiveOwners = person.rosterKnown ? owned : null;
+  const offerEdit = !readOnly && !state.unsaved;
   return h(
     'div',
     { class: 'loadout-col' },
@@ -515,66 +479,50 @@ function loadout(state, actions) {
         'div',
         { class: 'panel-head' },
         h('h2', { class: 'panel-title', text: `${base.name} passives (${slots.length}/${MAX_PASSIVES})` }),
-        h(
-          'div',
-          { class: 'head-actions' },
-          diff?.changed ? h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': 'loadout-revert', onclick: actions.revertSlots }, 'Revert', hidden(' passives to saved')) : null,
-          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' }),
-        ),
+        offerEdit ? h('div', { class: 'head-actions' }, h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'loadout-edit', 'aria-pressed': String(editing), onclick: () => actions.setLoadoutEditing(!editing), text: editing ? 'Done' : 'Edit' })) : null,
       ),
-      editing
-        ? pickerEditor(state, actions, diff)
+      editing && offerEdit
+        ? pickerEditor(state, actions)
         : h(
             'div',
             { class: 'loadout-read' },
-            slots.length || diff?.removed.length
-              ? h(
-                  'ol',
-                  { class: 'levels' },
-                  slots.map((sl) => passiveRow(sl, passiveOwners, viewing ? { key: `passive-row-${sl.cls.slug}-${sl.level}`, tag: isNew(sl) ? newTag() : null } : {})),
-                  diff?.removed.map((sl) => ghostRow(sl, full, actions)),
-                )
-              : h('p', { class: 'empty', text: viewing ? 'No passives in this build.' : 'No passives yet. Tap Edit to pick up to 3.' }),
-            diff?.removed.length && full ? h('p', { id: 'ghost-hint', class: 'ghost-hint', text: 'Remove a passive to restore' }) : null,
+            slots.length
+              ? h('ol', { class: 'levels' }, slots.map((sl) => passiveRow(sl, passiveOwners)))
+              : h('p', { class: 'empty', text: offerEdit ? 'No passives yet. Tap Edit to pick up to 3.' : 'No passives in this build.' }),
           ),
     ),
-    buildEffectsPanel(state, base, owned[base.code] ?? 0, slots, { experiment: Boolean(diff?.changed) }),
+    buildEffectsPanel(state, base, owned[base.code] ?? 0, slots),
   );
 }
 
-// Viewing select: Me first, then saved players A to Z, with a temporary entry for an unsaved opened link right after Me.
-// The link entry's value starts with a unit separator control character, which no player name can contain.
-// Option value for the shared-link entry, which has no player name to select by.
-const LINK_OPTION = '\u001flink';
+// Viewing select: Me first, then saved people A to Z, with the temporary link's player right after Me.
+// The temporary option's value starts with a unit separator control character, which no person id contains.
+const TEMP_OPTION = '\u001ftemp';
 
 function viewingField(state, actions) {
-  const { viewing } = state;
-  const link = viewing?.source === 'link' ? viewing.link : null;
-  const current = !viewing ? '' : link ? LINK_OPTION : viewing.player.name;
+  const { temp } = state;
+  const current = temp ? TEMP_OPTION : state.selectedId;
   const selected = (v) => (v === current ? true : null);
-  const players = [...state.players.players].sort((a, b) => a.name.localeCompare(b.name));
+  const [me, ...others] = state.people.people;
   return h(
     'div',
     { class: 'viewing' },
     h('label', { class: 'field-label', for: 'viewing', text: 'Viewing' }),
     h(
       'select',
-      { id: 'viewing', class: 'slot-select', 'data-fk': 'viewing', onchange: (e) => actions.viewPlayer(e.target.value === LINK_OPTION ? '' : e.target.value) },
-      h('option', { value: '', selected: selected(''), text: 'Me' }),
-      link ? h('option', { value: LINK_OPTION, selected: selected(LINK_OPTION), text: link.incoming.name || 'Shared link' }) : null,
-      players.map((p) => h('option', { value: p.name, selected: selected(p.name), text: p.name })),
+      { id: 'viewing', class: 'slot-select', 'data-fk': 'viewing', onchange: (e) => (e.target.value === TEMP_OPTION ? null : actions.viewPlayer(e.target.value)) },
+      h('option', { value: me.id, selected: selected(me.id), text: 'Me' }),
+      temp ? h('option', { value: TEMP_OPTION, selected: selected(TEMP_OPTION), text: temp.record.name }) : null,
+      others.map((p) => h('option', { value: p.id, selected: selected(p.id), text: p.name })),
     ),
-    viewing?.source === 'library'
-      ? h('button', { type: 'button', class: 'btn btn-red btn-small viewing-remove', 'data-fk': 'viewing-remove', onclick: actions.removeViewed }, 'Remove', hidden(` ${viewing.player.name} from library`))
-      : null,
   );
 }
 
 // Username: a saved name shows as text with an Edit button; otherwise (or while editing) the input saves on Save or Enter.
-// An invalid name shows an inline error, a saved player's name asks for confirmation.
+// An invalid or taken name shows an inline error.
 function usernameField(state, actions) {
   const { list } = state;
-  const me = state.players.me;
+  const me = state.people.me.name;
   const editing = list.nameEditing || !me || list.nameDraft != null;
   const msgId = 'username-msg';
   const save = (form) => actions.setMe(form.elements.username.value);
@@ -599,26 +547,13 @@ function usernameField(state, actions) {
           { class: 'identity-row' },
           h('span', { class: 'field-label', text: 'Username' }),
           h('span', { class: 'identity-name', 'data-fk': 'username-text', text: me }),
-          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-edit', 'aria-label': 'Edit username', onclick: actions.editUsername, text: '\u270e' }),
+          h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-edit', 'aria-label': 'Edit username', onclick: actions.editUsername, text: '✎' }),
         ),
     h(
       'div',
       { id: msgId, class: 'field-msg', 'aria-live': 'polite' },
       list.nameError ? h('p', { class: 'roster-error', role: 'alert', text: list.nameError }) : null,
-      list.nameConflict
-        ? h(
-            'div',
-            { class: 'claim-prompt', role: 'alert' },
-            h('p', { class: 'roster-error', text: "That's a saved player \u2014 is it you?" }),
-            h(
-              'div',
-              { class: 'roster-row' },
-              h('button', { type: 'button', class: 'btn btn-green btn-small', 'data-fk': 'username-claim', onclick: actions.claimAsMe, text: `Yes, I'm ${list.nameConflict}` }),
-              h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'username-claim-cancel', onclick: actions.cancelClaim, text: 'No' }),
-            ),
-          )
-        : null,
-      !me && !list.nameError && !list.nameConflict ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
+      !me && !list.nameError ? h('p', { class: 'roster-notice', text: 'Optional. Added to links you share.' }) : null,
     ),
   );
 }
@@ -627,9 +562,13 @@ function rosterSection(state, actions) {
   return h('section', { class: 'panel roster', 'aria-label': 'You' }, usernameField(state, actions), viewingField(state, actions), importSection(state, actions));
 }
 
+// The empty class list's sentence: yours, or the selected person's.
+const emptyClassesText = (state) => (state.shown.id === 'me' ? "You haven't marked any classes yet. Tap Edit to add some." : `${state.shown.name} has no classes yet. Tap Edit to add some.`);
+
 function classesView(state, actions) {
   const { classes } = state.data;
-  const { list, store, build } = state;
+  const { list, build } = state;
+  const hasClasses = Object.keys(levelsOf(state)).length > 0;
   const f = list.filter.trim().toLowerCase();
   const visible = list.editing ? classes : ownedClasses(classes, levelsOf(state), build.base ? [build.base.slug] : []);
   const rows = visible.filter((c) => c.name.toLowerCase().includes(f)).sort((a, b) => a.tier - b.tier);
@@ -651,7 +590,7 @@ function classesView(state, actions) {
             'div',
             { class: 'head-actions' },
             build.base ? h('button', { type: 'button', class: 'btn btn-green btn-small jump-loadout', 'data-fk': 'jump-loadout', onclick: actions.jumpToLoadout, text: 'Loadout' }) : null,
-            state.viewing ? null : h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'list-edit', 'aria-pressed': String(list.editing), onclick: () => actions.setEditing(!list.editing), text: list.editing ? 'Done' : 'Edit' }),
+            state.temp ? null : h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'list-edit', 'aria-pressed': String(list.editing), onclick: () => actions.setEditing(!list.editing), text: list.editing ? 'Done' : 'Edit' }),
           ),
         ),
         h(
@@ -661,8 +600,8 @@ function classesView(state, actions) {
         ),
         rows.length
           ? h('ul', { class: 'own-list' }, rows.map((c) => ownRow(state, actions, c)))
-          : h('p', { class: 'empty', text: state.viewing && !f ? noClassesText(state.viewing.player) : !list.editing && !store.hasAny() ? "You haven't marked any classes yet. Tap Edit to add some." : 'No classes match' }),
-        !rows.length && !state.viewing && !list.editing && !store.hasAny() ? helpLink(actions) : null,
+          : h('p', { class: 'empty', text: state.temp && !f ? noClassesText(state.shown) : !list.editing && !hasClasses ? emptyClassesText(state) : 'No classes match' }),
+        !rows.length && !state.temp && !list.editing && !hasClasses ? helpLink(actions) : null,
       ),
     ),
     loadout(state, actions),
@@ -678,7 +617,7 @@ function memberBase(state, player, stored) {
 function libraryRow(state, actions, player, { me }) {
   const base = memberBase(state, player, player.base);
   const sets = Object.keys(player.sets).length;
-  const marker = me ? 'live' : Object.keys(player.levels).length > 1 ? 'roster' : 'code';
+  const marker = me ? 'live' : player.rosterKnown ? 'roster' : 'code';
   return h(
     'li',
     { class: `player-row${me ? ' is-me' : ''}`, 'data-player': player.name },
@@ -686,12 +625,11 @@ function libraryRow(state, actions, player, { me }) {
     h('span', { class: 'player-base' }, base ? [classIcon(base, { size: 24 }), `${base.name} L${player.levels[base.code]}`] : 'No classes'),
     h('span', { class: 'player-marker', text: marker }),
     h('span', { class: 'player-sets', text: `${sets} ${sets === 1 ? 'set' : 'sets'}` }),
-    me ? null : h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `player-${player.name.toLowerCase()}-remove`, onclick: () => actions.removePlayer(player.name) }, 'Remove', hidden(` ${player.name} from library`)),
   );
 }
 
 function meRow(state, actions) {
-  if (state.players.me) return libraryRow(state, actions, playerByName(state.players, actions.mePlayer(), state.players.me), { me: true });
+  if (state.people.me.name) return libraryRow(state, actions, state.people.me, { me: true });
   return h(
     'li',
     { class: 'player-row is-me' },
@@ -701,7 +639,7 @@ function meRow(state, actions) {
 }
 
 function libraryPanel(state, actions) {
-  const players = state.players.players;
+  const players = state.people.people.slice(1);
   return h(
     'section',
     { class: 'panel library', 'aria-label': 'Players' },
@@ -724,8 +662,8 @@ function libraryPanel(state, actions) {
 }
 
 // Team matrix header: name, class select and remove for my team; name and class text for a link.
-function memberHeader(state, actions, { name, player, base }, { readOnly }) {
-  const isMe = Boolean(state.players.me) && sameName(state.players.me, name);
+function memberHeader(state, actions, { id, name, player, base }, { readOnly }) {
+  const isMe = Boolean(state.people.me.name) && sameName(state.people.me.name, name);
   const title = h('span', { class: 'member-name', text: isMe ? `${name} (you)` : name });
   if (readOnly) return [title, base ? h('span', { class: 'member-base' }, classIcon(base, { size: 24 }), h('span', { text: base.name }), diamonds(base, state.data.tiers)) : h('span', { class: 'card-empty', text: 'No classes owned' })];
   const k = `member-${name.toLowerCase()}`;
@@ -739,22 +677,19 @@ function memberHeader(state, actions, { name, player, base }, { readOnly }) {
           base ? classIcon(base, { size: 24 }) : null,
           h(
             'select',
-            { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${name} class`, onchange: (e) => actions.setMemberBase(name, e.target.value) },
+            { class: 'slot-select', 'data-fk': `${k}-base`, 'aria-label': `${name} class`, onchange: (e) => actions.setMemberBase(id, e.target.value) },
             owned.map((c) => h('option', { value: c.code, selected: base?.code === c.code, text: `${c.name} (L${player.levels[c.code]})` })),
           ),
         )
       : h('span', { class: 'card-empty', text: 'No classes owned' }),
-    h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(name) }, 'Remove', hidden(` ${name} from team`)),
+    h('button', { type: 'button', class: 'btn btn-red btn-small', 'data-fk': `${k}-remove`, onclick: () => actions.removeMember(id) }, 'Remove', hidden(` ${name} from team`)),
   ];
 }
 
-// The "+" header cell: a native select listing me (with an owned class) and saved players not on the team.
-function teamAddSelect(state, actions, team, mePlayer) {
-  const onTeam = new Set(team.members.map((m) => m.name.toLowerCase()));
-  const candidates = [
-    ...(state.players.me && Object.keys(mePlayer.levels).length ? [mePlayer] : []),
-    ...state.players.players,
-  ].filter((p) => !onTeam.has(p.name.toLowerCase()));
+// The "+" header cell: a native select listing named people who own a class and are not on the team.
+function teamAddSelect(state, actions, team) {
+  const onTeam = new Set(team.members.map((m) => m.id));
+  const candidates = state.people.people.filter((p) => p.name && Object.keys(p.levels).length && !onTeam.has(p.id));
   const full = team.members.length >= MAX_MEMBERS;
   const disabled = full || !candidates.length;
   const reason = full ? 'Team is full (8)' : 'All players added';
@@ -764,16 +699,15 @@ function teamAddSelect(state, actions, team, mePlayer) {
       'select',
       { class: 'slot-select matrix-add-select', 'data-fk': 'team-add', 'aria-label': 'Add player', title: disabled ? reason : 'Add player', disabled, onchange: (e) => actions.addMember(e.target.value) },
       h('option', { value: '', text: disabled ? reason : '+' }),
-      disabled ? null : candidates.map((p) => h('option', { value: p.name, text: p.name })),
+      disabled ? null : candidates.map((p) => h('option', { value: p.id, text: p.name })),
     ),
   };
 }
 
 function teamPanel(state, actions, members) {
-  const team = state.players.team;
-  const me = actions.mePlayer();
+  const team = state.people.team;
   const teamBlock = actions.teamShareBlock();
-  const add = teamAddSelect(state, actions, team, me);
+  const add = teamAddSelect(state, actions, team);
   const empty = h(
     'p',
     { class: 'empty' },
@@ -805,11 +739,10 @@ function teamPanel(state, actions, members) {
   );
 }
 
-// What replacing my team does, in words: it replaces a non-empty team, and updates every linked player (other than me) already saved.
+// What replacing my team does, in words: it replaces a non-empty team, and updates every linked person (other than me) already saved.
 function replaceText(state, link) {
-  const me = state.players.me;
-  const updates = link.members.some(({ name }) => !(me && sameName(name, me)) && state.players.get(name));
-  const replaces = state.players.team.members.length > 0;
+  const updates = actions.linkUpdatesSaved();
+  const replaces = state.people.team.members.length > 0;
   const tail = 'saved players with the classes, levels and passives in this link';
   return `This ${replaces ? `replaces your team${updates ? ` and updates ${tail}` : ''}` : `updates ${tail}`}. Continue?`;
 }
@@ -875,11 +808,10 @@ function teamLinkView(state, actions) {
 
 function teamView(state, actions) {
   if (state.team.link) return teamLinkView(state, actions);
-  const team = state.players.team;
-  const me = actions.mePlayer();
-  const members = team.members.flatMap((m) => {
-    const player = playerByName(state.players, me, m.name);
-    return player ? [{ name: player.name, player, base: memberBase(state, player, m.base) }] : [];
+  const team = state.people.team;
+  const members = team.members.map((m) => {
+    const player = state.people.get(m.id);
+    return { id: m.id, name: player.name, player, base: memberBase(state, player, m.base) };
   });
   return h('main', { class: 'team' }, teamPanel(state, actions, members), libraryPanel(state, actions));
 }
@@ -936,8 +868,7 @@ function helpView(state) {
         h('li', {}, 'In the team table, each player is a column. The class select in the column header lists the classes that player owns, and Remove takes them off the team. The + column adds a player; with a saved player it uses their saved class.'),
         h('li', {}, 'Passives can\'t be changed on the Team page, because re-rolling costs in game. Each column uses the passives that player saved for the selected class.'),
         h('li', {}, 'Copy team link shares the team. Opening a team link shows its table read-only. Tap Replace my team to use it (you confirm first when your team has players), or This is your team when it already matches. Replacing also updates your saved players\' class, level and passives for that class.'),
-        h('li', {}, 'On Builds, the Viewing select in the You panel shows a saved player\'s classes and passives read-only.'),
-        h('li', {}, 'While viewing a player, you can try other passives. New picks are tagged NEW and the saved ones stay as ORIGINAL rows; Revert restores them. Experiments are never saved, and the Team page keeps the saved passives.'),
+        h('li', {}, 'On Builds, the Viewing select in the You panel switches to a saved person. Each person is edited like you: classes, levels and passives save to that person.'),
       ),
     ),
     section(

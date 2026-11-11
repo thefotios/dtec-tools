@@ -1,9 +1,7 @@
-// Ownership: roster code codec (pure) and a persisted store with injectable storage.
+// Ownership: the roster code codec and level helpers (pure).
 
 // Level n is cumulative, so a class is owned up to a max level 0-5. Consonants only, so codes can't spell words.
 const LEVEL_SYMBOLS = 'XBCDFG';
-const STORAGE_KEY = 'class-combo-viewer:owned';
-const STORE_VERSION = 2;
 const ALIASES = { O: '0', I: '1', L: '1' };
 
 export const cleanMax = (n) => (Number.isInteger(n) && n >= 1 && n <= 5 ? n : 0);
@@ -62,53 +60,4 @@ export function decodeRoster(classes, text) {
 // Classes to list when filtering by ownership: owned ones plus any in keep (slugs).
 export function ownedClasses(classes, owned, keep = []) {
   return classes.filter((c) => (owned[c.code] ?? 0) > 0 || keep.includes(c.slug));
-}
-
-function load(storage) {
-  try {
-    const parsed = JSON.parse(storage.getItem(STORAGE_KEY));
-    if (parsed?.v !== STORE_VERSION) return {};
-    const owned = {};
-    for (const [code, value] of Object.entries(parsed.owned ?? {})) {
-      const max = cleanMax(value);
-      if (max) owned[code] = max;
-    }
-    return owned;
-  } catch {
-    return {};
-  }
-}
-
-// Reads and writes never throw: a blocked store degrades to in-memory state.
-export function createStore(storage) {
-  let owned = load(storage);
-  const save = () => {
-    try {
-      storage.setItem(STORAGE_KEY, JSON.stringify({ v: STORE_VERSION, owned }));
-    } catch {
-      /* in-memory only */
-    }
-  };
-  const set = (code, max) => {
-    const next = { ...owned };
-    if (max > 0) next[code] = max;
-    else delete next[code];
-    owned = next;
-    save();
-  };
-  return {
-    get owned() {
-      return owned;
-    },
-    has: (code, level) => (owned[code] ?? 0) >= level,
-    hasAny: () => Object.keys(owned).length > 0,
-    // Clicking the current max steps back one level, so a class can return to unowned; 0 removes the class.
-    setLevel(code, n) {
-      set(code, n <= 0 ? 0 : (owned[code] ?? 0) === n ? n - 1 : n);
-    },
-    replace(map) {
-      owned = map;
-      save();
-    },
-  };
 }

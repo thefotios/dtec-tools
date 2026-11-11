@@ -3,14 +3,14 @@ import { h } from './dom.mjs';
 
 const listOf = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
 
-// What an own import replaces, in words: "your classes and all passive sets". Empty when nothing existing is replaced.
-function replacesText(state, parsed, summary) {
-  const base = parsed.kind === 'build' ? state.data.classes.find((c) => c.code === parsed.player.base) : null;
+// What an import replaces, in words: "your classes and all passive sets"; `who` is the owner's possessive. Empty when nothing existing is replaced.
+export function replacesText(state, parsed, summary, who = 'your') {
+  const base = parsed.player ? state.data.classes.find((c) => c.code === parsed.player.base) : null;
   const parts = [];
-  if (summary.replacesRoster) parts.push('your classes');
+  if (summary.replacesRoster) parts.push(`${who} classes`);
   if (summary.replacesAllSets) parts.push('all passive sets');
-  else if (summary.replacesBaseSet) parts.push(`your ${base.name} passives`);
-  if (summary.replacesBaseLevel) parts.push(`your ${base.name} level`);
+  else if (summary.replacesBaseSet) parts.push(`${who} ${base.name} passives`);
+  if (summary.replacesBaseLevel) parts.push(`${who} ${base.name} level`);
   return listOf(parts);
 }
 
@@ -31,7 +31,7 @@ function confirmPrompt(state, actions, pending) {
 function whosePrompt(state, actions, pending) {
   const { parsed } = pending;
   const replaces = replacesText(state, parsed, actions.importSummary(parsed));
-  const setsName = !state.players.me && parsed.player.name && isValidName(parsed.player.name);
+  const setsName = !state.people.me.name && parsed.player.name && isValidName(parsed.player.name);
   const hint = [setsName ? `sets your username to ${parsed.player.name}` : null, replaces ? `replaces ${replaces}` : null].filter(Boolean);
   return h(
     'div',
@@ -79,14 +79,7 @@ export function importSection(state, actions) {
       imp.error ? h('p', { class: 'roster-error', role: 'alert', text: imp.error }) : null,
       pending?.kind === 'confirm' ? confirmPrompt(state, actions, pending) : null,
       pending?.kind === 'whose' ? whosePrompt(state, actions, pending) : null,
-      imp.message
-        ? h(
-            'p',
-            { class: 'visitor-saved', role: 'status' },
-            h('span', { text: `${imp.message} ` }),
-            imp.savedName ? h('button', { type: 'button', class: 'btn btn-grey btn-small', 'data-fk': 'import-view', onclick: () => actions.viewPlayer(imp.savedName), text: 'View' }) : null,
-          )
-        : null,
+      imp.message ? h('p', { class: 'visitor-saved', role: 'status', text: imp.message }) : null,
       imp.notices.map((n) => h('p', { class: 'roster-notice', text: n })),
     ),
   );

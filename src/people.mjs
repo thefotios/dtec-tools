@@ -194,6 +194,12 @@ export function createPeopleStore(storage, classes) {
       patch(id, { levels, rosterKnown: true });
       return { ok: true };
     },
+    // Replaces a person's class levels with a roster map, cleaned as on load; their sets stay and the roster becomes known.
+    replaceLevels(id, levels) {
+      if (!find(id)) return { error: 'Unknown person' };
+      patch(id, { levels: cleaned(id, { levels }).levels, rosterKnown: true });
+      return { ok: true };
+    },
     setBase(id, code) {
       if (!find(id)) return { error: 'Unknown person' };
       if (code !== null && !hasCode(code)) return { error: 'Unknown base class' };

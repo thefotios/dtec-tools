@@ -335,3 +335,15 @@ test('blocked storage degrades to memory', () => {
   s.setLevel(id, SC, 2);
   assert.equal(s.get(id).levels[SC], 2);
 });
+
+test('replaceLevels swaps one person classes, keeps their sets and makes the roster known', () => {
+  const { s } = seeded();
+  s.setSet('p1', SC, e([SAL, 2]));
+  const r = s.replaceLevels('p1', { [MI]: 2, nope: 4, [SC]: 9 });
+  assert.ok(r.ok);
+  assert.deepEqual(s.get('p1').levels, { [MI]: 2 });
+  assert.deepEqual(s.get('p1').sets, { [SC]: e([SAL, 2]) });
+  assert.equal(s.get('p1').rosterKnown, true);
+  assert.deepEqual(s.get('p2').levels, {});
+  assert.ok(s.replaceLevels('p9', {}).error);
+});

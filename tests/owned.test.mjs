@@ -1,27 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { encodeRoster, decodeRoster, createStore, ownedClasses } from '../src/owned.mjs';
+import { encodeRoster, decodeRoster, ownedClasses } from '../src/owned.mjs';
 
 const { classes } = JSON.parse(readFileSync(new URL('../data/classes.json', import.meta.url)));
 const decoded = (text, list = classes) => decodeRoster(list, text);
-const memory = (initial) => {
-  const data = new Map(initial ? Object.entries(initial) : []);
-  return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, String(v)), data };
-};
-const throwing = (which) => ({
-  getItem: () => {
-    if (which === 'read') throw new Error('blocked');
-    return null;
-  },
-  setItem: () => {
-    if (which === 'write') throw new Error('blocked');
-  },
-});
 // Ownership for the first classes.length slots: level at the given indexes, others unowned.
 const at = (levels) => Object.fromEntries(Object.entries(levels).map(([i, n]) => [classes[i].code, n]));
 const MIXED = at({ 16: 4, 22: 3 });
-const KEY = 'class-combo-viewer:owned';
 
 test('fixture assumes 33 classes', () => {
   assert.equal(classes.length, 33);
@@ -119,77 +105,6 @@ test('appending a class keeps existing codes decoding to the same map', () => {
   const grown = [...classes, { code: 'zz', slug: 'zzclass' }];
   assert.deepEqual(decoded(code, grown).owned, owned);
   assert.equal(encodeRoster(grown, owned), code);
-});
-
-test('store: storage that throws on read yields an empty map', () => {
-  const store = createStore(throwing('read'));
-  assert.deepEqual(store.owned, {});
-});
-
-test('store: storage that throws on write keeps the in-memory map', () => {
-  const store = createStore(throwing('write'));
-  store.setLevel('mi', 2);
-  assert.deepEqual(store.owned, { mi: 2 });
-});
-
-test('store: persists the map as v2, and reloads them', () => {
-  const storage = memory();
-  const a = createStore(storage);
-  a.setLevel('mi', 3);
-  const saved = JSON.parse(storage.data.get(KEY));
-  assert.equal(saved.v, 2);
-  assert.equal('ownedOnly' in saved, false);
-  const b = createStore(storage);
-  assert.deepEqual(b.owned, { mi: 3 });
-});
-
-test('store: a v1 payload is ignored', () => {
-  const v1 = JSON.stringify({ v: 1, owned: { mi: [1, 3], sc: 5 } });
-  assert.deepEqual(createStore(memory({ [KEY]: v1 })).owned, {});
-});
-
-test('store: setLevel sets the max, and clicking the current max steps back one', () => {
-  const store = createStore(memory());
-  store.setLevel('mi', 3);
-  assert.deepEqual(store.owned, { mi: 3 });
-  store.setLevel('mi', 5);
-  assert.deepEqual(store.owned, { mi: 5 });
-  store.setLevel('mi', 2);
-  assert.deepEqual(store.owned, { mi: 2 });
-  store.setLevel('mi', 2);
-  assert.deepEqual(store.owned, { mi: 1 });
-  store.setLevel('mi', 1);
-  assert.deepEqual(store.owned, {});
-});
-
-test('store: has is cumulative; hasAny follows the map', () => {
-  const store = createStore(memory());
-  assert.equal(store.hasAny(), false);
-  store.setLevel('mi', 3);
-  assert.deepEqual([1, 2, 3, 4, 5].map((n) => store.has('mi', n)), [true, true, true, false, false]);
-  assert.equal(store.hasAny(), true);
-});
-
-test('store: corrupt or unknown-version storage yields an empty map', () => {
-  assert.deepEqual(createStore(memory({ [KEY]: '{nope' })).owned, {});
-  assert.deepEqual(createStore(memory({ [KEY]: '{"v":99,"owned":{"mi":1}}' })).owned, {});
-});
-
-test('store: replace sets the whole map', () => {
-  const store = createStore(memory());
-  store.replace({ mi: 2 });
-  assert.deepEqual(store.owned, { mi: 2 });
-  assert.equal(store.has('mi', 2), true);
-  assert.equal(store.has('mi', 3), false);
-});
-
-test('store: setLevel 0 removes the class', () => {
-  const store = createStore(memory());
-  store.setLevel('mi', 3);
-  store.setLevel('mi', 0);
-  assert.deepEqual(store.owned, {});
-  store.setLevel('mi', 0);
-  assert.deepEqual(store.owned, {});
 });
 
 test('ownedClasses: owned plus kept slugs, nothing when nothing is owned', () => {
