@@ -37,13 +37,14 @@ export function absoluteUrl(baseURI, canonicalPath) {
 const basePathOf = (win) => new URL(win.document.baseURI).pathname;
 const pathUrl = (win, canonicalPath) => basePathOf(win).replace(/\/+$/, '') + canonicalPath;
 
-// History helpers take a window-like object ({ document.baseURI, history }) and an already-canonical base-relative path.
-export function pushPath(win, canonicalPath) {
-  win.history.pushState(null, '', pathUrl(win, canonicalPath));
+// History helpers take a window-like object ({ document.baseURI, history }), an already-canonical base-relative path and an
+// optional state object stored on the entry (null when omitted).
+export function pushPath(win, canonicalPath, state = null) {
+  win.history.pushState(state, '', pathUrl(win, canonicalPath));
 }
 
-export function replacePath(win, canonicalPath) {
-  win.history.replaceState(null, '', pathUrl(win, canonicalPath));
+export function replacePath(win, canonicalPath, state = null) {
+  win.history.replaceState(state, '', pathUrl(win, canonicalPath));
 }
 
 // The part of a base-relative path after "/team" ("" for "/team"), or null when it is not a team path.

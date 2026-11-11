@@ -48,6 +48,27 @@ test('history helpers push or replace an arbitrary canonical path', () => {
   ]);
 });
 
+test('history helpers store the given state object, or null without one', () => {
+  const calls = [];
+  const win = {
+    document: { baseURI: 'https://x.io/' },
+    history: {
+      pushState: (state, _t, url) => calls.push(['push', state, url]),
+      replaceState: (state, _t, url) => calls.push(['replace', state, url]),
+    },
+  };
+  pushPath(win, '/sc3', { person: 'p2', base: 'sc' });
+  replacePath(win, '/sc3', { target: 'p1' });
+  pushPath(win, '/team');
+  replacePath(win, '/');
+  assert.deepEqual(calls, [
+    ['push', { person: 'p2', base: 'sc' }, '/sc3'],
+    ['replace', { target: 'p1' }, '/sc3'],
+    ['push', null, '/team'],
+    ['replace', null, '/'],
+  ]);
+});
+
 test('sortSlots orders by registry order, then level', () => {
   const slots = sortSlots(classes, [slot('priest', 3), slot('salvager', 3), slot('salvager', 2)]);
   assert.deepEqual(str(slots), ['salvager2', 'salvager3', 'priest3']);
